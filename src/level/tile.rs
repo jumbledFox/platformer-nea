@@ -6,8 +6,22 @@ const TILE_DATA: &[TileData] = &[
         collision: TileCollision::solid_default(),
     },
     TileData {
-        name: &"checker",
-        texture: TileTexture::connected_static_in_order(14),
+        name: &"spikes",
+        texture: TileTexture::single_static(2),
+        collision: TileCollision::Solid {
+            friction: 0.0,
+            bounce: 0.5,
+            damage: Some(TileDamage { sides: [true; 4] }),
+        },
+    },
+    TileData {
+        name: &"glass",
+        texture: TileTexture::single_static(3),
+        collision: TileCollision::solid_default(),
+    },
+    TileData {
+        name: &"grass",
+        texture: TileTexture::connected_static_in_order(4),
         collision: TileCollision::solid_default(),
     },
     TileData {
@@ -18,13 +32,9 @@ const TILE_DATA: &[TileData] = &[
         collision: TileCollision::solid_default(),
     },
     TileData {
-        name: &"spikes",
-        texture: TileTexture::single_static(2),
-        collision: TileCollision::Solid {
-            friction: 0.0,
-            bounce: 0.5,
-            damage: Some(TileDamage { sides: [true; 4] }),
-        },
+        name: &"checker",
+        texture: TileTexture::connected_static_in_order(14),
+        collision: TileCollision::solid_default(),
     },
 ];
 
