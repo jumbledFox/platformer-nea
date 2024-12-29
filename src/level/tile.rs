@@ -13,11 +13,7 @@ const TILE_DATA: &[TileData] = &[
     TileData {
         name: "spikes",
         texture: TileTexture::fixed(3, TileTextureConnection::None),
-        collision: TileCollision::Solid {
-            friction: 0.0,
-            bounce: 0.0,
-            damage: Some(TileDamage { sides: [true; 4] }),
-        },
+        collision: TileCollision::solid_default(),
     },
     TileData {
         name: "glass",
@@ -123,8 +119,7 @@ pub enum TileCollision {
     Water,
     Solid {
         friction: f32,
-        bounce: f32,
-        damage: Option<TileDamage>,
+        // damage
         // hitting behaviour
     },
 }
@@ -133,14 +128,6 @@ impl TileCollision {
     pub const fn solid_default() -> Self {
         Self::Solid {
             friction: 1.0,
-            bounce: 0.0,
-            damage: None,
         }
     }
-}
-
-pub struct TileDamage {
-    /// North, east, south, west
-    sides: [bool; 4],
-    // animation
 }
