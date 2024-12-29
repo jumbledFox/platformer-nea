@@ -1,106 +1,123 @@
 // The giant global array of data for all of the tiles
 const TILE_DATA: &[TileData] = &[
     TileData {
-        name: &"stone block",
-        texture: TileTexture::single_static(1),
+        name: "air",
+        texture: TileTexture::fixed(1, TileTextureConnection::None),
+        collision: TileCollision::Air,
+    },
+    TileData {
+        name: "stone block",
+        texture: TileTexture::fixed(2, TileTextureConnection::None),
         collision: TileCollision::solid_default(),
     },
     TileData {
-        name: &"spikes",
-        texture: TileTexture::single_static(2),
+        name: "spikes",
+        texture: TileTexture::fixed(3, TileTextureConnection::None),
         collision: TileCollision::Solid {
             friction: 0.0,
-            bounce: 0.5,
+            bounce: 0.0,
             damage: Some(TileDamage { sides: [true; 4] }),
         },
     },
     TileData {
-        name: &"glass",
-        texture: TileTexture::single_static(3),
+        name: "glass",
+        texture: TileTexture::fixed(4, TileTextureConnection::None),
         collision: TileCollision::solid_default(),
     },
     TileData {
-        name: &"grass",
-        texture: TileTexture::connected_static_in_order(4),
+        name: "block",
+        texture: TileTexture::fixed(5, TileTextureConnection::None),
         collision: TileCollision::solid_default(),
     },
     TileData {
-        name: &"bricks",
-        texture: TileTexture::connected_static([
-            10, 10, 11, 11, 10, 10, 11, 11, 13, 13, 12, 12, 13, 13, 12, 12,
-        ]),
+        name: "grass",
+        texture: TileTexture::fixed(6, TileTextureConnection::Both),
         collision: TileCollision::solid_default(),
     },
     TileData {
-        name: &"checker",
-        texture: TileTexture::connected_static_in_order(14),
+        name: "bricks",
+        texture: TileTexture::fixed(11, TileTextureConnection::Both),
+        collision: TileCollision::solid_default(),
+    },
+    TileData {
+        name: "stone",
+        texture: TileTexture::fixed(22, TileTextureConnection::Both),
+        collision: TileCollision::solid_default(),
+    },
+    TileData {
+        name: "checker",
+        texture: TileTexture::fixed(27, TileTextureConnection::Both),
         collision: TileCollision::solid_default(),
     },
 ];
 
-pub enum TileTexture<'a> {
-    Single(TileTextureSingle<'a>),
-    // 16 possible combinations of NESW, going in a binary order
-    Connected([TileTextureSingle<'a>; 16]),
+const TILE_MISSING: TileData = TileData {
+    name: "Error!",
+    texture: TileTexture::fixed(0, TileTextureConnection::None),
+    collision: TileCollision::Air
+};
+
+
+pub fn tile_data(index: usize) -> &'static TileData<'static> {
+    TILE_DATA.get(index)    
+        .unwrap_or_else(|| &TILE_MISSING)
 }
 
-impl TileTexture<'_> {
-    pub const fn single_static(id: usize) -> Self {
-        Self::Single(TileTextureSingle::Static(id))
-    }
-
-    pub const fn connected_static(ids: [usize; 16]) -> Self {
-        // I don't like doing this, but it's explicit and works nicely.
-        Self::Connected([
-            TileTextureSingle::Static(ids[0]),
-            TileTextureSingle::Static(ids[1]),
-            TileTextureSingle::Static(ids[2]),
-            TileTextureSingle::Static(ids[3]),
-            TileTextureSingle::Static(ids[4]),
-            TileTextureSingle::Static(ids[5]),
-            TileTextureSingle::Static(ids[6]),
-            TileTextureSingle::Static(ids[7]),
-            TileTextureSingle::Static(ids[8]),
-            TileTextureSingle::Static(ids[9]),
-            TileTextureSingle::Static(ids[10]),
-            TileTextureSingle::Static(ids[11]),
-            TileTextureSingle::Static(ids[12]),
-            TileTextureSingle::Static(ids[13]),
-            TileTextureSingle::Static(ids[14]),
-            TileTextureSingle::Static(ids[15]),
-        ])
-    }
-    /// Connected tiles that are in order in the sprite sheet
-    pub const fn connected_static_in_order(begin: usize) -> Self {
-        Self::Connected([
-            TileTextureSingle::Static(begin + 0),
-            TileTextureSingle::Static(begin + 1),
-            TileTextureSingle::Static(begin + 2),
-            TileTextureSingle::Static(begin + 3),
-            TileTextureSingle::Static(begin + 4),
-            TileTextureSingle::Static(begin + 5),
-            TileTextureSingle::Static(begin + 6),
-            TileTextureSingle::Static(begin + 7),
-            TileTextureSingle::Static(begin + 8),
-            TileTextureSingle::Static(begin + 9),
-            TileTextureSingle::Static(begin + 10),
-            TileTextureSingle::Static(begin + 11),
-            TileTextureSingle::Static(begin + 12),
-            TileTextureSingle::Static(begin + 13),
-            TileTextureSingle::Static(begin + 14),
-            TileTextureSingle::Static(begin + 15),
-        ])
-    }
+// TODO: Solid default texture
+pub struct TileData<'a> {
+    name: &'a str,
+    texture: TileTexture<'a>,
+    collision: TileCollision,
+    // TODO: Hit stuff
 }
 
-pub enum TileTextureSingle<'a> {
-    Static(usize),
+// Textures
+pub enum TileTextureRenderType<'a> {
+    Fixed(usize),
     Animated {
         frames: &'a [usize],
         frame_duration: f32,
     },
 }
 
+pub enum TileTextureConnection {
+    None,
+
+    // The additional tiles used by these have texture indices increasing from the initial texture.
+    // e.g. A tile with texture 4 that's connected both ways would also use textures 5, 6, 7, and 8. 
+
+    // Uses 4 tiles
+    Horizontal,
+    Vertical,
+    // Uses 5 tiles
+    // The four corners of the 5 tiles used to form the connected texture.
+    // This has some limitations, as each separate part can't leave the 8x8 area
+    // (meaning that for example, the top of grass can't extend below the top 8 pixels),
+    // but that's okay!
+    Both,
+}
+
+pub struct TileTexture<'a> {
+    render: TileTextureRenderType<'a>,
+    connection: TileTextureConnection,
+}
+
+impl TileTexture<'static> {
+    pub const fn fixed(texture: usize, connection: TileTextureConnection) -> Self {
+        Self {
+            render: TileTextureRenderType::Fixed(texture),
+            connection,
+        }
+    }
+    pub const fn animated(frames: &'static [usize], frame_duration: f32, connection: TileTextureConnection) -> Self {
+        Self {
+            render: TileTextureRenderType::Animated { frames, frame_duration },
+            connection,
+        }
+    }
+}
+
+// Collision
 pub enum TileCollision {
     Air,
     Water,
@@ -126,10 +143,4 @@ pub struct TileDamage {
     /// North, east, south, west
     sides: [bool; 4],
     // animation
-}
-
-pub struct TileData<'a> {
-    name: &'a str,
-    texture: TileTexture<'a>,
-    collision: TileCollision,
 }

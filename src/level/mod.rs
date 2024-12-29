@@ -6,6 +6,11 @@ pub struct Level {
     width: usize,
     height: usize,
     tiles: Vec<usize>,
+    
+    // signs (ill do this much later)
     // doors
-    // signs
+    // player  start point
+    // checkpoints
+    // enemy   start points
+    // powerup start points
 }
