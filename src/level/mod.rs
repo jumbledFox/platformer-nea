@@ -48,16 +48,21 @@ impl Default for Level {
     fn default() -> Self {
         Self {
             width:  16,
-            height: 8,
+            height: 13,
             tiles: vec![
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 9, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 0, 0, 9, 0, 8, 0,
-                0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 0, 0, 9, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1, 0, 8, 8,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 9, 9, 0, 0,
+                0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 0, 0, 9, 9, 8, 0,
+                0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 0, 0, 9, 9, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1, 9, 8, 8,
                 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 8, 8, 0, 0, 8, 8,
                 1, 1, 1, 1, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8, 0,
                 0, 1, 1, 0, 0, 2, 2, 0, 0, 0, 8, 0, 0, 8, 8, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 5, 5, 5, 0, 5, 5, 0, 5, 0, 0, 0,
+                0, 0, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 5, 5, 5, 5, 5, 0, 0, 0, 0, 5,10,10, 0,
+                0, 0, 0, 5, 5, 5, 5, 0, 0, 0, 0, 0, 5, 0,10,10,
             ],
             physics: LevelPhysics::Air,
             tiles_above: Vec::with_capacity(16*8),
@@ -80,14 +85,28 @@ impl Level {
             )
         };
 
+        let tile_connects = |tile: usize, index: usize, offset: (isize, isize)| -> bool {
+            // The coordinates of the tile to check
+            let x = (index % self.width) as isize + offset.0;
+            let y = (index / self.width) as isize + offset.1;
+
+            // Bounds checking
+            // If it's out of bounds, it should connect
+            if x < 0 || x >= self.width as isize || y < 0 || y >= self.height as isize {
+                return true;
+            }
+            let index = y as usize * self.width + x as usize;
+            self.tiles.get(index).is_some_and(|t| *t == tile)
+        };
+
         // For Horizontal and Vertical connected textures.
         // Checks two neighbours and returns the offset.
-        let connected_texture_single = |index: usize, first: (isize, isize), second: (isize, isize)| -> TileDrawKind {
+        let connected_texture_single = |tile: usize, index: usize, first_offset: (isize, isize), second_offset: (isize, isize)| -> TileDrawKind {
             // TODO: Actually check either neigbour
-            let first_set  = true;
-            let second_set = true;
+            let first  = tile_connects(tile, index, first_offset);
+            let second = tile_connects(tile, index, second_offset);
 
-            let texture = match (first_set, second_set) {
+            let texture = match (first, second) {
                 (false, false) => 0,
                 (false, true ) => 1,
                 (true,  true ) => 2,
@@ -99,8 +118,34 @@ impl Level {
 
         // For 'Both' connected textures.
         // Check's all of the tiles neighbours.
-        let connected_texture_both = |index: usize| -> TileDrawKind {
-            TileDrawKind::Quarters(0, 0, 0, 0)
+        let connected_texture_both = |tile: usize, index: usize| -> TileDrawKind {
+            let n = tile_connects(tile, index, ( 0, -1));
+            let e = tile_connects(tile, index, ( 1,  0));
+            let s = tile_connects(tile, index, ( 0,  1));
+            let w = tile_connects(tile, index, (-1,  0));
+            let ne = tile_connects(tile, index, ( 1, -1));
+            let nw = tile_connects(tile, index, (-1, -1));
+            let se = tile_connects(tile, index, ( 1,  1));
+            let sw = tile_connects(tile, index, (-1,  1));
+
+            let (mut tl, mut tr, mut bl, mut br) = (0, 0, 0, 0);
+            // the horizontal, vertical, corner neighbours of each quarter
+            for (quarter, horz, vert, corner) in [
+                (&mut tl, n, w, nw),
+                (&mut tr, n, e, ne),
+                (&mut bl, s, w, sw),
+                (&mut br, s, e, se),
+            ] {
+                *quarter = match (horz, vert, corner) {
+                    (false, false, _) => 0,
+                    (false, true,  _) => 1,
+                    (true,  false, _) => 2,
+                    (true, true, false) => 3,
+                    (true, true, true)  => 4, 
+                }
+            }
+
+            TileDrawKind::Quarters(tl, tr, bl, br)
         };
 
         for (i, &tile) in self.tiles.iter().enumerate() {
@@ -112,9 +157,9 @@ impl Level {
 
             let draw_kind = match &texture.connection {
                 TileTextureConnection::None       => TileDrawKind::Single(0),
-                TileTextureConnection::Horizontal => connected_texture_single(i, (-1,  0), ( 1,  0)),
-                TileTextureConnection::Vertical   => connected_texture_single(i, ( 0,  1), ( 0, -1)),
-                TileTextureConnection::Both       => connected_texture_both(i),
+                TileTextureConnection::Horizontal => connected_texture_single(tile, i, (-1,  0), (1, 0)),
+                TileTextureConnection::Vertical   => connected_texture_single(tile, i, ( 0, -1), (0, 1)),
+                TileTextureConnection::Both       => connected_texture_both(tile, i),
             };
 
             self.tiles_below.push(TileRenderData { tile, draw_kind, pos: tile_pos(i) });

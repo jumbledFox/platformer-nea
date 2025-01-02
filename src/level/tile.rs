@@ -39,7 +39,7 @@ const TILE_DATA: &[TileData] = &[
         collision: TileCollision::solid_default(),
     },
     TileData {
-        name: "bricks",
+        name: "metal",
         texture: Some(TileTexture::fixed(11, TileTextureConnection::Both)),
         collision: TileCollision::solid_default(),
     },
@@ -57,7 +57,12 @@ const TILE_DATA: &[TileData] = &[
         name: "test vert",
         texture: Some(TileTexture::fixed(108, TileTextureConnection::Vertical)),
         collision: TileCollision::solid_default(),
-    }
+    },
+    TileData {
+        name: "bricks",
+        texture: Some(TileTexture::fixed(44, TileTextureConnection::Horizontal)),
+        collision: TileCollision::solid_default(),
+    },
 ];
 
 // The error tile, for if SOMEHOW a tile doesn't exist but is still gotten.
@@ -177,24 +182,24 @@ pub fn render_tile(render_data: &TileRenderData, atlas: &Texture2D) {
         TileTextureRenderType::Fixed(texture) => texture,
     };
 
-
+    // Draws a tile that's a single texture
     let draw_single = |offset: usize| {
         draw_texture_ex(atlas, pos.x, pos.y, WHITE, DrawTextureParams {
             source: Some(Resources::tile_rect(start_texture + offset)),
             ..Default::default()
         });
     };
-
+    // Draws a tile made up of four quarters
     let draw_quarters = |tl: usize, tr: usize, bl: usize, br: usize| {
-        for (x, y) in [
-            (0.0, 0.0),
-            (0.0, 8.0),
-            (8.0, 0.0),
-            (8.0, 8.0),
+        for (offset, x, y) in [
+            (tl, 0.0, 0.0),
+            (tr, 8.0, 0.0),
+            (bl, 0.0, 8.0),
+            (br, 8.0, 8.0),
         ] {
-            let texture_start = Resources::tile_rect(start_texture + tl).point();
+            let texture_start = Resources::tile_rect(start_texture + offset).point();
             draw_texture_ex(atlas, pos.x + x, pos.y + y, WHITE, DrawTextureParams {
-                source: Some(Rect::new(texture_start.x, texture_start.y, 8.0, 8.0)),
+                source: Some(Rect::new(texture_start.x + x, texture_start.y + y, 8.0, 8.0)),
                 ..Default::default()
             });
         }
