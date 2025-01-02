@@ -1,11 +1,17 @@
-use crate::util::const_str_eq;
+use std::os::unix::raw::blkcnt_t;
+
+use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
+
+use crate::{resources::Resources, util::{const_str_eq, is_bit_set_u8}};
+
+use super::{TileDrawKind, TileRenderData};
 
 // The giant global array of data for all of the tiles
 const TILE_DATA: &[TileData] = &[
     TileData {
-        name: "air",
-        texture: Some(TileTexture::fixed(1, TileTextureConnection::None)),
-        collision: TileCollision::Air,
+        name: "empty",
+        texture: None,
+        collision: TileCollision::Passable,
     },
     TileData {
         name: "stone block",
@@ -47,13 +53,18 @@ const TILE_DATA: &[TileData] = &[
         texture: Some(TileTexture::fixed(27, TileTextureConnection::Both)),
         collision: TileCollision::solid_default(),
     },
+    TileData {
+        name: "test vert",
+        texture: Some(TileTexture::fixed(108, TileTextureConnection::Vertical)),
+        collision: TileCollision::solid_default(),
+    }
 ];
 
 // The error tile, for if SOMEHOW a tile doesn't exist but is still gotten.
 const TILE_ERROR: TileData = TileData {
     name: "error!",
     texture: Some(TileTexture::fixed(0, TileTextureConnection::None)),
-    collision: TileCollision::Air
+    collision: TileCollision::Passable
 };
 
 // Returns the TileData for a tile, or if it doesn't exist, return the missing tile.
@@ -75,11 +86,11 @@ pub const fn get_tile_by_name(name: &str) -> usize {
     panic!("Tile doesn't exist!");
 }
 
-// TODO: Solid default texture
+// TODO: Make a function that makes creating these easier and less verbose
 pub struct TileData<'a> {
-    name: &'a str,
-    texture: Option<TileTexture<'a>>,
-    collision: TileCollision,
+    pub name: &'a str,
+    pub texture: Option<TileTexture<'a>>,
+    pub collision: TileCollision,
     // TODO: Hit stuff
 }
 
@@ -110,8 +121,8 @@ pub enum TileTextureConnection {
 }
 
 pub struct TileTexture<'a> {
-    render: TileTextureRenderType<'a>,
-    connection: TileTextureConnection,
+    pub render: TileTextureRenderType<'a>,
+    pub connection: TileTextureConnection,
 }
 
 impl TileTexture<'static> {
@@ -131,8 +142,7 @@ impl TileTexture<'static> {
 
 // Collision
 pub enum TileCollision {
-    Air,
-    Water,
+    Passable,
     Solid {
         friction: f32,
         // damage
@@ -146,4 +156,52 @@ impl TileCollision {
             friction: 1.0,
         }
     }
+}
+
+// Rendering a tile
+pub fn render_tile(render_data: &TileRenderData, atlas: &Texture2D) {
+    let TileRenderData { tile, draw_kind, pos } = *render_data;
+    let tile_data = tile_data(tile);
+
+    // If the tile doesn't have a texture, don't render it
+    let texture = match &tile_data.texture {
+        Some(t) => t,
+        None => return,
+    };
+
+    // Get the start texture of the tile
+    let start_texture = match texture.render {
+        TileTextureRenderType::Animated { frames, frame_duration } => {
+            frames[0]
+        }
+        TileTextureRenderType::Fixed(texture) => texture,
+    };
+
+
+    let draw_single = |offset: usize| {
+        draw_texture_ex(atlas, pos.x, pos.y, WHITE, DrawTextureParams {
+            source: Some(Resources::tile_rect(start_texture + offset)),
+            ..Default::default()
+        });
+    };
+
+    let draw_quarters = |tl: usize, tr: usize, bl: usize, br: usize| {
+        for (x, y) in [
+            (0.0, 0.0),
+            (0.0, 8.0),
+            (8.0, 0.0),
+            (8.0, 8.0),
+        ] {
+            let texture_start = Resources::tile_rect(start_texture + tl).point();
+            draw_texture_ex(atlas, pos.x + x, pos.y + y, WHITE, DrawTextureParams {
+                source: Some(Rect::new(texture_start.x, texture_start.y, 8.0, 8.0)),
+                ..Default::default()
+            });
+        }
+    };
+
+    match draw_kind {
+        TileDrawKind::Single(offset) => draw_single(offset),
+        TileDrawKind::Quarters(tl, tr, bl, br) => draw_quarters(tl, tr, bl, br),
+    };
 }

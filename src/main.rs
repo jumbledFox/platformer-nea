@@ -1,5 +1,6 @@
 use std::{thread::sleep, time::Duration};
 
+use level::Level;
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, BLUE, RED, WHITE}, math::{vec2, Rect}, shapes::draw_circle, text::draw_text, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, window::{clear_background, next_frame, screen_height, screen_width}};
 use resources::Resources;
 
@@ -31,18 +32,21 @@ async fn main() {
     );
     world_cam.render_target = Some(render_target.clone());
 
+    let mut test_level = Level::default();
+    test_level.prepare_tiles();
+
     loop {
         // Draw to the render target
         set_camera(&world_cam);
         clear_background(BLUE);
-        draw_circle(8.0, 8.0, 8.0, RED);
-        draw_text("hi", 0.0, 50.0, 50.0, WHITE);
 
-        for x in 0..VIEW_WIDTH {
-            for y in 0..VIEW_HEIGHT {
-                draw_texture_ex(&resources.tiles_texture(), x as f32 * 16.0, y as f32 * 16.0, WHITE, DrawTextureParams { source: Some(Rect::new(32.0, 0.0, 16.0, 16.0)), ..Default::default() });
-            }
-        }
+        // for x in 0..VIEW_WIDTH {
+        //     for y in 0..VIEW_HEIGHT {
+        //         draw_texture_ex(resources.tiles_atlas(), x as f32 * 16.0, y as f32 * 16.0, WHITE, DrawTextureParams { source: Some(Rect::new(32.0, 0.0, 16.0, 16.0)), ..Default::default() });
+        //     }
+        // }
+
+        Level::render_tiles(test_level.tiles_below(), resources.tiles_atlas());
 
         // Draw render target
         set_default_camera();

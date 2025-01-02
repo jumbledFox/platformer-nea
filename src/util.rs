@@ -18,3 +18,8 @@ pub const fn const_str_eq(a: &str, b: &str) -> bool {
     
     true
 }
+
+// An easy way to find out if a specific bit of a u8 is set
+pub const fn is_bit_set_u8(value: u8, bit_position: u8) -> bool {
+    (value & (1 << bit_position)) != 0
+}
