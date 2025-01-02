@@ -1,8 +1,6 @@
-use std::os::unix::raw::blkcnt_t;
+use macroquad::{color::WHITE, math::Rect, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
 
-use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
-
-use crate::{resources::Resources, util::{const_str_eq, is_bit_set_u8}};
+use crate::util::const_str_eq;
 
 use super::{TileDrawKind, TileRenderData};
 
@@ -177,15 +175,25 @@ pub fn render_tile(render_data: &TileRenderData, atlas: &Texture2D) {
     // Get the start texture of the tile
     let start_texture = match texture.render {
         TileTextureRenderType::Animated { frames, frame_duration } => {
-            frames[0]
+            frames[macroquad::rand::gen_range(0, frames.len())]
         }
         TileTextureRenderType::Fixed(texture) => texture,
+    };
+
+    // Returns a rect for a tile
+    let tile_rect = |texture: usize| -> Rect {
+        Rect::new(
+            (texture % 16) as f32 * 16.0,
+            (texture / 16) as f32 * 16.0,
+            16.0,
+            16.0,
+        )
     };
 
     // Draws a tile that's a single texture
     let draw_single = |offset: usize| {
         draw_texture_ex(atlas, pos.x, pos.y, WHITE, DrawTextureParams {
-            source: Some(Resources::tile_rect(start_texture + offset)),
+            source: Some(tile_rect(start_texture + offset)),
             ..Default::default()
         });
     };
@@ -197,7 +205,7 @@ pub fn render_tile(render_data: &TileRenderData, atlas: &Texture2D) {
             (bl, 0.0, 8.0),
             (br, 8.0, 8.0),
         ] {
-            let texture_start = Resources::tile_rect(start_texture + offset).point();
+            let texture_start = tile_rect(start_texture + offset).point();
             draw_texture_ex(atlas, pos.x + x, pos.y + y, WHITE, DrawTextureParams {
                 source: Some(Rect::new(texture_start.x + x, texture_start.y + y, 8.0, 8.0)),
                 ..Default::default()

@@ -51,7 +51,7 @@ impl Default for Level {
             height: 13,
             tiles: vec![
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 9, 9, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 9, 9, 9, 0, 0,
                 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 0, 0, 9, 9, 8, 0,
                 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 0, 0, 9, 9, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1, 9, 8, 8,
@@ -59,8 +59,8 @@ impl Default for Level {
                 1, 1, 1, 1, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8, 0,
                 0, 1, 1, 0, 0, 2, 2, 0, 0, 0, 8, 0, 0, 8, 8, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 5, 5, 5, 0, 5, 5, 0, 5, 0, 0, 0,
-                0, 0, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 5, 5, 5, 1, 5, 5, 0, 5, 0, 0, 0,
+                0, 0, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 0, 0,10, 0,
                 0, 0, 0, 5, 5, 5, 5, 5, 0, 0, 0, 0, 5,10,10, 0,
                 0, 0, 0, 5, 5, 5, 5, 0, 0, 0, 0, 0, 5, 0,10,10,
             ],
@@ -119,10 +119,10 @@ impl Level {
         // For 'Both' connected textures.
         // Check's all of the tiles neighbours.
         let connected_texture_both = |tile: usize, index: usize| -> TileDrawKind {
-            let n = tile_connects(tile, index, ( 0, -1));
-            let e = tile_connects(tile, index, ( 1,  0));
-            let s = tile_connects(tile, index, ( 0,  1));
-            let w = tile_connects(tile, index, (-1,  0));
+            let n  = tile_connects(tile, index, ( 0, -1));
+            let e  = tile_connects(tile, index, ( 1,  0));
+            let s  = tile_connects(tile, index, ( 0,  1));
+            let w  = tile_connects(tile, index, (-1,  0));
             let ne = tile_connects(tile, index, ( 1, -1));
             let nw = tile_connects(tile, index, (-1, -1));
             let se = tile_connects(tile, index, ( 1,  1));
