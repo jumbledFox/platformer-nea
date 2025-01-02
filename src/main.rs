@@ -1,14 +1,16 @@
 use std::{thread::sleep, time::Duration};
 
 use level::Level;
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, BLUE, RED, WHITE}, input::is_key_down, math::{vec2, Rect}, shapes::draw_circle, text::draw_text, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, BLUE, RED, WHITE}, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, window::{clear_background, next_frame, screen_height, screen_width}};
 use resources::Resources;
+use text_renderer::{render_text, Align};
 
 pub mod util;
-pub mod game;
-pub mod level;
-pub mod scene;
 pub mod resources;
+pub mod text_renderer;
+pub mod level;
+pub mod game;
+pub mod scene;
 
 // How many tiles the screen should be
 pub const VIEW_WIDTH:  usize = 22;
@@ -41,6 +43,8 @@ async fn main() {
         clear_background(BLUE);
 
         Level::render_tiles(test_level.tiles_below(), resources.tiles_atlas());
+
+        render_text("text renderer is WORKING! :3", RED, vec2(190.0, 40.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
 
         // Draw render target
         set_default_camera();
