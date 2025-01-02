@@ -1,68 +1,84 @@
+use crate::util::const_str_eq;
+
 // The giant global array of data for all of the tiles
 const TILE_DATA: &[TileData] = &[
     TileData {
         name: "air",
-        texture: TileTexture::fixed(1, TileTextureConnection::None),
+        texture: Some(TileTexture::fixed(1, TileTextureConnection::None)),
         collision: TileCollision::Air,
     },
     TileData {
         name: "stone block",
-        texture: TileTexture::fixed(2, TileTextureConnection::None),
+        texture: Some(TileTexture::fixed(2, TileTextureConnection::None)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "spikes",
-        texture: TileTexture::fixed(3, TileTextureConnection::None),
+        texture: Some(TileTexture::fixed(3, TileTextureConnection::None)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "glass",
-        texture: TileTexture::fixed(4, TileTextureConnection::None),
+        texture: Some(TileTexture::fixed(4, TileTextureConnection::None)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "block",
-        texture: TileTexture::fixed(5, TileTextureConnection::None),
+        texture: Some(TileTexture::fixed(5, TileTextureConnection::None)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "grass",
-        texture: TileTexture::fixed(6, TileTextureConnection::Both),
+        texture: Some(TileTexture::fixed(6, TileTextureConnection::Both)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "bricks",
-        texture: TileTexture::fixed(11, TileTextureConnection::Both),
+        texture: Some(TileTexture::fixed(11, TileTextureConnection::Both)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "stone",
-        texture: TileTexture::fixed(22, TileTextureConnection::Both),
+        texture: Some(TileTexture::fixed(22, TileTextureConnection::Both)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "checker",
-        texture: TileTexture::fixed(27, TileTextureConnection::Both),
+        texture: Some(TileTexture::fixed(27, TileTextureConnection::Both)),
         collision: TileCollision::solid_default(),
     },
 ];
 
-const TILE_MISSING: TileData = TileData {
-    name: "Error!",
-    texture: TileTexture::fixed(0, TileTextureConnection::None),
+// The error tile, for if SOMEHOW a tile doesn't exist but is still gotten.
+const TILE_ERROR: TileData = TileData {
+    name: "error!",
+    texture: Some(TileTexture::fixed(0, TileTextureConnection::None)),
     collision: TileCollision::Air
 };
 
-
+// Returns the TileData for a tile, or if it doesn't exist, return the missing tile.
 pub fn tile_data(index: usize) -> &'static TileData<'static> {
     TILE_DATA.get(index)    
-        .unwrap_or_else(|| &TILE_MISSING)
+        .unwrap_or_else(|| &TILE_ERROR)
+}
+
+// Returns the index of a tile in TILE_DATA from it's name.
+// Compilation fails if this is used with an invalid tile name.
+pub const fn get_tile_by_name(name: &str) -> usize {
+    let mut i = 0;
+    while i < TILE_DATA.len() {
+        if const_str_eq(TILE_DATA[i].name, name) {
+            return i;
+        }
+        i += 1;
+    }
+    panic!("Tile doesn't exist!");
 }
 
 // TODO: Solid default texture
 pub struct TileData<'a> {
     name: &'a str,
-    texture: TileTexture<'a>,
+    texture: Option<TileTexture<'a>>,
     collision: TileCollision,
     // TODO: Hit stuff
 }
