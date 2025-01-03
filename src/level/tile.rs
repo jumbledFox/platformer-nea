@@ -48,7 +48,7 @@ const TILE_DATA: &[TileData] = &[
     },
     TileData {
         name: "checker",
-        texture: Some(TileTexture::animated(&[27, 11], 0.33, TileTextureConnection::Both)),
+        texture: Some(TileTexture::fixed(27, TileTextureConnection::Both)),
         collision: TileCollision::solid_default(),
     },
     TileData {
@@ -58,7 +58,7 @@ const TILE_DATA: &[TileData] = &[
     },
     TileData {
         name: "bricks",
-        texture: Some(TileTexture::animated(&[44, 44 + 16], 0.5, TileTextureConnection::Horizontal)),
+        texture: Some(TileTexture::fixed(44, TileTextureConnection::Horizontal)),
         collision: TileCollision::solid_default(),
     },
     TileData {

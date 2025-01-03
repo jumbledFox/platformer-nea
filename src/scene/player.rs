@@ -3,7 +3,7 @@
 
 use macroquad::{color::{BLUE, GREEN, ORANGE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_circle, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{level::{tile::TileCollision, Level}, resources::Resources};
+use crate::{level::{tile::TileCollision, Level}, resources::Resources, text_renderer::{render_text, Align}};
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.5);
@@ -13,20 +13,44 @@ const FOOT_L:  Vec2 = vec2( 5.5, 16.0);
 const FOOT_R:  Vec2 = vec2(10.5, 16.0);
 
 // Control
-const MOVE_LEFT:  KeyCode = KeyCode::A;
-const MOVE_RIGHT: KeyCode = KeyCode::D;
-const JUMP:       KeyCode = KeyCode::Space;
+const KEY_LEFT:  KeyCode = KeyCode::A;
+const KEY_RIGHT: KeyCode = KeyCode::D;
+const KEY_JUMP:  KeyCode = KeyCode::Space;
+const KEY_RUN:   KeyCode = KeyCode::LeftShift;
+
+enum State {
+    Standing,
+    Moving,
+    Jumping,
+    Falling,
+}
+
+
+#[derive(Clone, Copy)]
+enum MoveDir {
+    None, Left, Right,
+}
 
 pub struct Player {
     pos: Vec2,
     vel: Vec2,
     
-    grounded: bool,
+    // Things that update
+    // Horizontal
+    move_dir: MoveDir,
+    running: bool,
     target_x_vel: f32,
+    // Vertical
+    grounded: bool,
+    jump_turned: bool, // If you've turned while jumping
 
+    // Constants
+    // Horizontal
     walk_speed: f32,
     run_speed:  f32,
     acc: f32,
+    // Vertical
+    max_fall_speed: f32,
 }
 
 impl Default for Player {
@@ -35,12 +59,18 @@ impl Default for Player {
             pos: Vec2::ZERO,
             vel: Vec2::ZERO,
 
-            grounded: false,
+            move_dir: MoveDir::None,
+            running: false,
             target_x_vel: 0.0,
+            
+            grounded: false,
+            jump_turned: false,
 
             walk_speed: 1.0,
             run_speed:  2.0,
             acc: 5.0,
+
+            max_fall_speed: 5.0,
         }
     }
 }
@@ -64,46 +94,61 @@ impl Player {
         //     self.pos.y += speed;
         // }
 
-        // Gravity
-        if !self.grounded {
-            self.vel.y += deltatime * 10.0;
-        } else {
-            self.vel.y = 0.0;
+        // Horizontal velocity
+        // Finding out which way the player is moving
+        if is_key_pressed(KEY_LEFT) {
+            self.move_dir = MoveDir::Left;
         }
+        if is_key_pressed(KEY_RIGHT) {
+            self.move_dir = MoveDir::Right;
+        }
+        
+        self.move_dir = match (is_key_down(KEY_LEFT), is_key_down(KEY_RIGHT)) {
+            (false, false) => MoveDir::None,
+            (false, true ) => MoveDir::Right,
+            (true,  false) => MoveDir::Left,
+            (true,  true ) => self.move_dir,
+        };
 
-        // TODO: Add a jump pressed timer for when you jump not on the ground, and a coyote timer, they can perhaps be in an enum in the same variable!
-        let (left, right, jump) = (is_key_down(MOVE_LEFT), is_key_down(MOVE_RIGHT), is_key_pressed(JUMP));
+        self.running = is_key_down(KEY_RUN);
+        let target_speed = match self.running {
+            false => self.walk_speed,
+            true  => self.run_speed,
+        };
 
-        if left {
-            self.target_x_vel = -self.run_speed;
-            // self.vel.x = -self.run_speed;
-        }
-        if right {
-            self.target_x_vel = self.run_speed;
-            // self.vel.x = self.run_speed;
-        }
-        if !left && !right {
-            self.target_x_vel = 0.0;
-        }
-        if jump && self.grounded {
-            self.vel.y = -4.0;
-        }
+        // Figure out what the target x velocity should be
+        self.target_x_vel = match self.move_dir {
+            MoveDir::None  => 0.0,
+            MoveDir::Left  => -target_speed,
+            MoveDir::Right => target_speed,
+        };
 
+        // Move the x velocity towards the target
         if self.target_x_vel > self.vel.x {
             self.vel.x = (self.vel.x + deltatime * self.acc).min(self.target_x_vel);
-            println!("gr");
         }
         if self.target_x_vel < self.vel.x {
             self.vel.x = (self.vel.x - deltatime * self.acc).max(self.target_x_vel);
-            println!("l");
         }
 
-        println!("{:?}", self.vel.x);
+        // Vertical velocity
+        // Gravity
+        self.vel.y = match self.grounded {
+            true  => 0.0,
+            false => (self.vel.y + deltatime * 10.0).min(self.max_fall_speed),
+        };
 
+        // Jumping
+        // TODO: Coyote time and pre-jumping (pressing jump before you hit the ground)
+        if is_key_pressed(KEY_JUMP) && self.grounded {
+            self.vel.y = -4.0;
+        }
+
+        // Moving the player
         self.pos += self.vel;
 
         
-        // Collision
+        // Collision detection and resolution
         let pos_delta = self.pos - prev_pos;
 
         let tile_collision = |pos: Vec2, offset: Vec2| -> &TileCollision {
@@ -158,6 +203,8 @@ impl Player {
             (FOOT_R, YELLOW),
         ] {
             draw_circle(self.pos.x + p.x, self.pos.y + p.y, 1.5, c);
-        } 
+        }
+
+        render_text(&format!("vel: {}", self.vel), RED, vec2(10.0, 30.0), Vec2::ONE, Align::End, resources.font_atlas());
     }
 }
