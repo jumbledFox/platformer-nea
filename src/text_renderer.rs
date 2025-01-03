@@ -5,7 +5,7 @@ const CHAR_HEIGHT:  f32 = 10.0;
 const CHAR_SPACING: f32 = -1.0;
 
 const ATLAS_WIDTH: usize = 13;
-const ATLAS_CHARS: &str = " 0123456789!?abcdefghijklmnopqrstuvwxyz[]():;.,+-=/";
+const ATLAS_CHARS: &str = " 0123456789!?abcdefghijklmnopqrstuvwxyz[]():;.,*+-=/";
 
 pub enum Align {
     Beg, Mid, End,

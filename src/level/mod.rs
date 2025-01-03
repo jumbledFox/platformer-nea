@@ -25,7 +25,7 @@ pub struct Level {
     // enemy   start points
     // powerup start points
 
-    // For rendering, the tile's index (in TILE_DATA), draw kind, and position.
+    // Rendering shenanigans
     tiles_below: Vec<TileRenderData>,
     tiles_above: Vec<TileRenderData>,
 }
@@ -57,12 +57,12 @@ impl Default for Level {
                 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1, 9, 8, 8,
                 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 8, 8, 0, 0, 8, 8,
                 1, 1, 1, 1, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8, 0,
-                0, 1, 1, 0, 0, 2, 2, 0, 0, 0, 8, 0, 0, 8, 8, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 8, 8, 0,
+                0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 5, 5, 5, 1, 5, 5, 0, 5, 0, 0, 0,
                 0, 0, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 0, 0,10, 0,
-                0, 0, 0, 5, 5, 5, 5, 5, 0, 0, 0, 0, 5,10,10, 0,
-                0, 0, 0, 5, 5, 5, 5, 0, 0, 0, 0, 0, 5, 0,10,10,
+                0, 2, 2, 5, 5, 5, 5, 5, 0, 0, 0, 0, 5,10,10, 0,
+                0, 1, 1, 5, 5, 5, 5, 0, 0, 0, 0, 0, 5, 0,10,10,
             ],
             physics: LevelPhysics::Air,
             tiles_above: Vec::with_capacity(16*8),
@@ -72,8 +72,8 @@ impl Default for Level {
 }
 
 impl Level {
-    // Prepares the below and above tiles for rendering
-    pub fn prepare_tiles(&mut self) {
+    // Prepare tiles for rendering
+    pub fn update_tile_render_data(&mut self) {
         self.tiles_below.clear();
         self.tiles_above.clear();
 

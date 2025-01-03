@@ -1,7 +1,7 @@
 use std::{thread::sleep, time::Duration};
 
 use level::Level;
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, BLUE, RED, WHITE}, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, BLUE, ORANGE, RED, WHITE}, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, window::{clear_background, next_frame, screen_height, screen_width}};
 use resources::Resources;
 use text_renderer::{render_text, Align};
 
@@ -35,7 +35,7 @@ async fn main() {
     world_cam.render_target = Some(render_target.clone());
 
     let mut test_level = Level::default();
-    test_level.prepare_tiles();
+    test_level.update_tile_render_data();
 
     loop {
         // Draw to the render target
@@ -44,7 +44,12 @@ async fn main() {
 
         Level::render_tiles(test_level.tiles_below(), resources.tiles_atlas());
 
-        render_text("text renderer is WORKING! :3", RED, vec2(190.0, 40.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text("- fox -", ORANGE, vec2(40.0, 8.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text("  * 3", WHITE, vec2(40.0, 24.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text("BOOTS", WHITE, vec2(176.0, 10.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text("HELMET", WHITE, vec2(176.0, 22.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text("69", WHITE, vec2(305.0, 3.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
+        render_text("420", WHITE, vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
 
         // Draw render target
         set_default_camera();
