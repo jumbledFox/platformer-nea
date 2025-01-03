@@ -1,8 +1,9 @@
 use std::{thread::sleep, time::Duration};
 
 use level::Level;
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, BLUE, GREEN, ORANGE, RED, WHITE}, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, BLUE, GREEN, ORANGE, RED, WHITE}, input::{is_key_down, KeyCode}, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, window::{clear_background, next_frame, screen_height, screen_width}};
 use resources::Resources;
+use scene::Scene;
 use text_renderer::{render_text, Align};
 
 pub mod util;
@@ -34,22 +35,15 @@ async fn main() {
     );
     world_cam.render_target = Some(render_target.clone());
 
-    let mut test_level = Level::default();
-    test_level.update_tile_render_data();
+    let mut test_scene = Scene::default();
+    test_scene.foo();
 
     loop {
         // Draw to the render target
         set_camera(&world_cam);
-        clear_background(BLUE);
+        clear_background(Color::from_hex(0x6dcaff));
 
-        Level::render_tiles(test_level.tiles_below(), resources.tiles_atlas());
-
-        render_text("- fox -", ORANGE, vec2(40.0, 8.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
-        render_text("  * 3", WHITE, vec2(40.0, 24.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
-        render_text("BOOTS", WHITE, vec2(176.0, 10.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
-        render_text("HELMET", WHITE, vec2(176.0, 22.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
-        render_text("420", WHITE, vec2(305.0, 3.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
-        render_text("69", GREEN, vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
+        test_scene.draw(4, &resources);
 
         // Draw render target
         set_default_camera();
@@ -61,6 +55,7 @@ async fn main() {
         });
 
         // Wait for the next frame
+        // We sleep here to stop macroquad from going over ~60 fps, which would be pointless and hog the CPU
         sleep(Duration::from_millis(14));
         next_frame().await
     }

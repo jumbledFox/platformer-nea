@@ -1,7 +1,7 @@
 // A bunch of tiles, doors, etc...
 
 use macroquad::{math::{vec2, Vec2}, texture::Texture2D};
-use tile::{render_tile, tile_data, TileTextureConnection};
+use tile::{render_tile, tile_data, TileCollision, TileTextureConnection};
 
 use crate::util::is_bit_set_u8;
 
@@ -72,6 +72,25 @@ impl Default for Level {
 }
 
 impl Level {
+    pub fn tile_at_pos_collision(&self, pos: Vec2) -> &TileCollision {
+        let index = match self.pos_to_index(pos) {
+            Some(i) => i,
+            None => return &TileCollision::Passable,
+        };
+        &tile_data(self.tiles[index]).collision
+    }
+
+    pub fn pos_to_index(&self, pos: Vec2) -> Option<usize> {
+        let pos = pos / 16.0;
+        // Bounds checking
+        if pos.x < 0.0 || pos.x >= self.width as f32 || pos.y <= 0.0 || pos.y >= self.height as f32 {
+            return None;
+        }
+        let x = pos.x.floor() as usize;
+        let y = pos.y.floor() as usize;
+        Some(y * self.width + x)
+    }
+
     // Prepare tiles for rendering
     pub fn update_tile_render_data(&mut self) {
         self.tiles_below.clear();
@@ -102,7 +121,6 @@ impl Level {
         // For Horizontal and Vertical connected textures.
         // Checks two neighbours and returns the offset.
         let connected_texture_single = |tile: usize, index: usize, first_offset: (isize, isize), second_offset: (isize, isize)| -> TileDrawKind {
-            // TODO: Actually check either neigbour
             let first  = tile_connects(tile, index, first_offset);
             let second = tile_connects(tile, index, second_offset);
 
@@ -166,11 +184,11 @@ impl Level {
         }
     }
 
-    pub fn tiles_above(&self) -> &Vec<TileRenderData> {
-        &self.tiles_above
+    pub fn render_below(&self, atlas: &Texture2D) {
+        Level::render_tiles(&self.tiles_below, atlas);
     }
-    pub fn tiles_below(&self) -> &Vec<TileRenderData> {
-        &self.tiles_below
+    pub fn render_above(&self, atlas: &Texture2D) {
+        Level::render_tiles(&self.tiles_above, atlas);
     }
 
     // Renders a bunch of tiles

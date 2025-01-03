@@ -1,0 +1,43 @@
+// The current level being played along with the stuff it needs
+// e.g. level, player, enemies, timer, etc
+
+use macroquad::{color::{GREEN, ORANGE, WHITE}, math::vec2};
+use player::Player;
+
+use crate::{level::Level, resources::Resources, text_renderer::{render_text, Align}};
+
+pub mod player;
+
+pub struct Scene {
+    level: Level,
+    timer: f32,
+    chips: usize,
+    player: Player,
+    // enemies
+}
+
+impl Default for Scene {
+    fn default() -> Self {
+        Self { level: Level::default(), timer: 100.0, chips: 42, player: Player::default()}
+    }
+}
+
+impl Scene {
+    pub fn foo(&mut self) {
+        self.level.update_tile_render_data();
+    }
+
+    pub fn draw(&self, lives: usize, resources: &Resources) {
+        self.level.render_below(resources.tiles_atlas());
+        self.player.draw();
+        self.level.render_above(resources.tiles_atlas());
+        
+        // Draw the UI
+        render_text("- fox -", ORANGE, vec2( 40.0,  8.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text("*",   WHITE,  vec2( 40.0, 24.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text("BOOTS",   WHITE,  vec2(176.0, 10.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text("HELMET",  WHITE,  vec2(176.0, 22.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text("420",     WHITE,  vec2(305.0,  3.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
+        render_text("69",      GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
+    }
+}
