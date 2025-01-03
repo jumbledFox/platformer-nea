@@ -33,7 +33,7 @@ const TILE_DATA: &[TileData] = &[
     },
     TileData {
         name: "grass",
-        texture: Some(TileTexture::animated(&[6, 85+16, 85+32, 85+48], 0.1, TileTextureConnection::Both)),
+        texture: Some(TileTexture::fixed(6, TileTextureConnection::Both)),
         collision: TileCollision::solid_default(),
     },
     TileData {
