@@ -1,6 +1,6 @@
 use macroquad::{color::WHITE, math::Rect, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
 
-use crate::util::const_str_eq;
+use crate::{resources::Resources, util::const_str_eq};
 
 use super::{TileDrawKind, TileRenderData};
 
@@ -48,7 +48,7 @@ const TILE_DATA: &[TileData] = &[
     },
     TileData {
         name: "checker",
-        texture: Some(TileTexture::fixed(27, TileTextureConnection::Both)),
+        texture: Some(TileTexture::animated(&[27, 11], 0.33, TileTextureConnection::Both)),
         collision: TileCollision::solid_default(),
     },
     TileData {
@@ -58,7 +58,12 @@ const TILE_DATA: &[TileData] = &[
     },
     TileData {
         name: "bricks",
-        texture: Some(TileTexture::fixed(44, TileTextureConnection::Horizontal)),
+        texture: Some(TileTexture::animated(&[44, 44 + 16], 0.5, TileTextureConnection::Horizontal)),
+        collision: TileCollision::solid_default(),
+    },
+    TileData {
+        name: "anim test",
+        texture: Some(TileTexture::animated(&[32, 33, 34, 35, 36, 37], 0.1, TileTextureConnection::None)),
         collision: TileCollision::solid_default(),
     },
 ];
@@ -102,7 +107,7 @@ pub enum TileTextureRenderType<'a> {
     Fixed(usize),
     Animated {
         frames: &'a [usize],
-        frame_duration: f32,
+        frame_duration: f64,
     },
 }
 
@@ -135,7 +140,7 @@ impl TileTexture<'static> {
             connection,
         }
     }
-    pub const fn animated(frames: &'static [usize], frame_duration: f32, connection: TileTextureConnection) -> Self {
+    pub const fn animated(frames: &'static [usize], frame_duration: f64, connection: TileTextureConnection) -> Self {
         Self {
             render: TileTextureRenderType::Animated { frames, frame_duration },
             connection,
@@ -154,6 +159,12 @@ pub enum TileCollision {
 }
 
 impl TileCollision {
+    pub fn is_passable(&self) -> bool {
+        matches!(self, Self::Passable)
+    }
+}
+
+impl TileCollision {
     pub const fn solid_default() -> Self {
         Self::Solid {
             friction: 1.0,
@@ -162,7 +173,7 @@ impl TileCollision {
 }
 
 // Rendering a tile
-pub fn render_tile(render_data: &TileRenderData, atlas: &Texture2D) {
+pub fn render_tile(render_data: &TileRenderData, resources: &Resources) {
     let TileRenderData { tile, draw_kind, pos } = *render_data;
     let tile_data = tile_data(tile);
 
@@ -175,7 +186,11 @@ pub fn render_tile(render_data: &TileRenderData, atlas: &Texture2D) {
     // Get the start texture of the tile
     let start_texture = match texture.render {
         TileTextureRenderType::Animated { frames, frame_duration } => {
-            frames[macroquad::rand::gen_range(0, frames.len())]
+            let cycle_len = frame_duration * frames.len() as f64;
+            // How long through the cycle we are going from 0.0 to 1.0
+            let cycle_amount = (resources.tile_animation_timer() % cycle_len) / cycle_len;
+            let frame = (cycle_amount * frames.len() as f64) as usize;
+            frames[frame]
         }
         TileTextureRenderType::Fixed(texture) => texture,
     };
@@ -192,7 +207,7 @@ pub fn render_tile(render_data: &TileRenderData, atlas: &Texture2D) {
 
     // Draws a tile that's a single texture
     let draw_single = |offset: usize| {
-        draw_texture_ex(atlas, pos.x, pos.y, WHITE, DrawTextureParams {
+        draw_texture_ex(resources.tiles_atlas(), pos.x, pos.y, WHITE, DrawTextureParams {
             source: Some(tile_rect(start_texture + offset)),
             ..Default::default()
         });
@@ -206,7 +221,7 @@ pub fn render_tile(render_data: &TileRenderData, atlas: &Texture2D) {
             (br, 8.0, 8.0),
         ] {
             let texture_start = tile_rect(start_texture + offset).point();
-            draw_texture_ex(atlas, pos.x + x, pos.y + y, WHITE, DrawTextureParams {
+            draw_texture_ex(resources.tiles_atlas(), pos.x + x, pos.y + y, WHITE, DrawTextureParams {
                 source: Some(Rect::new(texture_start.x + x, texture_start.y + y, 8.0, 8.0)),
                 ..Default::default()
             });

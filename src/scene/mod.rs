@@ -27,10 +27,14 @@ impl Scene {
         self.level.update_tile_render_data();
     }
 
+    pub fn update(&mut self, deltatime: f32) {
+        self.player.update(&mut self.level, deltatime);
+    }
+
     pub fn draw(&self, lives: usize, resources: &Resources) {
-        self.level.render_below(resources.tiles_atlas());
-        self.player.draw();
-        self.level.render_above(resources.tiles_atlas());
+        self.level.render_below(resources);
+        self.player.draw(resources);
+        self.level.render_above(resources);
         
         // Draw the UI
         render_text("- fox -", ORANGE, vec2( 40.0,  8.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());

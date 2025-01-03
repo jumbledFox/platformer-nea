@@ -1,7 +1,7 @@
 use std::{thread::sleep, time::Duration};
 
 use level::Level;
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, BLUE, GREEN, ORANGE, RED, WHITE}, input::{is_key_down, KeyCode}, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, BLUE, GREEN, ORANGE, RED, WHITE}, input::{is_key_down, KeyCode}, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width}};
 use resources::Resources;
 use scene::Scene;
 use text_renderer::{render_text, Align};
@@ -19,8 +19,11 @@ pub const VIEW_HEIGHT: usize = 14;
 
 #[macroquad::main("Fox")]
 async fn main() {
+    // Seed the randomness
+    macroquad::rand::srand(macroquad::miniquad::date::now() as u64);
+
     set_default_filter_mode(FilterMode::Nearest);
-    let resources = Resources::default();
+    let mut resources = Resources::default();
 
     let render_target = render_target(VIEW_WIDTH as u32 * 16, VIEW_HEIGHT as u32 * 16);
     render_target.texture.set_filter(FilterMode::Nearest);
@@ -39,6 +42,10 @@ async fn main() {
     test_scene.foo();
 
     loop {
+        let deltatime = get_frame_time();
+        resources.update_tile_animation_timer(deltatime);
+        test_scene.update(deltatime);
+
         // Draw to the render target
         set_camera(&world_cam);
         clear_background(Color::from_hex(0x6dcaff));

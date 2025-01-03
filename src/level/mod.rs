@@ -1,9 +1,9 @@
 // A bunch of tiles, doors, etc...
 
-use macroquad::{math::{vec2, Vec2}, texture::Texture2D};
+use macroquad::{math::{vec2, Vec2}, rand::gen_range, texture::Texture2D};
 use tile::{render_tile, tile_data, TileCollision, TileTextureConnection};
 
-use crate::util::is_bit_set_u8;
+use crate::{resources::Resources, util::is_bit_set_u8};
 
 pub mod tile;
 
@@ -60,9 +60,9 @@ impl Default for Level {
                 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 8, 8, 0,
                 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 5, 5, 5, 1, 5, 5, 0, 5, 0, 0, 0,
-                0, 0, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 0, 0,10, 0,
-                0, 2, 2, 5, 5, 5, 5, 5, 0, 0, 0, 0, 5,10,10, 0,
-                0, 1, 1, 5, 5, 5, 5, 0, 0, 0, 0, 0, 5, 0,10,10,
+                0,11, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 0, 0,10, 0,
+                0,11,11, 5, 5, 5, 5, 5, 0, 0, 0, 0, 5,10,10, 0,
+                0,11,11, 5, 5, 5, 5, 0, 0, 0, 0, 0, 5, 0,10,10,
             ],
             physics: LevelPhysics::Air,
             tiles_above: Vec::with_capacity(16*8),
@@ -180,22 +180,23 @@ impl Level {
                 TileTextureConnection::Both       => connected_texture_both(tile, i),
             };
 
-            self.tiles_below.push(TileRenderData { tile, draw_kind, pos: tile_pos(i) });
+            let render_data = TileRenderData { tile, draw_kind, pos: tile_pos(i) };
+            self.tiles_below.push(render_data);
         }
     }
 
-    pub fn render_below(&self, atlas: &Texture2D) {
-        Level::render_tiles(&self.tiles_below, atlas);
+    pub fn render_below(&self, resources: &Resources) {
+        Level::render_tiles(&self.tiles_below, resources);
     }
-    pub fn render_above(&self, atlas: &Texture2D) {
-        Level::render_tiles(&self.tiles_above, atlas);
+    pub fn render_above(&self, resources: &Resources) {
+        Level::render_tiles(&self.tiles_above, resources);
     }
 
     // Renders a bunch of tiles
-    pub fn render_tiles(tiles: &Vec<TileRenderData>, atlas: &Texture2D) {
+    pub fn render_tiles(tiles: &Vec<TileRenderData>, resources: &Resources) {
         for render_data in tiles {
             // Don't render if the tile is offscreen 
-            render_tile(render_data, atlas);
+            render_tile(render_data, resources);
         }
     }
 }
