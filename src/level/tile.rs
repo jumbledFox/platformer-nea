@@ -63,7 +63,7 @@ const TILE_DATA: &[TileData] = &[
     },
     TileData {
         name: "anim test",
-        texture: Some(TileTexture::animated(&[32, 33, 34, 35, 36, 37], 0.1, TileTextureConnection::None)),
+        texture: Some(TileTexture::animated(&[32, 33, 34, 35], 0.1, TileTextureConnection::None)),
         collision: TileCollision::solid_default(),
     },
 ];
