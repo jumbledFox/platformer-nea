@@ -1,9 +1,9 @@
 // The player struct.
 // Controlled with keyboard, collides with world, etc.
 
-use macroquad::{color::{BLUE, GREEN, ORANGE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_circle, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{BLUE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_circle, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{level::{tile::TileCollision, Level}, resources::Resources, text_renderer::{render_text, Align}};
+use crate::{level::Level, resources::Resources, text_renderer::{render_text, Align}};
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.5);
@@ -18,6 +18,7 @@ const KEY_RIGHT: KeyCode = KeyCode::D;
 const KEY_JUMP:  KeyCode = KeyCode::Space;
 const KEY_RUN:   KeyCode = KeyCode::LeftShift;
 
+#[derive(PartialEq, Eq, Debug)]
 enum State {
     Standing,
     Moving,
@@ -25,31 +26,39 @@ enum State {
     Falling,
 }
 
+impl State {
+    // Changes the state if it's not already equal to the current one
+    pub fn change_if_not_equal(&mut self, new_state: State) -> bool {
+        if *self == new_state {
+            false
+        } else {
+            *self = new_state;
+            true
+        }
+    }
+}
+
 
 #[derive(Clone, Copy)]
-enum MoveDir {
-    None, Left, Right,
+enum Dir {
+    Left, Right,
 }
 
 pub struct Player {
     pos: Vec2,
     vel: Vec2,
-    
-    // Things that update
-    // Horizontal
-    move_dir: MoveDir,
-    running: bool,
-    target_x_vel: f32,
-    // Vertical
+    resolved_pos: Vec2,
+
+    state: State,
+    facing: Dir,
     grounded: bool,
-    jump_turned: bool, // If you've turned while jumping
+
+    // It's easier to store deltatime in the player and update it every frame than to have each state function require it as an argument.
+    deltatime: f32,
 
     // Constants
-    // Horizontal
     walk_speed: f32,
     run_speed:  f32,
-    acc: f32,
-    // Vertical
     max_fall_speed: f32,
 }
 
@@ -58,26 +67,161 @@ impl Default for Player {
         Self {
             pos: Vec2::ZERO,
             vel: Vec2::ZERO,
+            resolved_pos: Vec2::ZERO,
 
-            move_dir: MoveDir::None,
-            running: false,
-            target_x_vel: 0.0,
-            
-            grounded: false,
-            jump_turned: false,
+            state: State::Standing,
+            facing: Dir::Right,
+            grounded: true,
+
+            deltatime: 0.0,
 
             walk_speed: 1.0,
             run_speed:  2.0,
-            acc: 5.0,
-
             max_fall_speed: 5.0,
         }
     }
 }
 
 impl Player {
+    // NOTE: A state transitioning to itself would cause an infinite loop!
+
+    // Functions that switch between states.
+    // They are able to set variables and do stuff to avoid repeated code, e.g. in jump the y velocity is set
+    fn begin_state_standing(&mut self, level: &mut Level) {
+        if self.state.change_if_not_equal(State::Standing) {
+            self.vel.x = 0.0;
+            self.state_standing(level);
+        }
+    }
+    fn begin_state_moving(&mut self, level: &mut Level) {
+        if self.state.change_if_not_equal(State::Moving) {
+            self.state_moving(level);
+        }
+    }
+    fn begin_state_jumping(&mut self, level: &mut Level) {
+        if self.state.change_if_not_equal(State::Jumping) {
+            self.vel.y = -5.0;
+            self.state_jumping(level);
+        }
+    }
+    fn begin_state_falling(&mut self, level: &mut Level) {
+        if self.state.change_if_not_equal(State::Falling) {
+            self.state_falling(level);
+        }
+    }
+
+    // Logic for all of the different states
+
+    fn state_standing(&mut self, level: &mut Level) {
+        // Update the collision for the feet
+        self.collision_feet(level);
+
+        // Changing state
+        // Moving
+        if is_key_down(KEY_LEFT) || is_key_down(KEY_RIGHT) {
+            self.begin_state_moving(level);
+            return;
+        }
+        // Falling
+        if !self.grounded {
+            self.begin_state_falling(level);
+        }
+        // Jumping
+        if is_key_pressed(KEY_JUMP) {
+            self.begin_state_jumping(level);
+            return;
+        }
+    }
+
+    fn state_moving(&mut self, level: &mut Level) {
+        // Update the collision for the sides and feet
+        self.collision_sides(level);
+        self.collision_feet(level);
+
+        if !is_key_down(KEY_LEFT) && !is_key_down(KEY_RIGHT) {
+            self.begin_state_standing(level);
+        }
+
+        let running = is_key_down(KEY_RUN);
+        
+        if is_key_down(KEY_RIGHT) {
+            self.vel.x = self.run_speed;
+        }
+        if is_key_down(KEY_LEFT) {
+            self.vel.x = -self.run_speed;
+        }
+    }
+
+    fn state_jumping(&mut self, level: &mut Level) {
+        // Update the collision for the head, sides, and feet
+        self.collision_head(level);
+        self.collision_sides(level);
+        self.collision_feet(level);
+    }
+
+    fn state_falling(&mut self, level: &mut Level) {
+        // Update the collision for the feet and sides
+        self.collision_feet(level);
+
+        // If we've hit the ground, go into the standing state
+        if self.grounded {
+            self.begin_state_standing(level);
+            return;
+        }
+
+        self.vel.y = (self.vel.y + self.deltatime * 10.0).min(self.max_fall_speed);
+    }
+
+    // Collision for different parts of the player
+    fn collision_head(&mut self, level: &mut Level) {
+        // If the head is in a block and the player moved up, the player should be pushed down to the nearest tile.
+        // The block should also be broken/hit if it can be
+        if !level.tile_at_pos_collision(self.pos + HEAD).is_passable() {
+            self.resolved_pos.y = (self.resolved_pos.y/16.0).ceil() * 16.0;
+            self.vel.y = 0.0;
+        }
+    }
+
+    fn collision_sides(&mut self, level: &Level) {
+        // If the left/right sides are in a tile, the player should be pushed right/left to the nearest tile.
+        if !level.tile_at_pos_collision(self.pos + SIDE_L).is_passable() {
+            self.resolved_pos.x = (self.resolved_pos.x/16.0).ceil() * 16.0 - SIDE_L.x;
+            self.vel.x = 0.0;
+        }
+        if !level.tile_at_pos_collision(self.pos + SIDE_R).is_passable() {
+            self.resolved_pos.x = (self.resolved_pos.x/16.0).floor() * 16.0 + (16.0 - SIDE_R.x);
+            self.vel.x = 0.0;
+        }
+    }
+
+    fn collision_feet(&mut self, level: &Level) {
+        // If the paws are underground, the player should be pushed up to the nearest tile.
+        self.grounded = false;
+        if !level.tile_at_pos_collision(self.pos + FOOT_L).is_passable()
+        || !level.tile_at_pos_collision(self.pos + FOOT_R).is_passable()
+        {
+            self.resolved_pos.y = (self.resolved_pos.y/16.0).floor() * 16.0;
+            self.vel.y = 0.0;
+            self.grounded = true;
+        }
+    }
+
     pub fn update(&mut self, level: &mut Level, deltatime: f32) {
-        let prev_pos = self.pos;
+        self.deltatime = deltatime;
+        self.pos += self.vel;
+        self.resolved_pos = self.pos;
+        match &mut self.state {
+            State::Standing => self.state_standing(level),
+            State::Moving   => self.state_moving(level),
+            State::Jumping  => self.state_jumping(level),
+            State::Falling  => self.state_falling(level),
+        }
+        self.pos = self.resolved_pos;
+
+        println!("{:?}", self.state);
+
+
+        // let prev_pos = self.pos;
 
         // Temporary flying movement
         // let speed = deltatime * 16.0 * 7.0;
@@ -96,6 +240,8 @@ impl Player {
 
         // Horizontal velocity
         // Finding out which way the player is moving
+
+        /*
         if is_key_pressed(KEY_LEFT) {
             self.move_dir = MoveDir::Left;
         }
@@ -186,6 +332,7 @@ impl Player {
         }
 
         println!("{:?}", self.grounded);
+        */
     }
 
     pub fn draw(&self, resources: &Resources) {

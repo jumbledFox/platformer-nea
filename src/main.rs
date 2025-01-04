@@ -1,10 +1,8 @@
 use std::{thread::sleep, time::Duration};
 
-use level::Level;
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, BLUE, GREEN, ORANGE, RED, WHITE}, input::{is_key_down, KeyCode}, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, WHITE}, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width}};
 use resources::Resources;
 use scene::Scene;
-use text_renderer::{render_text, Align};
 
 pub mod util;
 pub mod resources;

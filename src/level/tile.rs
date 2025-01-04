@@ -1,4 +1,4 @@
-use macroquad::{color::WHITE, math::Rect, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
+use macroquad::{color::WHITE, math::Rect, texture::{draw_texture_ex, DrawTextureParams}};
 
 use crate::{resources::Resources, util::const_str_eq};
 
