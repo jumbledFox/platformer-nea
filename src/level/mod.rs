@@ -54,7 +54,7 @@ impl Default for Level {
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0,10,10,10,10,10, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,10,10,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,
@@ -62,8 +62,8 @@ impl Default for Level {
                 0, 0, 0, 0, 0, 0, 0, 0,11, 0, 0, 0, 0, 0, 0, 0, 0,10,10,10,10,10,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,
-                8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5,
-                8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5,
+                8, 8, 8, 8, 8, 8, 0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5,
+                8, 8, 8, 8, 8, 8, 0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5,
             ],
             physics: LevelPhysics::Air,
             tiles_above: Vec::with_capacity(16*8),
@@ -74,22 +74,19 @@ impl Default for Level {
 
 impl Level {
     pub fn tile_at_pos_collision(&self, pos: Vec2) -> &TileCollision {
-        let index = match self.pos_to_index(pos) {
-            Some(i) => i,
-            None => return &TileCollision::Passable,
-        };
-        &tile_data(self.tiles[index]).collision
-    }
-
-    pub fn pos_to_index(&self, pos: Vec2) -> Option<usize> {
+        // If the position is out of the map horizontally, it should be solid, however if it's below/above the map, it should be passable.
         let pos = pos / 16.0;
-        // Bounds checking
-        if pos.x < 0.0 || pos.x >= self.width as f32 || pos.y <= 0.0 || pos.y >= self.height as f32 {
-            return None;
+        if pos.x < 0.0 || pos.x >= self.width as f32 {
+            return &TileCollision::Solid { friction: 1.0 };
+        }
+        if pos.y < 0.0 || pos.y >= self.height as f32 {
+            return &TileCollision::Passable;
         }
         let x = pos.x.floor() as usize;
         let y = pos.y.floor() as usize;
-        Some(y * self.width + x)
+        let index = y * self.width + x;
+
+        &tile_data(self.tiles[index]).collision
     }
 
     // Prepare tiles for rendering
