@@ -20,3 +20,11 @@ pub const fn const_str_eq(a: &str, b: &str) -> bool {
     
     true
 }
+
+pub fn approach_target(val: &mut f32, step: f32, target: f32) {
+    if *val < target {
+        *val = (*val + step).min(target);
+    } else if *val > target {
+        *val = (*val - step).max(target);
+    }
+}

@@ -29,10 +29,12 @@ impl Scene {
 
     pub fn update(&mut self, deltatime: f32) {
         self.player.update(&mut self.level, deltatime);
+        self.level.update_bumped_tiles(deltatime);
     }
 
     pub fn draw(&self, lives: usize, resources: &Resources) {
         self.level.render_below(resources);
+        self.level.render_bumped_tiles(resources);
         self.player.draw(resources);
         self.level.render_above(resources);
         

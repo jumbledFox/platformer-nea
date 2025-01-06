@@ -1,7 +1,9 @@
 // A bunch of tiles, doors, etc...
 
+use std::f32::consts::PI;
+
 use macroquad::math::{vec2, Vec2};
-use tile::{render_tile, tile_data, TileCollision, TileTextureConnection};
+use tile::{get_tile_by_name, render_tile, tile_data, TileCollision, TileTextureConnection};
 
 use crate::resources::Resources;
 
@@ -11,10 +13,17 @@ pub enum LevelPhysics {
     Air, Water,
 }
 
+pub struct BumpedTile {
+    tile: usize,
+    index: usize,
+    timer: f32,
+}
+
 pub struct Level {
     width: usize,
     height: usize,
     tiles: Vec<usize>,
+    bumped_tiles: Vec<BumpedTile>,
 
     physics: LevelPhysics,
     
@@ -50,21 +59,22 @@ impl Default for Level {
             width:  22,
             height: 14,
             tiles: vec![
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0,10,10,10,10,10, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,10,10,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16, 0, 0, 0,19, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16,14, 0, 0,19, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16, 0, 0, 0,19, 0,14, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16, 0, 0, 0,19, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0,10,10,10,10,10, 0, 0, 0,19, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16,16,14,16,16,16,16,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16, 0,10,10,10,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,14, 0, 0, 0, 0,16, 0, 0, 0,10,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,19,19,10, 0, 0, 0,10,
                 0, 0, 0, 0, 0, 0, 0, 0,11, 0, 0, 0, 0, 0, 0, 0, 0,10,10,10,10,10,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,
-                8, 8, 8, 8, 8, 8, 0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5,
-                8, 8, 8, 8, 8, 8, 0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5,
+                0, 8, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,
+                0, 0, 0, 0, 0, 0, 0, 0, 0,12,12,12,12,12,12,12, 0, 0, 0, 0, 0,10,
+                8, 8, 8, 8, 8, 8, 0, 8, 8, 8,13,13,13,13,13, 5, 5, 5, 5, 5, 5, 5,
+                8, 8, 8, 8, 8, 8, 0, 8, 8, 8, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5,
             ],
+            bumped_tiles: Vec::with_capacity(10),
             physics: LevelPhysics::Air,
             tiles_above: Vec::with_capacity(16*8),
             tiles_below: Vec::with_capacity(16*8),
@@ -73,6 +83,85 @@ impl Default for Level {
 }
 
 impl Level {
+    // Switch blocks - sets the state of all switch tiles in the level
+    fn set_switch_state(&mut self, enabled: bool) {
+        for t in &mut self.tiles {
+            if *t == get_tile_by_name("switcher on") {
+                *t = get_tile_by_name("switcher off");
+            } else if *t == get_tile_by_name("switcher off") {
+                *t = get_tile_by_name("switcher on");
+            }
+
+            if enabled {
+                if *t == get_tile_by_name("on switch-outline") {
+                    *t = get_tile_by_name("on switch-block");
+                } else if *t == get_tile_by_name("off switch-block") {
+                    *t = get_tile_by_name("off switch-outline");
+                }
+            } else {
+                if *t == get_tile_by_name("on switch-block") {
+                    *t = get_tile_by_name("on switch-outline");
+                } else if *t == get_tile_by_name("off switch-outline") {
+                    *t = get_tile_by_name("off switch-block");
+                }
+            }
+        }
+    }
+
+    fn bump_tile(&mut self, index: usize) {
+        let tile = self.tiles[index];
+
+        // If the tile is a switching tile, switch all of them!
+        if tile == get_tile_by_name("switcher on") {
+            self.set_switch_state(false);
+        } else if tile == get_tile_by_name("switcher off") {
+            self.set_switch_state(true);
+        }
+
+        // set_switch_state may modify 'tile' so we can't reuse it.
+        self.bumped_tiles.push(BumpedTile {
+            tile: self.tiles[index],
+            index,
+            timer: 0.0
+        });
+    }
+
+    pub fn bump_tile_at_pos(&mut self, pos: Vec2) {
+        let pos = pos / 16.0;
+        if pos.x < 0.0 || pos.x >= self.width as f32 || pos.y < 0.0 || pos.y >= self.height as f32 {
+            return;
+        }
+        let x = pos.x.floor() as usize;
+        let y = pos.y.floor() as usize;
+        let index = y * self.width + x;
+
+        self.bumped_tiles.retain(|t| t.index != index);
+        self.bump_tile(index);
+
+        self.update_tile_render_data();
+    }
+
+    pub fn render_bumped_tiles(&self, resources: &Resources) {
+        for bumped_tile in &self.bumped_tiles {
+            let pos = self.tile_pos(bumped_tile.index) - vec2(0.0, (bumped_tile.timer * PI).sin()) * 8.0;
+
+            let render_data = TileRenderData { draw_kind: TileDrawKind::Single(0), tile: bumped_tile.tile, pos};
+            render_tile(&render_data, resources);
+        }
+    }
+
+    pub fn update_bumped_tiles(&mut self, deltatime: f32) {
+        for bumped_tile in &mut self.bumped_tiles {
+            bumped_tile.timer += deltatime * 5.0;
+        }
+
+        let bumped_tile_removed = self.bumped_tiles.iter().any(|t| t.timer >= 1.0);
+        self.bumped_tiles.retain(|t| t.timer < 1.0);
+        if bumped_tile_removed {
+            self.update_tile_render_data();
+        }
+    }
+
     pub fn tile_at_pos_collision(&self, pos: Vec2) -> &TileCollision {
         // If the position is out of the map horizontally, it should be solid, however if it's below/above the map, it should be passable.
         let pos = pos / 16.0;
@@ -89,18 +178,18 @@ impl Level {
         &tile_data(self.tiles[index]).collision
     }
 
+    // Convert a tiles index to a 2D coordinate
+    fn tile_pos(&self, index: usize) -> Vec2 {
+        vec2(
+            (index % self.width ) as f32 * 16.0,
+            (index / self.width) as f32 * 16.0,
+        )
+    }
+
     // Prepare tiles for rendering
     pub fn update_tile_render_data(&mut self) {
         self.tiles_below.clear();
         self.tiles_above.clear();
-
-        // Convert a tiles index to a 2D coordinate
-        let tile_pos = |index: usize| -> Vec2 {
-            vec2(
-                (index % self.width ) as f32 * 16.0,
-                (index / self.width) as f32 * 16.0,
-            )
-        };
 
         let tile_connects = |tile: usize, index: usize, offset: (isize, isize)| -> bool {
             // The coordinates of the tile to check
@@ -113,6 +202,7 @@ impl Level {
                 return true;
             }
             let index = y as usize * self.width + x as usize;
+
             self.tiles.get(index).is_some_and(|t| *t == tile)
         };
 
@@ -170,6 +260,10 @@ impl Level {
                 Some(t) => t,
                 None => continue,
             };
+            // Don't render the tile if it's being bumped
+            if self.bumped_tiles.iter().any(|t| t.index == i) {
+                continue;
+            }
 
             let draw_kind = match &texture.connection {
                 TileTextureConnection::None       => TileDrawKind::Single(0),
@@ -178,8 +272,13 @@ impl Level {
                 TileTextureConnection::Both       => connected_texture_both(tile, i),
             };
 
-            let render_data = TileRenderData { tile, draw_kind, pos: tile_pos(i) };
-            self.tiles_below.push(render_data);
+            let render_data = TileRenderData { tile, draw_kind, pos: self.tile_pos(i) };
+
+            if texture.above {
+                self.tiles_above.push(render_data);
+            } else {
+                self.tiles_below.push(render_data);
+            }
         }
     }
 

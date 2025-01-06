@@ -1,9 +1,10 @@
 // The player struct.
 // Controlled with keyboard, collides with world, etc.
 
-use macroquad::{color::{BLUE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_circle, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{BLUE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{level::Level, resources::Resources, text_renderer::{render_text, Align}};
+use crate::{level::Level, resources::{PlayerArmKind, PlayerFeetKind, PlayerHeadKind, PlayerPart, Resources}, text_renderer::{render_text, Align}, util::approach_target};
+
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.5);
@@ -18,26 +19,13 @@ const KEY_RIGHT: KeyCode = KeyCode::D;
 const KEY_JUMP:  KeyCode = KeyCode::Space;
 const KEY_RUN:   KeyCode = KeyCode::LeftShift;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 enum State {
     Standing,
     Moving,
     Jumping,
     Falling,
 }
-
-impl State {
-    // Changes the state if it's not already equal to the current one
-    pub fn change_if_not_equal(&mut self, new_state: State) -> bool {
-        if *self == new_state {
-            false
-        } else {
-            *self = new_state;
-            true
-        }
-    }
-}
-
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Dir {
@@ -52,13 +40,18 @@ pub struct Player {
     state: State,
     facing: Dir,
     grounded: bool,
+    run_time: f32,
+    step_anim: f32,
 
     // It's easier to store deltatime in the player and update it every frame than to have each state function require it as an argument.
     deltatime: f32,
 
     // Constants
     walk_speed: f32,
-    run_speed:  f32,
+    run_speed_beg: f32,
+    run_speed_end: f32,
+    run_time_max: f32,
+    air_speed: f32,
     jump_amount: f32,
     jump_gravity: f32,
     fall_gravity: f32,
@@ -75,15 +68,20 @@ impl Default for Player {
             state: State::Standing,
             facing: Dir::Right,
             grounded: true,
+            run_time: 0.0,
+            step_anim: 0.0,
 
             deltatime: 0.0,
 
-            walk_speed: 1.0,
-            run_speed:  2.0,
-            jump_amount: 4.0,
-            jump_gravity:  7.0,
-            fall_gravity: 13.0, 
-            max_fall_speed: 5.0,
+            walk_speed:      1.0,
+            run_speed_beg:   1.3,
+            run_speed_end:   2.0,
+            run_time_max:    1.5,
+            air_speed:       0.7,
+            jump_amount:     4.0,
+            jump_gravity:    7.0,
+            fall_gravity:   13.0, 
+            max_fall_speed:  5.0,
         }
     }
 }
@@ -113,7 +111,6 @@ impl Player {
 
     // Logic for all of the different states
     fn state_standing(&mut self, level: &mut Level) {
-        // Changing state
         // Moving
         if is_key_down(KEY_LEFT) || is_key_down(KEY_RIGHT) {
             self.facing = match is_key_down(KEY_RIGHT) {
@@ -132,7 +129,7 @@ impl Player {
         }
 
         // Bring the player to a slow-down
-        let decel = 20.0 * self.deltatime;
+        let decel = 10.0 * self.deltatime;
 
         if self.vel.x > 0.0 {
             self.vel.x = (self.vel.x - decel).max(0.0); 
@@ -143,29 +140,44 @@ impl Player {
 
     fn state_moving(&mut self, level: &mut Level) {
         if !is_key_down(KEY_LEFT) && !is_key_down(KEY_RIGHT) {
+            self.run_time = 0.0;
             return self.change_state(State::Standing, level);
         }
 
-        let speed = match is_key_down(KEY_RUN) {
-            true  => self.run_speed,
-            false => self.walk_speed,
+        if !is_key_down(KEY_RUN) {
+            self.run_time = 0.0;
+        }
+
+        self.run_time += self.deltatime;
+
+        // The target speed and how fast the velocity should reach it
+        let (speed, acc) = match is_key_down(KEY_RUN) {
+            true  => (
+                FloatExt::lerp(
+                    self.run_speed_beg,
+                    self.run_speed_end,
+                    (self.run_time / self.run_time_max).clamp(0.0, 1.0)
+                ),
+                10.0,
+            ),
+            false => (self.walk_speed, 10.0),
         };
+
+        let target_vel = match is_key_down(KEY_LEFT) {
+            true => -speed,
+            false => speed, 
+        };
+
+        // Move the velocity towards the target speed
+        approach_target(&mut self.vel.x, acc * self.deltatime, target_vel);
 
         // Falling
         if !self.grounded {
             return self.change_state(State::Falling, level);
         }
 
-        // Moving left and right
-        if is_key_down(KEY_RIGHT) {
-            self.vel.x = speed;
-        }
-        if is_key_down(KEY_LEFT) {
-            self.vel.x = -speed;
-        }
-
         // Jumping
-        if is_key_down(KEY_JUMP) {
+        if is_key_pressed(KEY_JUMP) {
             return self.change_state(State::Jumping, level);
         }
     }
@@ -182,12 +194,20 @@ impl Player {
         if self.vel.y >= 0.0 {
             self.change_state(State::Falling, level);
         }
-        
+
+        // Move left/right when in the air
+        if is_key_pressed(KEY_RIGHT) {
+            self.vel.x = self.air_speed;
+        }
+        if is_key_pressed(KEY_LEFT) {
+            self.vel.x = -self.air_speed;
+        }
     }
 
     fn state_falling(&mut self, level: &mut Level) {
         // If we've hit the ground, go into the standing state
         if self.grounded {
+            self.step_anim = 0.5;
             return self.change_state(State::Standing, level);
         }
 
@@ -199,6 +219,7 @@ impl Player {
         // If the head is in a block and the player moved up, the player should be pushed down to the nearest tile.
         // The block should also be broken/hit if it can be
         if !level.tile_at_pos_collision(self.pos + HEAD).is_passable() {
+            level.bump_tile_at_pos(self.pos + HEAD);
             self.resolved_pos.y = (self.resolved_pos.y/16.0).ceil() * 16.0;
             self.vel.y = 0.0;
         }
@@ -232,6 +253,13 @@ impl Player {
     pub fn update(&mut self, level: &mut Level, deltatime: f32) {
         self.deltatime = deltatime;
         self.process_current_state(level);
+
+        // Walking animation
+        self.step_anim = (self.step_anim + self.vel.x.abs() / 12.0).rem_euclid(1.0);
+        if self.vel.x == 0.0 {
+            self.step_anim = 0.5;
+        }
+
         self.pos += self.vel;
         self.resolved_pos = self.pos;
 
@@ -243,128 +271,67 @@ impl Player {
         }
         self.collision_sides(level);
         self.pos = self.resolved_pos;
-
-        // let prev_pos = self.pos;
-
-        // Temporary flying movement
-        // let speed = deltatime * 16.0 * 7.0;
-        // if is_key_down(MOVE_LEFT) {
-        //     self.pos.x -= speed;
-        // }
-        // if is_key_down(MOVE_RIGHT) {
-        //     self.pos.x += speed;
-        // }
-        // if is_key_down(KeyCode::W) {
-        //     self.pos.y -= speed;
-        // }
-        // if is_key_down(KeyCode::S) {
-        //     self.pos.y += speed;
-        // }
-
-        // Horizontal velocity
-        // Finding out which way the player is moving
-
-        /*
-        if is_key_pressed(KEY_LEFT) {
-            self.move_dir = MoveDir::Left;
-        }
-        if is_key_pressed(KEY_RIGHT) {
-            self.move_dir = MoveDir::Right;
-        }
-        
-        self.move_dir = match (is_key_down(KEY_LEFT), is_key_down(KEY_RIGHT)) {
-            (false, false) => MoveDir::None,
-            (false, true ) => MoveDir::Right,
-            (true,  false) => MoveDir::Left,
-            (true,  true ) => self.move_dir,
-        };
-
-        self.running = is_key_down(KEY_RUN);
-        let target_speed = match self.running {
-            false => self.walk_speed,
-            true  => self.run_speed,
-        };
-
-        // Figure out what the target x velocity should be
-        self.target_x_vel = match self.move_dir {
-            MoveDir::None  => 0.0,
-            MoveDir::Left  => -target_speed,
-            MoveDir::Right => target_speed,
-        };
-
-        // Move the x velocity towards the target
-        if self.target_x_vel > self.vel.x {
-            self.vel.x = (self.vel.x + deltatime * self.acc).min(self.target_x_vel);
-        }
-        if self.target_x_vel < self.vel.x {
-            self.vel.x = (self.vel.x - deltatime * self.acc).max(self.target_x_vel);
-        }
-
-        // Vertical velocity
-        // Gravity
-        self.vel.y = match self.grounded {
-            true  => 0.0,
-            false => (self.vel.y + deltatime * 10.0).min(self.max_fall_speed),
-        };
-
-        // Jumping
-        // TODO: Coyote time and pre-jumping (pressing jump before you hit the ground)
-        if is_key_pressed(KEY_JUMP) && self.grounded {
-            self.vel.y = -4.0;
-        }
-
-        // Moving the player
-        self.pos += self.vel;
-
-        
-        // Collision detection and resolution
-        let pos_delta = self.pos - prev_pos;
-
-        let tile_collision = |pos: Vec2, offset: Vec2| -> &TileCollision {
-            level.tile_at_pos_collision(pos + offset)
-        };
-
-        // NOTE: up and down are switched, when i mention UP i'm talking about what up looks like on the screen,
-        // however to actually move the player up you have to subtract from the y position.
-
-        // If the left/right sides are in a tile, the player should be pushed right/left to the nearest tile.
-        if !tile_collision(self.pos, SIDE_L).is_passable() {
-            self.pos.x = (self.pos.x/16.0).ceil() * 16.0 - SIDE_L.x;
-            self.vel.x = 0.0;
-        }
-        if !tile_collision(self.pos, SIDE_R).is_passable() {
-            self.pos.x = (self.pos.x/16.0).floor() * 16.0 + (16.0 - SIDE_R.x);
-            self.vel.x = 0.0;
-        }
-
-        // If the head is in a block and the player moved up, the player should be pushed down to the nearest tile.
-        // The block should also be broken/hit if it can be
-        if pos_delta.y < 0.0 && !tile_collision(self.pos, HEAD).is_passable() {
-            self.pos.y = (self.pos.y/16.0).ceil() * 16.0;
-            self.vel.y = 0.0;
-        }
-
-        // If the paws are underground, the player should be pushed up to the nearest tile.
-        self.grounded = false;
-        if !tile_collision(self.pos, FOOT_L).is_passable()
-        || !tile_collision(self.pos, FOOT_R).is_passable()
-        {
-            self.pos.y = (self.pos.y/16.0).floor() * 16.0;
-            self.vel.y = 0.0;
-            self.grounded = true;
-        }
-
-        println!("{:?}", self.grounded);
-        */
     }
 
     pub fn draw(&self, resources: &Resources) {
-        draw_texture_ex(resources.tiles_atlas(), self.pos.x, self.pos.y - 16.0, WHITE, DrawTextureParams {
-            flip_x: self.facing == Dir::Left,
-            source: Some(Rect::new(0.0, 64.0, 16.0, 32.0)),
-            ..Default::default()
-        });
+        let head_kind = PlayerHeadKind::Helmet;
+        let feet_kind = PlayerFeetKind::Boots;
 
+        let holding = is_key_down(KeyCode::Key1);
+        let (front_arm, back_arm) = match (self.state, holding) {
+            (_, true) => (PlayerArmKind::Holding, Some(PlayerArmKind::HoldingBack)),
+            (State::Jumping, _) => (PlayerArmKind::Tilted, Some(PlayerArmKind::Jump)),
+            (State::Falling, _) => (PlayerArmKind::Tilted, None),
+            _ if self.vel.x.abs() >= self.run_speed_end => (PlayerArmKind::Tilted, None),
+            _ => (PlayerArmKind::Normal, None),
+        };
+
+        // If the player is stepping
+        let feet_step = self.step_anim > 0.5;
+
+        // Whether or not the 'run' sprite should be shown for the feet
+        let run = feet_step
+        || self.state == State::Falling
+        || self.state == State::Jumping;
+
+        // Drawing individual parts of the player
+        // The player sprite should be offset vertically if they're wearing boots
+        let y_offset = match feet_kind {
+            PlayerFeetKind::Normal => 8.0,
+            PlayerFeetKind::Boots => 10.0,
+        };
+        // The player sprite should be moved up by one if they're stepping
+        let y_offset = match feet_step {
+            false => y_offset,
+            true  => y_offset + 1.0,
+        };
+        let flip_x = self.facing == Dir::Left;
+        let draw_player_part = |part: PlayerPart| {
+            let y = match part {
+                PlayerPart::Head(_)     => 0.0,
+                PlayerPart::Arm(_)      => 3.0,
+                PlayerPart::Body        => 15.0,
+                PlayerPart::Feet { .. } => 18.0,
+            };
+            
+            let rounded_pos = self.pos.round();
+            draw_texture_ex(resources.player_atlas(), rounded_pos.x, rounded_pos.y + y - y_offset, WHITE, DrawTextureParams {
+                source: Some(Resources::player_part_rect(part)),
+                flip_x,
+                ..Default::default()
+            });
+        };
+
+        // Draw the player!
+        if let Some(back_arm) = back_arm {
+            draw_player_part(PlayerPart::Arm(back_arm));
+        }
+        draw_player_part(PlayerPart::Body);
+        draw_player_part(PlayerPart::Head(head_kind));
+        draw_player_part(PlayerPart::Feet { kind: feet_kind, run });
+        draw_player_part(PlayerPart::Arm(front_arm));
+
+        // Debug points
         for (p, c) in [
             (Vec2::ZERO, WHITE),
             (HEAD, BLUE),
@@ -373,11 +340,11 @@ impl Player {
             (FOOT_L, YELLOW),
             (FOOT_R, YELLOW),
         ] {
-            draw_circle(self.pos.x + p.x, self.pos.y + p.y, 1.5, c);
+            // draw_circle(self.pos.x + p.x, self.pos.y + p.y, 1.5, c);
         }
 
-        render_text(&format!("pos: {}", self.pos), RED, vec2(1.0, 30.0), Vec2::ONE, Align::End, resources.font_atlas());
-        render_text(&format!("vel: {}", self.vel), RED, vec2(1.0, 41.0), Vec2::ONE, Align::End, resources.font_atlas());
+        render_text(&format!("pos: [{:8.3}, {:8.3}]", self.pos.x, self.pos.y), RED, vec2(1.0, 30.0), Vec2::ONE, Align::End, resources.font_atlas());
+        render_text(&format!("vel: [{:8.3}, {:8.3}]", self.vel.x, self.vel.y), RED, vec2(1.0, 41.0), Vec2::ONE, Align::End, resources.font_atlas());
         render_text(&format!("state: {:?}", self.state), RED, vec2(1.0, 52.0), Vec2::ONE, Align::End, resources.font_atlas());
     }
 }

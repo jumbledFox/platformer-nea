@@ -13,65 +13,107 @@ const TILE_DATA: &[TileData] = &[
     },
     TileData {
         name: "stone block",
-        texture: Some(TileTexture::fixed(2, TileTextureConnection::None)),
+        texture: Some(TileTexture::fixed(2, TileTextureConnection::None, false)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "spikes",
-        texture: Some(TileTexture::fixed(3, TileTextureConnection::None)),
+        texture: Some(TileTexture::fixed(3, TileTextureConnection::None, false)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "glass",
-        texture: Some(TileTexture::fixed(4, TileTextureConnection::None)),
+        texture: Some(TileTexture::fixed(4, TileTextureConnection::None, false)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "block",
-        texture: Some(TileTexture::fixed(5, TileTextureConnection::None)),
+        texture: Some(TileTexture::fixed(5, TileTextureConnection::None, false)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "grass",
-        texture: Some(TileTexture::fixed(6, TileTextureConnection::Both)),
+        texture: Some(TileTexture::fixed(6, TileTextureConnection::Both, false)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "metal",
-        texture: Some(TileTexture::fixed(11, TileTextureConnection::Both)),
+        texture: Some(TileTexture::fixed(11, TileTextureConnection::Both, false)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "stone",
-        texture: Some(TileTexture::fixed(22, TileTextureConnection::Both)),
+        texture: Some(TileTexture::fixed(22, TileTextureConnection::Both, false)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "checker",
-        texture: Some(TileTexture::fixed(27, TileTextureConnection::Both)),
+        texture: Some(TileTexture::fixed(27, TileTextureConnection::Both, false)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "test vert",
-        texture: Some(TileTexture::fixed(108, TileTextureConnection::Vertical)),
+        texture: Some(TileTexture::fixed(108, TileTextureConnection::Vertical, false)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "bricks",
-        texture: Some(TileTexture::fixed(44, TileTextureConnection::Horizontal)),
+        texture: Some(TileTexture::fixed(44, TileTextureConnection::Horizontal, false)),
         collision: TileCollision::solid_default(),
     },
     TileData {
         name: "anim test",
-        texture: Some(TileTexture::animated(&[32, 33, 34, 35], 0.1, TileTextureConnection::None)),
+        texture: Some(TileTexture::animated(&[48, 49, 50, 51], 0.1, TileTextureConnection::None, false)),
         collision: TileCollision::solid_default(),
+    },
+    TileData {
+        name: "rope railing",
+        texture: Some(TileTexture::fixed(44+32, TileTextureConnection::Horizontal, true)),
+        collision: TileCollision::Passable,
+    },
+    TileData {
+        name: "bridge",
+        texture: Some(TileTexture::fixed(44+48, TileTextureConnection::Horizontal, false)),
+        collision: TileCollision::solid_default(),
+    },
+
+
+    TileData {
+        name: "switcher on",
+        texture: Some(TileTexture::fixed(16, TileTextureConnection::None, false)),
+        collision: TileCollision::solid_default(),
+    },
+    TileData {
+        name: "switcher off",
+        texture: Some(TileTexture::fixed(17, TileTextureConnection::None, false)),
+        collision: TileCollision::solid_default(),
+    },
+    TileData {
+        name: "on switch-block",
+        texture: Some(TileTexture::fixed(18, TileTextureConnection::None, false)),
+        collision: TileCollision::solid_default(),
+    },
+    TileData {
+        name: "on switch-outline",
+        texture: Some(TileTexture::fixed(19, TileTextureConnection::None, false)),
+        collision: TileCollision::Passable,
+    },
+    TileData {
+        name: "off switch-block",
+        texture: Some(TileTexture::fixed(20, TileTextureConnection::None, false)),
+        collision: TileCollision::solid_default(),
+    },
+    TileData {
+        name: "off switch-outline",
+        texture: Some(TileTexture::fixed(21, TileTextureConnection::None, false)),
+        collision: TileCollision::Passable,
     },
 ];
 
 // The error tile, for if SOMEHOW a tile doesn't exist but is still gotten.
 const TILE_ERROR: TileData = TileData {
     name: "error!",
-    texture: Some(TileTexture::fixed(0, TileTextureConnection::None)),
+    texture: Some(TileTexture::fixed(0, TileTextureConnection::None, false)),
     collision: TileCollision::Passable
 };
 
@@ -131,19 +173,22 @@ pub enum TileTextureConnection {
 pub struct TileTexture<'a> {
     pub render: TileTextureRenderType<'a>,
     pub connection: TileTextureConnection,
+    pub above: bool,
 }
 
 impl TileTexture<'static> {
-    pub const fn fixed(texture: usize, connection: TileTextureConnection) -> Self {
+    pub const fn fixed(texture: usize, connection: TileTextureConnection, above: bool) -> Self {
         Self {
             render: TileTextureRenderType::Fixed(texture),
             connection,
+            above,
         }
     }
-    pub const fn animated(frames: &'static [usize], frame_duration: f64, connection: TileTextureConnection) -> Self {
+    pub const fn animated(frames: &'static [usize], frame_duration: f64, connection: TileTextureConnection, above: bool) -> Self {
         Self {
             render: TileTextureRenderType::Animated { frames, frame_duration },
             connection,
+            above,
         }
     }
 }
