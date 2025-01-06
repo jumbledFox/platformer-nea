@@ -14,7 +14,7 @@ const TILE_DATA: &[TileData] = &[
     TileData {
         name: "stone block",
         texture: Some(TileTexture::fixed(2, TileTextureConnection::None, false)),
-        collision: TileCollision::solid_default(),
+        collision: TileCollision::solid(1.0, 0.0, TileHit::Replace { new: "glass" }, TileHit::Replace { new: "empty" }),
     },
     TileData {
         name: "spikes",
@@ -73,20 +73,20 @@ const TILE_DATA: &[TileData] = &[
     },
     TileData {
         name: "bridge",
-        texture: Some(TileTexture::fixed(44+48, TileTextureConnection::Horizontal, false)),
-        collision: TileCollision::solid_default(),
+        texture: Some(TileTexture::fixed(44+48, TileTextureConnection::Horizontal, true)),
+        collision: TileCollision::platform(1.0, 1.0),
     },
 
 
     TileData {
         name: "switcher on",
         texture: Some(TileTexture::fixed(16, TileTextureConnection::None, false)),
-        collision: TileCollision::solid_default(),
+        collision: TileCollision::solid(1.0, 0.0, TileHit::Bump, TileHit::Bump),
     },
     TileData {
         name: "switcher off",
         texture: Some(TileTexture::fixed(17, TileTextureConnection::None, false)),
-        collision: TileCollision::solid_default(),
+        collision: TileCollision::solid(1.0, 0.0, TileHit::Bump, TileHit::Bump),
     },
     TileData {
         name: "on switch-block",
@@ -107,6 +107,12 @@ const TILE_DATA: &[TileData] = &[
         name: "off switch-outline",
         texture: Some(TileTexture::fixed(21, TileTextureConnection::None, false)),
         collision: TileCollision::Passable,
+    },
+
+    TileData {
+        name: "solid empty",
+        texture: None,
+        collision: TileCollision::solid_default(),
     },
 ];
 
@@ -194,28 +200,75 @@ impl TileTexture<'static> {
 }
 
 // Collision
+pub enum TileHit {
+    None,
+    Bump,
+    Replace {
+        new: &'static str,
+        // particles,
+    },
+}
+
 pub enum TileCollision {
     Passable,
+    Platform {
+        friction: f32,
+        bounce: f32,
+    },
     Solid {
         friction: f32,
+        bounce: f32,
+        hit_normal: TileHit,
+        hit_helmet: TileHit ,
         // damage
-        // hitting behaviour
     },
 }
 
 impl TileCollision {
-    pub fn is_passable(&self) -> bool {
-        matches!(self, Self::Passable)
+    pub const fn platform(friction: f32, bounce: f32) -> Self {
+        Self::Platform { friction, bounce }
     }
-}
+    pub const fn solid(friction: f32, bounce: f32, hit_normal: TileHit, hit_helmet: TileHit) -> Self {
+        Self::Solid { friction, bounce, hit_normal, hit_helmet }
+    }
 
-impl TileCollision {
     pub const fn solid_default() -> Self {
         Self::Solid {
             friction: 1.0,
+            bounce: 0.0,
+            hit_normal: TileHit::None,
+            hit_helmet: TileHit::None,
+        }
+    }
+
+    pub fn is_solid(&self) -> bool {
+        matches!(self, Self::Solid { .. })
+    }
+    pub fn is_passable(&self) -> bool {
+        matches!(self, Self::Passable)
+    }
+    pub fn is_platform(&self) -> bool {
+        matches!(self, Self::Platform { .. })
+    }
+
+    pub fn friction_and_bounce(&self) -> Option<(f32, f32)> {
+        match self {
+            TileCollision::Passable => None,
+            TileCollision::Platform { friction, bounce } => Some((*friction, *bounce)),
+            TileCollision::Solid { friction, bounce, hit_normal: _, hit_helmet: _ } => Some((*friction, *bounce)),
+        }
+    }
+
+    pub fn friction_and_bounce_from_pair(&self, other: &Self) -> Option<(f32, f32)> {
+        match (self.friction_and_bounce(), other.friction_and_bounce()) {
+            (None,    None)    => None,
+            (Some(a), None)    => Some(a),
+            (None,    Some(b)) => Some(b),
+            (Some(a), Some(b)) => Some((a.0.min(b.0), a.1.min(b.1)))
         }
     }
 }
+
 
 // Rendering a tile
 pub fn render_tile(render_data: &TileRenderData, resources: &Resources) {

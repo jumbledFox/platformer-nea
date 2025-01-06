@@ -34,9 +34,9 @@ impl Scene {
 
     pub fn draw(&self, lives: usize, resources: &Resources) {
         self.level.render_below(resources);
-        self.level.render_bumped_tiles(resources);
         self.player.draw(resources);
         self.level.render_above(resources);
+        self.level.render_bumped_tiles(resources);
         
         // Draw the UI
         render_text("- fox -", ORANGE, vec2( 40.0,  8.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());

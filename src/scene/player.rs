@@ -3,7 +3,7 @@
 
 use macroquad::{color::{BLUE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{level::Level, resources::{PlayerArmKind, PlayerFeetKind, PlayerHeadKind, PlayerPart, Resources}, text_renderer::{render_text, Align}, util::approach_target};
+use crate::{level::{tile::TileCollision, Level}, resources::{PlayerArmKind, PlayerPart, Resources}, text_renderer::{render_text, Align}, util::approach_target};
 
 
 // Collision points
@@ -27,12 +27,27 @@ enum State {
     Falling,
 }
 
+#[derive(Clone, Copy)]
+pub enum HeadPowerup {
+    None, Helmet,
+}
+
+#[derive(Clone, Copy)]
+pub enum FeetPowerup {
+    None, Boots, MoonShoes,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Dir {
     Left, Right,
 }
 
 pub struct Player {
+    // Powerups
+    head_powerup: HeadPowerup,
+    feet_powerup: FeetPowerup,
+
+    // Movement
     pos: Vec2,
     vel: Vec2,
     resolved_pos: Vec2,
@@ -43,50 +58,66 @@ pub struct Player {
     run_time: f32,
     step_anim: f32,
 
-    // It's easier to store deltatime in the player and update it every frame than to have each state function require it as an argument.
-    deltatime: f32,
-
     // Constants
     walk_speed: f32,
     run_speed_beg: f32,
     run_speed_end: f32,
     run_time_max: f32,
     air_speed: f32,
-    jump_amount: f32,
-    jump_gravity: f32,
-    fall_gravity: f32,
     max_fall_speed: f32,
+
+    // It's easier to store deltatime in the player and update it every frame than to have each state function require it as an argument.
+    deltatime: f32,
 }
 
 impl Default for Player {
     fn default() -> Self {
         Self {
+            head_powerup: HeadPowerup::None,
+            feet_powerup: FeetPowerup::None,
+
             pos: Vec2::ZERO,
             vel: Vec2::ZERO,
             resolved_pos: Vec2::ZERO,
 
-            state: State::Standing,
-            facing: Dir::Right,
-            grounded: true,
-            run_time: 0.0,
+            state:     State::Standing,
+            facing:    Dir::Right,
+            grounded:  true,
+            run_time:  0.0,
             step_anim: 0.0,
-
-            deltatime: 0.0,
 
             walk_speed:      1.0,
             run_speed_beg:   1.3,
             run_speed_end:   2.0,
             run_time_max:    1.5,
             air_speed:       0.7,
-            jump_amount:     4.0,
-            jump_gravity:    7.0,
-            fall_gravity:   13.0, 
             max_fall_speed:  5.0,
+
+            deltatime: 0.0,
         }
     }
 }
 
 impl Player {
+    fn jump_amount(&self) -> f32 {
+        match self.feet_powerup {
+            FeetPowerup::MoonShoes => 4.0,
+            _                      => 4.0,
+        }
+    }
+    fn jump_gravity(&self) -> f32 {
+        match self.feet_powerup {
+            FeetPowerup::MoonShoes => 5.0,
+            _                      => 7.0,
+        }
+    }
+    fn fall_gravity(&self) -> f32 {
+        match self.feet_powerup {
+            FeetPowerup::MoonShoes =>  8.0,
+            _                      => 14.0,
+        }
+    }
+
     fn process_current_state(&mut self, level: &mut Level) {
         match &mut self.state {
             State::Standing => self.state_standing(level),
@@ -103,7 +134,7 @@ impl Player {
         self.state = new_state;
         
         if self.state == State::Jumping {
-            self.vel.y = -self.jump_amount;
+            self.vel.y = -self.jump_amount();
         }
 
         self.process_current_state(level);
@@ -184,8 +215,8 @@ impl Player {
 
     fn state_jumping(&mut self, level: &mut Level) {
         let gravity = match is_key_down(KEY_JUMP) {
-            true => self.jump_gravity,
-            false => self.fall_gravity,
+            true => self.jump_gravity(),
+            false => self.fall_gravity(),
         };
         self.vel.y += self.deltatime * gravity;
         self.grounded = false;
@@ -211,27 +242,32 @@ impl Player {
             return self.change_state(State::Standing, level);
         }
 
-        self.vel.y = (self.vel.y + self.deltatime * self.fall_gravity).min(self.max_fall_speed);
+        self.vel.y = (self.vel.y + self.deltatime * self.fall_gravity()).min(self.max_fall_speed);
     }
 
     // Collision for different parts of the player
     fn collision_head(&mut self, level: &mut Level) {
         // If the head is in a block and the player moved up, the player should be pushed down to the nearest tile.
         // The block should also be broken/hit if it can be
-        if !level.tile_at_pos_collision(self.pos + HEAD).is_passable() {
-            level.bump_tile_at_pos(self.pos + HEAD);
+
+        let tile_collision = level.tile_at_pos_collision(self.pos + HEAD); 
+        if let TileCollision::Solid { .. } = tile_collision {
+            level.hit_tile_at_pos(self.pos + HEAD, self.head_powerup);
             self.resolved_pos.y = (self.resolved_pos.y/16.0).ceil() * 16.0;
             self.vel.y = 0.0;
+        }
+
+        if !level.tile_at_pos_collision(self.pos + HEAD).is_passable() {
         }
     }
 
     fn collision_sides(&mut self, level: &Level) {
         // If the left/right sides are in a tile, the player should be pushed right/left to the nearest tile.
-        if !level.tile_at_pos_collision(self.pos + SIDE_L).is_passable() {
+        if level.tile_at_pos_collision(self.pos + SIDE_L).is_solid() {
             self.resolved_pos.x = (self.resolved_pos.x/16.0).ceil() * 16.0 - SIDE_L.x;
             self.vel.x = 0.0;
         }
-        if !level.tile_at_pos_collision(self.pos + SIDE_R).is_passable() {
+        if level.tile_at_pos_collision(self.pos + SIDE_R).is_solid() {
             self.resolved_pos.x = (self.resolved_pos.x/16.0).floor() * 16.0 + (16.0 - SIDE_R.x);
             self.vel.x = 0.0;
         }
@@ -239,19 +275,60 @@ impl Player {
 
     fn collision_feet(&mut self, level: &Level) {
         // If the paws are underground, the player should be pushed up to the nearest tile.
-        self.grounded = false;
-        if !level.tile_at_pos_collision(self.pos + FOOT_L).is_passable()
-        || !level.tile_at_pos_collision(self.pos + FOOT_R).is_passable()
-        {
-            self.resolved_pos.y = (self.resolved_pos.y/16.0).floor() * 16.0;
-            self.vel.y = 0.0;
-            self.grounded = true;
+
+        let lc = level.tile_at_pos_collision(self.pos + FOOT_L);
+        let rc = level.tile_at_pos_collision(self.pos + FOOT_R);
+
+        let min_friction_and_bounce = lc.friction_and_bounce_from_pair(rc);
+
+        // let l_frict = lc.bounce();
+        // let r_bounce = rc.bounce();
+
+        let mut push_to_top = false;
+
+        // Normal solid tiles
+        if lc.is_solid() || rc.is_solid() {
+            // Choose the lowest bounciness value
+
+            push_to_top = true;
         }
+
+        // Platform tiles
+        // We should only be pushed up into them if the foot y position is the top part of the tile
+        if ((self.pos.y + FOOT_L.y) % 16.0 <= 6.0) && (lc.is_platform() || rc.is_platform()) {
+            push_to_top = true;
+        } 
+
+        // Push the player to the top of the tile
+        self.grounded = false;
+        if let Some((friction, bounce)) = min_friction_and_bounce {
+            if push_to_top {
+                self.resolved_pos.y = (self.resolved_pos.y/16.0).floor() * 16.0;
+                self.vel.y = -(self.vel.y * bounce);
+                // grrr...
+                self.grounded = true;
+            }
+        } 
     }
 
 
     pub fn update(&mut self, level: &mut Level, deltatime: f32) {
+        if is_key_pressed(KeyCode::Key2) {
+            self.head_powerup = match self.head_powerup {
+                HeadPowerup::None => HeadPowerup::Helmet,
+                HeadPowerup::Helmet => HeadPowerup::None,
+            };
+        }
+        if is_key_pressed(KeyCode::Key3) {
+            self.feet_powerup = match self.feet_powerup {
+                FeetPowerup::None => FeetPowerup::Boots,
+                FeetPowerup::Boots => FeetPowerup::MoonShoes,
+                FeetPowerup::MoonShoes => FeetPowerup::None,
+            };
+        }
+
         self.deltatime = deltatime;
+
         self.process_current_state(level);
 
         // Walking animation
@@ -274,9 +351,6 @@ impl Player {
     }
 
     pub fn draw(&self, resources: &Resources) {
-        let head_kind = PlayerHeadKind::Helmet;
-        let feet_kind = PlayerFeetKind::Boots;
-
         let holding = is_key_down(KeyCode::Key1);
         let (front_arm, back_arm) = match (self.state, holding) {
             (_, true) => (PlayerArmKind::Holding, Some(PlayerArmKind::HoldingBack)),
@@ -296,9 +370,9 @@ impl Player {
 
         // Drawing individual parts of the player
         // The player sprite should be offset vertically if they're wearing boots
-        let y_offset = match feet_kind {
-            PlayerFeetKind::Normal => 8.0,
-            PlayerFeetKind::Boots => 10.0,
+        let y_offset = match self.feet_powerup {
+            FeetPowerup::None => 8.0,
+            FeetPowerup::Boots | FeetPowerup::MoonShoes => 10.0,
         };
         // The player sprite should be moved up by one if they're stepping
         let y_offset = match feet_step {
@@ -327,8 +401,8 @@ impl Player {
             draw_player_part(PlayerPart::Arm(back_arm));
         }
         draw_player_part(PlayerPart::Body);
-        draw_player_part(PlayerPart::Head(head_kind));
-        draw_player_part(PlayerPart::Feet { kind: feet_kind, run });
+        draw_player_part(PlayerPart::Head(self.head_powerup));
+        draw_player_part(PlayerPart::Feet { kind: self.feet_powerup, run });
         draw_player_part(PlayerPart::Arm(front_arm));
 
         // Debug points

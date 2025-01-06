@@ -3,9 +3,9 @@
 use std::f32::consts::PI;
 
 use macroquad::math::{vec2, Vec2};
-use tile::{get_tile_by_name, render_tile, tile_data, TileCollision, TileTextureConnection};
+use tile::{get_tile_by_name, render_tile, tile_data, TileCollision, TileHit, TileTextureConnection};
 
-use crate::resources::Resources;
+use crate::{resources::Resources, scene::player::HeadPowerup};
 
 pub mod tile;
 
@@ -64,12 +64,12 @@ impl Default for Level {
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16, 0, 0, 0,19, 0,14, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16, 0, 0, 0,19, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0,10,10,10,10,10, 0, 0, 0,19, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16,16,14,16,16,16,16,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16, 0,10,10,10,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,14, 0, 0, 0, 0,16, 0, 0, 0,10,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,19,19,10, 0, 0, 0,10,
-                0, 0, 0, 0, 0, 0, 0, 0,11, 0, 0, 0, 0, 0, 0, 0, 0,10,10,10,10,10,
-                0, 8, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16,16, 8,16,16,16,16,
+                0, 0, 0, 0, 0, 0, 0, 0,12,12,12,12,12, 0, 0, 0, 0,16, 0,10,10,10,
+                0, 0, 0, 0, 0, 0,12,13,13,13,13,13,14, 0, 0, 0, 0,16, 0, 0, 0,10,
+                0, 0, 0, 0, 0,13,13,13,13, 0, 0, 1, 1, 1, 1,19,19,10, 0, 0, 0,10,
+                0, 0, 0, 0, 0, 0, 0, 0,11, 0, 0, 1, 1, 1, 1, 0, 0,10,10,10,10,10,
+                0, 8, 8,14, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,
                 0, 0, 0, 0, 0, 0, 0, 0, 0,12,12,12,12,12,12,12, 0, 0, 0, 0, 0,10,
                 8, 8, 8, 8, 8, 8, 0, 8, 8, 8,13,13,13,13,13, 5, 5, 5, 5, 5, 5, 5,
                 8, 8, 8, 8, 8, 8, 0, 8, 8, 8, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5,
@@ -118,15 +118,15 @@ impl Level {
             self.set_switch_state(true);
         }
 
-        // set_switch_state may modify 'tile' so we can't reuse it.
         self.bumped_tiles.push(BumpedTile {
+            // set_switch_state may modify 'tile' so we can't reuse it and should get it again.
             tile: self.tiles[index],
             index,
             timer: 0.0
         });
     }
 
-    pub fn bump_tile_at_pos(&mut self, pos: Vec2) {
+    pub fn hit_tile_at_pos(&mut self, pos: Vec2, head_powerup: HeadPowerup) {
         let pos = pos / 16.0;
         if pos.x < 0.0 || pos.x >= self.width as f32 || pos.y < 0.0 || pos.y >= self.height as f32 {
             return;
@@ -135,10 +135,23 @@ impl Level {
         let y = pos.y.floor() as usize;
         let index = y * self.width + x;
 
-        self.bumped_tiles.retain(|t| t.index != index);
-        self.bump_tile(index);
+        let tile_data = tile_data(self.tiles[index]);
 
-        self.update_tile_render_data();
+        if let TileCollision::Solid { friction: _, bounce: _, hit_normal, hit_helmet } = &tile_data.collision {
+            let hit = match head_powerup {
+                HeadPowerup::None   => hit_normal,
+                HeadPowerup::Helmet => hit_helmet,
+            };
+
+            if let TileHit::Bump = hit {
+                self.bumped_tiles.retain(|t| t.index != index);
+                self.bump_tile(index);
+                self.update_tile_render_data();
+            } else if let TileHit::Replace { new } = hit {
+                self.tiles[index] = get_tile_by_name(new);
+                self.update_tile_render_data();
+            }
+        }
     }
 
     pub fn render_bumped_tiles(&self, resources: &Resources) {
@@ -166,10 +179,10 @@ impl Level {
         // If the position is out of the map horizontally, it should be solid, however if it's below/above the map, it should be passable.
         let pos = pos / 16.0;
         if pos.x < 0.0 || pos.x >= self.width as f32 {
-            return &TileCollision::Solid { friction: 1.0 };
+            return &tile_data(get_tile_by_name("solid empty")).collision;
         }
         if pos.y < 0.0 || pos.y >= self.height as f32 {
-            return &TileCollision::Passable;
+            return &tile_data(get_tile_by_name("empty")).collision;
         }
         let x = pos.x.floor() as usize;
         let y = pos.y.floor() as usize;

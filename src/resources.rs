@@ -1,5 +1,7 @@
 use macroquad::{math::Rect, texture::Texture2D};
 
+use crate::scene::player::{FeetPowerup, HeadPowerup};
+
 const TILES_TEXTURE:  &[u8] = include_bytes!("../res/tiles.png");
 const FONT_TEXTURE:   &[u8] = include_bytes!("../res/font.png");
 const PLAYER_TEXTURE: &[u8] = include_bytes!("../res/player.png");
@@ -22,21 +24,15 @@ impl Default for Resources {
     }
 }
 
-pub enum PlayerHeadKind {
-    Normal, Helmet,
-}
 pub enum PlayerArmKind {
     Normal, Tilted, Holding, HoldingBack, Jump,
 }
-pub enum PlayerFeetKind {
-    Normal, Boots
-}
 
 pub enum PlayerPart {
-    Head(PlayerHeadKind),
+    Head(HeadPowerup),
     Body,
     Arm(PlayerArmKind),
-    Feet { kind: PlayerFeetKind, run: bool },
+    Feet { kind: FeetPowerup, run: bool },
 }
 
 impl Resources {
