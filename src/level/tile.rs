@@ -250,23 +250,6 @@ impl TileCollision {
     pub fn is_platform(&self) -> bool {
         matches!(self, Self::Platform { .. })
     }
-
-    pub fn friction_and_bounce(&self) -> Option<(f32, f32)> {
-        match self {
-            TileCollision::Passable => None,
-            TileCollision::Platform { friction, bounce } => Some((*friction, *bounce)),
-            TileCollision::Solid { friction, bounce, hit_normal: _, hit_helmet: _ } => Some((*friction, *bounce)),
-        }
-    }
-
-    pub fn friction_and_bounce_from_pair(&self, other: &Self) -> Option<(f32, f32)> {
-        match (self.friction_and_bounce(), other.friction_and_bounce()) {
-            (None,    None)    => None,
-            (Some(a), None)    => Some(a),
-            (None,    Some(b)) => Some(b),
-            (Some(a), Some(b)) => Some((a.0.min(b.0), a.1.min(b.1)))
-        }
-    }
 }
 
 

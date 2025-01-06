@@ -279,17 +279,10 @@ impl Player {
         let lc = level.tile_at_pos_collision(self.pos + FOOT_L);
         let rc = level.tile_at_pos_collision(self.pos + FOOT_R);
 
-        let min_friction_and_bounce = lc.friction_and_bounce_from_pair(rc);
-
-        // let l_frict = lc.bounce();
-        // let r_bounce = rc.bounce();
-
         let mut push_to_top = false;
 
         // Normal solid tiles
         if lc.is_solid() || rc.is_solid() {
-            // Choose the lowest bounciness value
-
             push_to_top = true;
         }
 
@@ -301,14 +294,11 @@ impl Player {
 
         // Push the player to the top of the tile
         self.grounded = false;
-        if let Some((friction, bounce)) = min_friction_and_bounce {
-            if push_to_top {
-                self.resolved_pos.y = (self.resolved_pos.y/16.0).floor() * 16.0;
-                self.vel.y = -(self.vel.y * bounce);
-                // grrr...
-                self.grounded = true;
-            }
-        } 
+        if push_to_top {
+            self.resolved_pos.y = (self.resolved_pos.y/16.0).floor() * 16.0;
+            self.vel.y = 0.0;
+            self.grounded = true;
+        }
     }
 
 

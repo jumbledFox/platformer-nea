@@ -60,7 +60,7 @@ impl Default for Level {
             height: 14,
             tiles: vec![
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16, 0, 0, 0,19, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16,14, 0, 0,19, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0,15,16,16,16,14, 0, 0,19, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16, 0, 0, 0,19, 0,14, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16, 0, 0, 0,19, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0,10,10,10,10,10, 0, 0, 0,19, 0, 0, 0, 0,
@@ -86,23 +86,21 @@ impl Level {
     // Switch blocks - sets the state of all switch tiles in the level
     fn set_switch_state(&mut self, enabled: bool) {
         for t in &mut self.tiles {
-            if *t == get_tile_by_name("switcher on") {
-                *t = get_tile_by_name("switcher off");
-            } else if *t == get_tile_by_name("switcher off") {
-                *t = get_tile_by_name("switcher on");
-            }
-
             if enabled {
                 if *t == get_tile_by_name("on switch-outline") {
                     *t = get_tile_by_name("on switch-block");
                 } else if *t == get_tile_by_name("off switch-block") {
                     *t = get_tile_by_name("off switch-outline");
+                } else if *t == get_tile_by_name("switcher off") {
+                    *t = get_tile_by_name("switcher on");
                 }
             } else {
                 if *t == get_tile_by_name("on switch-block") {
                     *t = get_tile_by_name("on switch-outline");
                 } else if *t == get_tile_by_name("off switch-outline") {
                     *t = get_tile_by_name("off switch-block");
+                } else if *t == get_tile_by_name("switcher on") {
+                    *t = get_tile_by_name("switcher off");
                 }
             }
         }
