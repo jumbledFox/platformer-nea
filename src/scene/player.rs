@@ -1,7 +1,7 @@
 // The player struct.
 // Controlled with keyboard, collides with world, etc.
 
-use macroquad::{color::{BLUE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{BLUE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Vec2}, shapes::draw_circle, texture::{draw_texture_ex, DrawTextureParams}};
 
 use crate::{level::{tile::TileCollision, Level}, resources::{PlayerArmKind, PlayerPart, Resources}, text_renderer::{render_text, Align}, util::approach_target};
 
@@ -50,7 +50,6 @@ pub struct Player {
     // Movement
     pos: Vec2,
     vel: Vec2,
-    resolved_pos: Vec2,
 
     state: State,
     facing: Dir,
@@ -78,7 +77,6 @@ impl Default for Player {
 
             pos: Vec2::ZERO,
             vel: Vec2::ZERO,
-            resolved_pos: Vec2::ZERO,
 
             state:     State::Standing,
             facing:    Dir::Right,
@@ -253,7 +251,7 @@ impl Player {
         let tile_collision = level.tile_at_pos_collision(self.pos + HEAD); 
         if let TileCollision::Solid { .. } = tile_collision {
             level.hit_tile_at_pos(self.pos + HEAD, self.head_powerup);
-            self.resolved_pos.y = (self.resolved_pos.y/16.0).ceil() * 16.0;
+            self.pos.y = (self.pos.y/16.0).ceil() * 16.0;
             self.vel.y = 0.0;
         }
 
@@ -264,11 +262,11 @@ impl Player {
     fn collision_sides(&mut self, level: &Level) {
         // If the left/right sides are in a tile, the player should be pushed right/left to the nearest tile.
         if level.tile_at_pos_collision(self.pos + SIDE_L).is_solid() {
-            self.resolved_pos.x = (self.resolved_pos.x/16.0).ceil() * 16.0 - SIDE_L.x;
+            self.pos.x = (self.pos.x/16.0).ceil() * 16.0 - SIDE_L.x;
             self.vel.x = 0.0;
         }
         if level.tile_at_pos_collision(self.pos + SIDE_R).is_solid() {
-            self.resolved_pos.x = (self.resolved_pos.x/16.0).floor() * 16.0 + (16.0 - SIDE_R.x);
+            self.pos.x = (self.pos.x/16.0).floor() * 16.0 + (16.0 - SIDE_R.x);
             self.vel.x = 0.0;
         }
     }
@@ -295,7 +293,7 @@ impl Player {
         // Push the player to the top of the tile
         self.grounded = false;
         if push_to_top {
-            self.resolved_pos.y = (self.resolved_pos.y/16.0).floor() * 16.0;
+            self.pos.y = (self.pos.y/16.0).floor() * 16.0;
             self.vel.y = 0.0;
             self.grounded = true;
         }
@@ -321,26 +319,24 @@ impl Player {
 
         self.process_current_state(level);
 
-        // Walking animation
-        self.step_anim = (self.step_anim + self.vel.x.abs() / 12.0).rem_euclid(1.0);
-        if self.vel.x == 0.0 {
-            self.step_anim = 0.5;
-        }
-
         self.pos += self.vel;
-        self.resolved_pos = self.pos;
-
+        
         // Collision
+        self.collision_sides(level);
         if self.state == State::Jumping {
             self.collision_head(level);
         } else {
             self.collision_feet(level);
         }
-        self.collision_sides(level);
-        self.pos = self.resolved_pos;
+
+        // Walking animation
+        self.step_anim = (self.step_anim + self.vel.x.abs() / 12.0).rem_euclid(1.0);
+        if self.vel.x == 0.0 {
+            self.step_anim = 0.5;
+        }
     }
 
-    pub fn draw(&self, resources: &Resources) {
+    pub fn draw(&self, resources: &Resources, debug: bool) {
         let holding = is_key_down(KeyCode::Key1);
         let (front_arm, back_arm) = match (self.state, holding) {
             (_, true) => (PlayerArmKind::Holding, Some(PlayerArmKind::HoldingBack)),
@@ -395,20 +391,22 @@ impl Player {
         draw_player_part(PlayerPart::Feet { kind: self.feet_powerup, run });
         draw_player_part(PlayerPart::Arm(front_arm));
 
-        // Debug points
-        for (p, c) in [
-            (Vec2::ZERO, WHITE),
-            (HEAD, BLUE),
-            (SIDE_L, RED),
-            (SIDE_R, RED),
-            (FOOT_L, YELLOW),
-            (FOOT_R, YELLOW),
-        ] {
-            // draw_circle(self.pos.x + p.x, self.pos.y + p.y, 1.5, c);
-        }
+        if debug {
+            render_text(&format!("pos: [{:8.3}, {:8.3}]", self.pos.x, self.pos.y), RED, vec2(1.0, 30.0), Vec2::ONE, Align::End, resources.font_atlas());
+            render_text(&format!("vel: [{:8.3}, {:8.3}]", self.vel.x, self.vel.y), RED, vec2(1.0, 41.0), Vec2::ONE, Align::End, resources.font_atlas());
+            render_text(&format!("state: {:?}", self.state), RED, vec2(1.0, 52.0), Vec2::ONE, Align::End, resources.font_atlas());
 
-        render_text(&format!("pos: [{:8.3}, {:8.3}]", self.pos.x, self.pos.y), RED, vec2(1.0, 30.0), Vec2::ONE, Align::End, resources.font_atlas());
-        render_text(&format!("vel: [{:8.3}, {:8.3}]", self.vel.x, self.vel.y), RED, vec2(1.0, 41.0), Vec2::ONE, Align::End, resources.font_atlas());
-        render_text(&format!("state: {:?}", self.state), RED, vec2(1.0, 52.0), Vec2::ONE, Align::End, resources.font_atlas());
+            // Debug points
+            for (point, color) in [
+                (Vec2::ZERO, WHITE),
+                (HEAD, BLUE),
+                (SIDE_L, RED),
+                (SIDE_R, RED),
+                (FOOT_L, YELLOW),
+                (FOOT_R, YELLOW),
+            ] {
+                draw_circle(self.pos.x + point.x, self.pos.y + point.y, 1.5, color);
+            }
+        }
     }
 }

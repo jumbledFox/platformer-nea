@@ -1,6 +1,6 @@
 use std::{thread::sleep, time::Duration};
 
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, WHITE}, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, WHITE}, input::is_key_pressed, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width}};
 use resources::Resources;
 use scene::Scene;
 
@@ -39,7 +39,13 @@ async fn main() {
     let mut test_scene = Scene::default();
     test_scene.foo();
 
+    let mut test_debug = false;
+
     loop {
+        if is_key_pressed(macroquad::input::KeyCode::Key0) {
+            test_debug = !test_debug;
+        }
+
         let deltatime = get_frame_time();
         resources.update_tile_animation_timer(deltatime);
         test_scene.update(deltatime);
@@ -48,7 +54,7 @@ async fn main() {
         set_camera(&world_cam);
         clear_background(Color::from_hex(0x6dcaff));
 
-        test_scene.draw(4, &resources);
+        test_scene.draw(4, &resources, test_debug);
 
         // Draw render target
         set_default_camera();
