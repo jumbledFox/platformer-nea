@@ -6,6 +6,7 @@ use player::Player;
 
 use crate::{level::Level, resources::Resources, text_renderer::{render_text, Align}};
 
+pub mod collision;
 pub mod player;
 
 pub struct Scene {

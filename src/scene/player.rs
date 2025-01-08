@@ -86,7 +86,7 @@ impl Default for Player {
 
             walk_speed:      1.0,
             run_speed_beg:   1.3,
-            run_speed_end:   2.0,
+            run_speed_end:   2.1,
             run_time_max:    1.5,
             air_speed:       0.7,
             max_fall_speed:  5.0,
