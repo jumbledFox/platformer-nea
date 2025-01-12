@@ -1,12 +1,14 @@
 // The current level being played along with the stuff it needs
 // e.g. level, player, enemies, timer, etc
 
+use entity::{col_test::ColTest, Entity};
 use macroquad::{color::{GREEN, ORANGE, WHITE}, math::vec2};
 use player::Player;
 
 use crate::{level::Level, resources::Resources, text_renderer::{render_text, Align}};
 
 pub mod collision;
+pub mod entity;
 pub mod player;
 
 pub struct Scene {
@@ -14,12 +16,22 @@ pub struct Scene {
     timer: f32,
     chips: usize,
     player: Player,
+    entities: Vec<Box<dyn Entity>>
     // enemies
 }
 
 impl Default for Scene {
     fn default() -> Self {
-        Self { level: Level::default(), timer: 100.0, chips: 42, player: Player::default()}
+        Self {
+            level: Level::default(),
+            timer: 100.0,
+            chips: 42,
+            player: Player::default(),
+            entities: vec![
+                Box::new(ColTest::new(vec2(10.0, 10.0),vec2(0.0,0.0))),
+                Box::new(ColTest::new(vec2(20.0, 30.0),vec2(0.0,0.0))),
+            ],
+        }
     }
 }
 
@@ -30,11 +42,23 @@ impl Scene {
 
     pub fn update(&mut self, deltatime: f32,) {
         self.player.update(&mut self.level, deltatime);
+
+        for i in 0..self.entities.len() {
+            let (left, right) = self.entities.split_at_mut(i);
+            // The unwrap is safe as 'i' is always valid!
+            let (entity, right) = right.split_first_mut().unwrap();
+
+            entity.update(&mut left.iter().chain(right.iter()), &mut self.level, deltatime);
+        }
+
         self.level.update_bumped_tiles(deltatime);
     }
 
     pub fn draw(&self, lives: usize, resources: &Resources, debug: bool) {
         self.level.render_below(resources);
+        for entity in &self.entities {
+            entity.draw(resources, debug);
+        }
         self.player.draw(resources, debug);
         self.level.render_above(resources);
         self.level.render_bumped_tiles(resources);

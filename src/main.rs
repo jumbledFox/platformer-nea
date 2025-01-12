@@ -39,7 +39,7 @@ async fn main() {
     let mut test_scene = Scene::default();
     test_scene.foo();
 
-    let mut test_debug = false;
+    let mut test_debug = true;
 
     loop {
         if is_key_pressed(macroquad::input::KeyCode::Key0) {
