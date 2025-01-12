@@ -34,7 +34,7 @@ impl Entity for ColTest {
     }
 
     fn collision_sides(&self) -> &'static EntityCollisionSides {
-        &&EntityCollisionSides {
+        &EntityCollisionSides {
             top:    EntityCollision::Solid,
             bottom: EntityCollision::Solid,
             left:   EntityCollision::Solid,
