@@ -249,23 +249,23 @@ impl Player {
         // The block should also be broken/hit if it can be
 
         let tile_collision = level.tile_at_pos_collision(self.pos + HEAD); 
-        if let TileCollision::Solid { .. } = tile_collision {
+        if let Some(TileCollision::Solid { .. }) = tile_collision {
             level.hit_tile_at_pos(self.pos + HEAD, self.head_powerup);
             self.pos.y = (self.pos.y/16.0).ceil() * 16.0;
             self.vel.y = 0.0;
         }
 
-        if !level.tile_at_pos_collision(self.pos + HEAD).is_passable() {
-        }
+        // if !level.tile_at_pos_collision(self.pos + HEAD).is_passable() {
+        // }
     }
 
     fn collision_sides(&mut self, level: &Level) {
         // If the left/right sides are in a tile, the player should be pushed right/left to the nearest tile.
-        if level.tile_at_pos_collision(self.pos + SIDE_L).is_solid() {
+        if let Some(TileCollision::Solid { .. }) = level.tile_at_pos_collision(self.pos + SIDE_L) {
             self.pos.x = (self.pos.x/16.0).ceil() * 16.0 - SIDE_L.x;
             self.vel.x = 0.0;
         }
-        if level.tile_at_pos_collision(self.pos + SIDE_R).is_solid() {
+        if let Some(TileCollision::Solid { .. }) = level.tile_at_pos_collision(self.pos + SIDE_R) {
             self.pos.x = (self.pos.x/16.0).floor() * 16.0 + (16.0 - SIDE_R.x);
             self.vel.x = 0.0;
         }
@@ -280,13 +280,13 @@ impl Player {
         let mut push_to_top = false;
 
         // Normal solid tiles
-        if lc.is_solid() || rc.is_solid() {
+        if matches!(lc, Some(TileCollision::Solid { .. })) || matches!(rc, Some(TileCollision::Solid { .. })) {
             push_to_top = true;
         }
 
         // Platform tiles
         // We should only be pushed up into them if the foot y position is the top part of the tile
-        if ((self.pos.y + FOOT_L.y) % 16.0 <= 6.0) && (lc.is_platform() || rc.is_platform()) {
+        if ((self.pos.y + FOOT_L.y) % 16.0 <= 6.0) && (matches!(lc, Some(TileCollision::Platform { .. })) || matches!(rc, Some(TileCollision::Platform { .. }))) {
             push_to_top = true;
         } 
 

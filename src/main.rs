@@ -1,6 +1,6 @@
 use std::{thread::sleep, time::Duration};
 
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, WHITE}, input::is_key_pressed, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width}};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, WHITE}, input::is_key_pressed, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width, Conf}};
 use resources::Resources;
 use scene::Scene;
 
@@ -15,7 +15,16 @@ pub mod scene;
 pub const VIEW_WIDTH:  usize = 22;
 pub const VIEW_HEIGHT: usize = 14;
 
-#[macroquad::main("Fox")]
+fn window_conf()-> Conf {
+    let scale_factor = 4;
+    Conf { 
+        window_title: String::from("Fox :3"),
+        window_width:  VIEW_WIDTH  as i32 * 16 * scale_factor,
+        window_height: VIEW_HEIGHT as i32 * 16 * scale_factor,
+        ..Default::default()
+    }
+}
+#[macroquad::main(window_conf())]
 async fn main() {
     // Seed the randomness
     macroquad::rand::srand(macroquad::miniquad::date::now() as u64);

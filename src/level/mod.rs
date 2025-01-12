@@ -66,13 +66,13 @@ impl Default for Level {
                 0, 0, 0, 0, 0, 0, 0, 0, 0,10,10,10,10,10, 0, 0, 0,19, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16,16, 8,16,16,16,16,
                 0, 0,12,12,12,12,12,12,12,12,12,12,12, 0, 0, 0, 0,16, 0,10,10,10,
-                0, 0,11,13,13,13,13,13,13,13,13,13,14, 0, 0, 0, 0,16, 0, 0, 0,10,
+               11,11,11,13,13,13,13,13,13,13,13,13,14, 0, 0, 0, 0,16, 0, 0, 0,10,
                 0, 0, 0,11,13,13,13,13,13,11, 0, 1, 1, 1, 1,19,19,10, 0, 0, 0,10,
                 0, 0, 0, 0, 0, 0, 0, 0,11, 0, 0, 1, 1, 1, 1, 0, 0,10,10,10,10,10,
                 0, 8, 8,14, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,
                 0, 0, 0, 0, 0, 0, 0, 0, 0,12,12,12,12,12,12,12, 0, 0, 0, 0, 0,10,
-                8, 8, 8, 8, 8, 8, 0, 8, 8, 8,13,13,13,13,13, 5, 5, 5, 5, 5, 0, 5,
-                8, 8, 8, 8, 8, 8, 0, 8, 8, 8, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5,
+                8, 8, 8, 8, 8, 8, 0, 8, 8, 8,13,13,13,13,13, 5, 5, 5, 5, 0, 0, 5,
+                8, 8, 8, 8, 8, 8, 0, 8, 8, 8, 0, 0, 0, 0, 0, 5, 5, 5, 5, 0, 0, 5,
             ],
             bumped_tiles: Vec::with_capacity(10),
             physics: LevelPhysics::Air,
@@ -135,7 +135,7 @@ impl Level {
 
         let tile_data = tile_data(self.tiles[index]);
 
-        if let TileCollision::Solid { friction: _, bounce: _, hit_normal, hit_helmet } = &tile_data.collision {
+        if let Some(TileCollision::Solid { friction: _, bounce: _, hit_normal, hit_helmet }) = &tile_data.collision {
             let hit = match head_powerup {
                 HeadPowerup::None   => hit_normal,
                 HeadPowerup::Helmet => hit_helmet,
@@ -173,20 +173,20 @@ impl Level {
         }
     }
 
-    pub fn tile_at_pos_collision(&self, pos: Vec2) -> &TileCollision {
+    pub fn tile_at_pos_collision(&self, pos: Vec2) -> Option<&'static TileCollision> {
         // If the position is out of the map horizontally, it should be solid, however if it's below/above the map, it should be passable.
         let pos = pos / 16.0;
         if pos.x < 0.0 || pos.x >= self.width as f32 {
-            return &tile_data(get_tile_by_name("solid empty")).collision;
+            return tile_data(get_tile_by_name("solid empty")).collision.as_ref();
         }
         if pos.y < 0.0 || pos.y >= self.height as f32 {
-            return &tile_data(get_tile_by_name("empty")).collision;
+            return tile_data(get_tile_by_name("empty")).collision.as_ref();
         }
         let x = pos.x.floor() as usize;
         let y = pos.y.floor() as usize;
         let index = y * self.width + x;
 
-        &tile_data(self.tiles[index]).collision
+        tile_data(self.tiles[index]).collision.as_ref()
     }
 
     // Convert a tiles index to a 2D coordinate
