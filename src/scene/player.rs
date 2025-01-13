@@ -1,17 +1,19 @@
 // The player struct.
 // Controlled with keyboard, collides with world, etc.
 
-use macroquad::{color::{BLUE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Vec2}, shapes::draw_circle, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{BLUE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, shapes::{draw_circle, draw_rectangle_lines}, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{level::{tile::TileCollision, Level}, resources::{PlayerArmKind, PlayerPart, Resources}, text_renderer::{render_text, Align}, util::approach_target};
+use crate::{level::Level, resources::{PlayerArmKind, PlayerPart, Resources}, text_renderer::{render_text, Align}, util::approach_target};
+
+use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityCollisionSides}};
 
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.5);
 const SIDE_L:  Vec2 = vec2( 4.0,  8.0);
 const SIDE_R:  Vec2 = vec2(12.0,  8.0);
-const FOOT_L:  Vec2 = vec2( 5.0, 16.0);
-const FOOT_R:  Vec2 = vec2(10.0, 16.0);
+const FOOT_L:  Vec2 = vec2( 5.0, 15.9);
+const FOOT_R:  Vec2 = vec2(10.0, 15.9);
 
 // Control
 const KEY_LEFT:  KeyCode = KeyCode::A;
@@ -242,65 +244,20 @@ impl Player {
 
         self.vel.y = (self.vel.y + self.deltatime * self.fall_gravity()).min(self.max_fall_speed);
     }
+}
 
-    // Collision for different parts of the player
-    fn collision_head(&mut self, level: &mut Level) {
-        // If the head is in a block and the player moved up, the player should be pushed down to the nearest tile.
-        // The block should also be broken/hit if it can be
-
-        let tile_collision = level.tile_at_pos_collision(self.pos + HEAD); 
-        if let Some(TileCollision::Solid { .. }) = tile_collision {
-            level.hit_tile_at_pos(self.pos + HEAD, self.head_powerup);
-            self.pos.y = (self.pos.y/16.0).ceil() * 16.0;
-            self.vel.y = 0.0;
-        }
-
-        // if !level.tile_at_pos_collision(self.pos + HEAD).is_passable() {
-        // }
+impl Entity for Player {
+    fn pos(&self) -> Vec2 {
+        self.pos
     }
-
-    fn collision_sides(&mut self, level: &Level) {
-        // If the left/right sides are in a tile, the player should be pushed right/left to the nearest tile.
-        if let Some(TileCollision::Solid { .. }) = level.tile_at_pos_collision(self.pos + SIDE_L) {
-            self.pos.x = (self.pos.x/16.0).ceil() * 16.0 - SIDE_L.x;
-            self.vel.x = 0.0;
-        }
-        if let Some(TileCollision::Solid { .. }) = level.tile_at_pos_collision(self.pos + SIDE_R) {
-            self.pos.x = (self.pos.x/16.0).floor() * 16.0 + (16.0 - SIDE_R.x);
-            self.vel.x = 0.0;
-        }
+    fn hitbox(&self) -> Rect {
+        Rect::new(self.pos.x + 3.5, self.pos.y, 9.0, 16.0)
     }
-
-    fn collision_feet(&mut self, level: &Level) {
-        // If the paws are underground, the player should be pushed up to the nearest tile.
-
-        let lc = level.tile_at_pos_collision(self.pos + FOOT_L);
-        let rc = level.tile_at_pos_collision(self.pos + FOOT_R);
-
-        let mut push_to_top = false;
-
-        // Normal solid tiles
-        if matches!(lc, Some(TileCollision::Solid { .. })) || matches!(rc, Some(TileCollision::Solid { .. })) {
-            push_to_top = true;
-        }
-
-        // Platform tiles
-        // We should only be pushed up into them if the foot y position is the top part of the tile
-        if ((self.pos.y + FOOT_L.y) % 16.0 <= 6.0) && (matches!(lc, Some(TileCollision::Platform { .. })) || matches!(rc, Some(TileCollision::Platform { .. }))) {
-            push_to_top = true;
-        } 
-
-        // Push the player to the top of the tile
-        self.grounded = false;
-        if push_to_top {
-            self.pos.y = (self.pos.y/16.0).floor() * 16.0;
-            self.vel.y = 0.0;
-            self.grounded = true;
-        }
+    fn collision_sides(&self) -> &'static EntityCollisionSides {
+        EntityCollisionSides::solid()
     }
-
-
-    pub fn update(&mut self, level: &mut Level, deltatime: f32) {
+    
+    fn update(&mut self, level: &mut Level, deltatime: f32) {
         if is_key_pressed(KeyCode::Key2) {
             self.head_powerup = match self.head_powerup {
                 HeadPowerup::None => HeadPowerup::Helmet,
@@ -320,13 +277,25 @@ impl Player {
         self.process_current_state(level);
 
         self.pos += self.vel;
-        
-        // Collision
-        self.collision_sides(level);
+    }
+
+    fn update_collision(
+        &mut self,
+        others: &[&mut Box<dyn Entity>],
+        level: &mut Level,
+        deltatime: f32
+    ) {
+        collision_left(SIDE_L, &mut self.pos, Some(&mut self.vel), others, level);
+        collision_right(SIDE_R, &mut self.pos, Some(&mut self.vel), others, level);
         if self.state == State::Jumping {
-            self.collision_head(level);
+            collision_top(HEAD, &mut self.pos, Some(&mut self.vel), others, level);
         } else {
-            self.collision_feet(level);
+            let foot_l = collision_bottom(FOOT_L, &mut self.pos, Some(&mut self.vel), others, level);
+            let foot_r = collision_bottom(FOOT_R, &mut self.pos, Some(&mut self.vel), others, level);
+            self.grounded = false;
+            if !foot_l.not_solid() || !foot_r.not_solid() {
+                self.grounded = true;
+            }
         }
 
         // Walking animation
@@ -336,7 +305,7 @@ impl Player {
         }
     }
 
-    pub fn draw(&self, resources: &Resources, debug: bool) {
+    fn draw(&self, resources: &Resources, debug: bool) {
         let holding = is_key_down(KeyCode::Key1);
         let (front_arm, back_arm) = match (self.state, holding) {
             (_, true) => (PlayerArmKind::Holding, Some(PlayerArmKind::HoldingBack)),
@@ -395,6 +364,8 @@ impl Player {
             render_text(&format!("pos: [{:8.3}, {:8.3}]", self.pos.x, self.pos.y), RED, vec2(1.0, 30.0), Vec2::ONE, Align::End, resources.font_atlas());
             render_text(&format!("vel: [{:8.3}, {:8.3}]", self.vel.x, self.vel.y), RED, vec2(1.0, 41.0), Vec2::ONE, Align::End, resources.font_atlas());
             render_text(&format!("state: {:?}", self.state), RED, vec2(1.0, 52.0), Vec2::ONE, Align::End, resources.font_atlas());
+
+            draw_rectangle_lines(self.hitbox().x, self.hitbox().y, self.hitbox().w, self.hitbox().h, 2.0, BLUE);
 
             // Debug points
             for (point, color) in [

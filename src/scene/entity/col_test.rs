@@ -21,7 +21,7 @@ pub struct ColTest {
 
 impl ColTest {
     pub fn new(pos: Vec2, vel: Vec2, controlling: bool) -> Self {
-        Self { pos, vel, controlling: true }
+        Self { pos, vel, controlling }
     }
 }
 
@@ -42,7 +42,7 @@ impl Entity for ColTest {
         }
     }
 
-    fn update(&mut self, others: &[&mut Box<dyn Entity>], level: &mut Level, deltatime: f32) {
+    fn update(&mut self, level: &mut Level, deltatime: f32) {
         self.vel.x = 0.0;
         if self.controlling {
             let speed = 64.0;
@@ -54,7 +54,9 @@ impl Entity for ColTest {
         self.vel.y += deltatime * 500.0;
 
         self.pos += self.vel * deltatime;
+    }
 
+    fn update_collision(&mut self, others: &[&mut Box<dyn Entity>], level: &mut Level, deltatime: f32) {
         collision_left(COL_SLT, &mut self.pos, Some(&mut self.vel), others, level);
         collision_left(COL_SLB, &mut self.pos, Some(&mut self.vel), others, level);
         collision_right(COL_SRT, &mut self.pos, Some(&mut self.vel), others, level);
