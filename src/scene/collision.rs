@@ -11,6 +11,8 @@ use super::entity::Entity;
 
 // TODO: Find out if an entity is 'stuck' in a block and prevent that
 
+// TODO: Do collision multiple times to make sure things don't fall through level
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Side {
     Top, Bottom, Left, Right,
