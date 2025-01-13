@@ -2,7 +2,7 @@
 // e.g. level, player, enemies, timer, etc
 
 use entity::{col_test::ColTest, Entity};
-use macroquad::{color::{GREEN, ORANGE, WHITE}, math::vec2};
+use macroquad::{color::{GREEN, ORANGE, WHITE}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, Vec2}};
 use player::Player;
 
 use crate::{level::Level, resources::Resources, text_renderer::{render_text, Align}};
@@ -31,7 +31,7 @@ impl Default for Scene {
                 // Box::new(ColTest::new(vec2(60.0, 10.0),vec2(0.0,0.0), false)),
                 Box::new(Player::default()),
                 Box::new(ColTest::new(vec2(30.0, 10.0),vec2(0.0,0.0), true)),
-                Box::new(ColTest::new(vec2(30.0, 10.0),vec2(0.0,0.0), false)),
+                Box::new(ColTest::new(vec2(50.0, 10.0),vec2(0.0,0.0), false)),
             ],
         }
     }
@@ -43,6 +43,14 @@ impl Scene {
     }
 
     pub fn update(&mut self, deltatime: f32,) {
+        if is_key_down(KeyCode::Key4) {
+            let mut pos = vec2(40.0, 0.0);
+            for i in 0..4 {
+                self.entities.push(Box::new(ColTest::new(pos, Vec2::ZERO, false)));
+                pos.y += 20.0;
+            }
+        }
+
         // self.player.update(&mut self.level, deltatime);
 
         for e in &mut self.entities {

@@ -28,7 +28,7 @@ pub enum Collision {
     Tile(&'static TileCollision),
     // TODO: just use entity index in 'others' and work from there?
     // TODO: Make some nicer collision resolution functions between entities, e.g. vertical do the ones going down first...
-    Entity { collision: &'static EntityCollision, hitbox: Rect },
+    Entity(usize),
 }
 
 impl Collision {
@@ -36,7 +36,8 @@ impl Collision {
         match self {
             &Collision::None => true,
             &Collision::Tile(_) => false,
-            &Collision::Entity{ collision, ..} => !matches!(collision, &EntityCollision::Solid)
+            // &Collision::Entity{ collision, ..} => !matches!(collision, &EntityCollision::Solid)
+            _=> false,
         }
     }
 }
@@ -52,17 +53,11 @@ pub fn point_collision(side: Side, point: Vec2, pos: Vec2, others: &[&mut Box<dy
     }
 
     // Tile check didn't have any, check for entites !!
-    for other in others {
+    for (i, other) in others.iter().enumerate() {
         let hitbox = other.hitbox();
         if hitbox.contains(pos + point) {
-            let sides = other.collision_sides();
-            let collision = match side {
-                Side::Top    => &sides.top,
-                Side::Bottom => &sides.bottom,
-                Side::Left   => &sides.left,
-                Side::Right  => &sides.right,
-            };
-            return Collision::Entity { collision, hitbox }
+            println!("aah");
+            return Collision::Entity(i);
         }
     }
 
@@ -80,9 +75,9 @@ pub fn collision_top(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, others
         // Push this entity down so it's touching the nearest tile
         pos.y = (pos.y / 16.0).ceil() * 16.0 - (point.y.rem_euclid(16.0));
     }
-    if let Collision::Entity { collision: _, hitbox } = collision {
+    if let Collision::Entity(i) = collision {
         // Push this entity out to the bottom side of the hitbox
-        pos.y = hitbox.bottom() + point.y;
+        pos.y = others[i].hitbox().bottom() + point.y;
     }
     if let Some(v) = vel {
         v.y = 0.0;
@@ -102,10 +97,10 @@ pub fn collision_bottom(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, oth
         // Push the pos up so it's touching the nearest tile
         pos.y = (pos.y / 16.0).floor() * 16.0 + (16.0 - point.y.rem_euclid(16.0));
     }
-    if let Collision::Entity { collision: _, hitbox } = collision {
+    if let Collision::Entity(i) = collision {
         // Push this entity out to the top side of the hitbox
         println!("\nold: {:?}", pos.y);
-        pos.y = hitbox.top() - point.y;
+        pos.y = others[i].hitbox().top() - point.y;
         println!("corrected: {:?}", pos.y);
     }
     if let Some(vel) = vel {
@@ -126,9 +121,9 @@ pub fn collision_left(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, other
         // Push this entity right so it's touching the nearest tile
         pos.x = (pos.x / 16.0).ceil() * 16.0 - (point.x.rem_euclid(16.0));
     }
-    if let Collision::Entity { collision: _, hitbox } = collision {
+    if let Collision::Entity(i) = collision {
         // Push this entity out to the right side of the hitbox
-        pos.x = hitbox.right();
+        pos.x = others[i].hitbox().right();
     }
     if let Some(v) = vel {
         v.x = 0.0;
@@ -148,9 +143,10 @@ pub fn collision_right(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, othe
         // Push this entity left so it's touching the nearest tile
         pos.x = (pos.x / 16.0).floor() * 16.0 + (16.0 - point.x.rem_euclid(16.0));
     }
-    if let Collision::Entity { collision: _, hitbox } = collision {
+    if let Collision::Entity(i) = collision {
         // Push this entity out to the left side of the hitbox
-        pos.x = hitbox.left() - point.x;
+        pos.x = others[i].hitbox().left() - point.x;
+        println!("afijwafwa");
     }
     if let Some(v) = vel {
         v.x = 0.0;

@@ -68,7 +68,8 @@ const TILE_DATA: &[TileData] = &[
     },
     TileData {
         name: "rope railing",
-        texture: Some(TileTexture::fixed(44+32, TileTextureConnection::Horizontal, true)),
+        texture: None,
+        // texture: Some(TileTexture::fixed(44+32, TileTextureConnection::Horizontal, true)),
         collision: None,
     },
     TileData {
