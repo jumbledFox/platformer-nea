@@ -218,26 +218,30 @@ pub enum TileCollision {
     Solid {
         friction: f32,
         bounce: f32,
-        hit_normal: TileHit,
-        hit_helmet: TileHit ,
+        hit_soft: TileHit,
+        hit_hard: TileHit ,
         // damage
     },
+}
+
+pub enum TileHitKind {
+    Soft, Hard,
 }
 
 impl TileCollision {
     pub const fn platform(friction: f32, bounce: f32) -> Self {
         Self::Platform { friction, bounce }
     }
-    pub const fn solid(friction: f32, bounce: f32, hit_normal: TileHit, hit_helmet: TileHit) -> Self {
-        Self::Solid { friction, bounce, hit_normal, hit_helmet }
+    pub const fn solid(friction: f32, bounce: f32, hit_soft: TileHit, hit_hard: TileHit) -> Self {
+        Self::Solid { friction, bounce, hit_soft, hit_hard }
     }
 
     pub const fn solid_default() -> Self {
         Self::Solid {
             friction: 1.0,
             bounce: 0.0,
-            hit_normal: TileHit::None,
-            hit_helmet: TileHit::None,
+            hit_soft: TileHit::None,
+            hit_hard: TileHit::None,
         }
     }
 

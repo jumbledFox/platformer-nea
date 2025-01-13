@@ -1,15 +1,13 @@
 // The current level being played along with the stuff it needs
 // e.g. level, player, enemies, timer, etc
 
-use entity::{col_test::ColTest, Entity};
-use macroquad::{color::{GREEN, ORANGE, WHITE}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, Vec2}};
-use player::Player;
+use entity::{col_test::ColTest, player::Player, Entity};
+use macroquad::{color::{GREEN, ORANGE, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Vec2}};
 
 use crate::{level::Level, resources::Resources, text_renderer::{render_text, Align}};
 
 pub mod collision;
 pub mod entity;
-pub mod player;
 
 pub struct Scene {
     level: Level,
@@ -43,22 +41,19 @@ impl Scene {
     }
 
     pub fn update(&mut self, deltatime: f32,) {
-        if is_key_down(KeyCode::Key4) {
+        if is_key_pressed(KeyCode::Key4) {
             let mut pos = vec2(40.0, 0.0);
-            for i in 0..4 {
+            for _ in 0..4 {
                 self.entities.push(Box::new(ColTest::new(pos, Vec2::ZERO, false)));
-                pos.y += 20.0;
+                pos.x += 20.0;
             }
         }
-
-        // self.player.update(&mut self.level, deltatime);
 
         for e in &mut self.entities {
             e.update(&mut self.level, deltatime);
         }
 
         let mut others: Vec<&mut Box<dyn Entity>>;
-
         for i in 0..self.entities.len() {
             let (left, right) = self.entities.split_at_mut(i);
             // The unwrap is safe as 'i' is always valid!
@@ -69,8 +64,10 @@ impl Scene {
                 .chain(right.iter_mut())
                 .collect();
 
-            entity.update_collision(&others, &mut self.level, deltatime);
+            entity.update_collision(&mut others, &mut self.level);
         }
+
+        self.entities.retain(|e| !e.should_delete());
 
         self.level.update_bumped_tiles(deltatime);
     }

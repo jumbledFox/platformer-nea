@@ -1,6 +1,6 @@
 use macroquad::{math::Rect, texture::Texture2D};
 
-use crate::scene::player::{FeetPowerup, HeadPowerup};
+use crate::scene::entity::player::{FeetPowerup, HeadPowerup};
 
 const TILES_TEXTURE:  &[u8] = include_bytes!("../res/tiles.png");
 const FONT_TEXTURE:   &[u8] = include_bytes!("../res/font.png");

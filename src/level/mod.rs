@@ -3,9 +3,9 @@
 use std::f32::consts::PI;
 
 use macroquad::math::{vec2, Vec2};
-use tile::{get_tile_by_name, render_tile, tile_data, TileCollision, TileHit, TileTextureConnection};
+use tile::{get_tile_by_name, render_tile, tile_data, TileCollision, TileHit, TileHitKind, TileTextureConnection};
 
-use crate::{resources::Resources, scene::player::HeadPowerup};
+use crate::{resources::Resources, scene::entity::player::HeadPowerup};
 
 pub mod tile;
 
@@ -65,7 +65,7 @@ impl Default for Level {
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16, 0, 0, 0,19, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0,10,10,10,10,10, 0, 0, 0,19, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,16,16,16,16, 8,16,16,16,16,
-                0, 0,12,12,12,12,12,12,12,12,12,12,12, 0, 0, 0, 0,16, 0,10,10,10,
+                0, 0,12,12,12,12,12,12,12,12,12,12,16, 0, 0, 0, 0,16, 0,10,10,10,
                11,11,11,13,13,13,13,13,13,13,13,13,14, 0, 0, 0, 0,16, 0, 0, 0,10,
                 0, 0, 0,11,13,13,13,13,13,11, 0, 1, 1, 1, 1,19,19,10, 0, 0, 0,10,
                 0, 0, 0, 0, 0, 0, 0, 0,11, 0, 0, 1, 1, 1, 1, 0, 0,10,10,10,10,10,
@@ -124,7 +124,7 @@ impl Level {
         });
     }
 
-    pub fn hit_tile_at_pos(&mut self, pos: Vec2, head_powerup: HeadPowerup) {
+    pub fn hit_tile_at_pos(&mut self, pos: Vec2, hit_kind: TileHitKind) {
         let pos = pos / 16.0;
         if pos.x < 0.0 || pos.x >= self.width as f32 || pos.y < 0.0 || pos.y >= self.height as f32 {
             return;
@@ -135,10 +135,10 @@ impl Level {
 
         let tile_data = tile_data(self.tiles[index]);
 
-        if let Some(TileCollision::Solid { friction: _, bounce: _, hit_normal, hit_helmet }) = &tile_data.collision {
-            let hit = match head_powerup {
-                HeadPowerup::None   => hit_normal,
-                HeadPowerup::Helmet => hit_helmet,
+        if let Some(TileCollision::Solid { friction: _, bounce: _, hit_soft, hit_hard }) = &tile_data.collision {
+            let hit = match hit_kind {
+                TileHitKind::Soft => hit_soft,
+                TileHitKind::Hard => hit_hard,
             };
 
             if let TileHit::Bump = hit {

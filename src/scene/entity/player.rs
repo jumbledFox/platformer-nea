@@ -3,9 +3,9 @@
 
 use macroquad::{color::{BLUE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, shapes::{draw_circle, draw_rectangle_lines}, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{level::Level, resources::{PlayerArmKind, PlayerPart, Resources}, text_renderer::{render_text, Align}, util::approach_target};
+use crate::{level::{tile::TileHitKind, Level}, resources::{PlayerArmKind, PlayerPart, Resources}, scene::collision::{collision_bottom, collision_left, collision_right, collision_top, Collision}, text_renderer::{render_text, Align}, util::approach_target};
 
-use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityCollisionSides}};
+use super::{Entity, EntityCollisionSides};
 
 
 // Collision points
@@ -247,17 +247,14 @@ impl Player {
 }
 
 impl Entity for Player {
-    fn pos(&self) -> Vec2 {
-        self.pos
-    }
-    fn hitbox(&self) -> Rect {
-        Rect::new(self.pos.x + 3.5, self.pos.y, 9.0, 16.0)
-    }
-    fn collision_sides(&self) -> &'static EntityCollisionSides {
-        EntityCollisionSides::solid()
-    }
-    
     fn update(&mut self, level: &mut Level, deltatime: f32) {
+
+        // Walking animation
+        self.step_anim = (self.step_anim + self.vel.x.abs() / 12.0).rem_euclid(1.0);
+        if self.vel.x == 0.0 {
+            self.step_anim = 0.4;
+        }
+
         if is_key_pressed(KeyCode::Key2) {
             self.head_powerup = match self.head_powerup {
                 HeadPowerup::None => HeadPowerup::Helmet,
@@ -279,29 +276,29 @@ impl Entity for Player {
         self.pos += self.vel;
     }
 
-    fn update_collision(
-        &mut self,
-        others: &[&mut Box<dyn Entity>],
-        level: &mut Level,
-        deltatime: f32
-    ) {
+    fn update_collision(&mut self, others: &mut [&mut Box<dyn Entity>], level: &mut Level) {
         collision_left(SIDE_L, &mut self.pos, Some(&mut self.vel), others, level);
         collision_right(SIDE_R, &mut self.pos, Some(&mut self.vel), others, level);
         if self.state == State::Jumping {
-            collision_top(HEAD, &mut self.pos, Some(&mut self.vel), others, level);
+            let hit_kind = match self.head_powerup {
+                HeadPowerup::None   => TileHitKind::Soft,
+                HeadPowerup::Helmet => TileHitKind::Hard,
+            };
+            collision_top(HEAD, &mut self.pos, Some(&mut self.vel), Some(hit_kind), others, level);
         } else {
             let foot_l = collision_bottom(FOOT_L, &mut self.pos, Some(&mut self.vel), others, level);
             let foot_r = collision_bottom(FOOT_R, &mut self.pos, Some(&mut self.vel), others, level);
             self.grounded = false;
-            if !foot_l.not_solid() || !foot_r.not_solid() {
+            if foot_l.is_tile() || foot_r.is_tile() {
                 self.grounded = true;
             }
-        }
 
-        // Walking animation
-        self.step_anim = (self.step_anim + self.vel.x.abs() / 12.0).rem_euclid(1.0);
-        if self.vel.x == 0.0 {
-            self.step_anim = 0.5;
+            if let Collision::Entity(i) = foot_l {
+                others[i].stomp();
+            }
+            if let Collision::Entity(i) = foot_r {
+                others[i].stomp();
+            }
         }
     }
 
@@ -379,5 +376,18 @@ impl Entity for Player {
                 draw_circle(self.pos.x + point.x, self.pos.y + point.y, 1.5, color);
             }
         }
+    }
+
+    fn pos(&self) -> Vec2 { self.pos }
+    fn vel(&self) -> Vec2 { self.vel }
+
+    fn stompable(&self) -> bool { false }
+    fn should_delete(&self) -> bool { false }
+    
+    fn hitbox(&self) -> Rect {
+        Rect::new(self.pos.x + 3.5, self.pos.y, 9.0, 16.0)
+    }
+    fn collision_sides(&self) -> &'static EntityCollisionSides {
+        EntityCollisionSides::none()
     }
 }
