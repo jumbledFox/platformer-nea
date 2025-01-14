@@ -43,7 +43,7 @@ pub trait Entity {
     fn pos(&self) -> Vec2;
     fn vel(&self) -> Vec2;
 
-    fn stompable(&self) -> bool;
+    fn stompable(&self) -> bool { false }
     fn stomp(&mut self) {}
     fn should_delete(&self) -> bool;
 

@@ -303,7 +303,7 @@ impl Entity for Player {
                 stomp = true;
             }
             if stomp {
-                self.vel.y = -self.jump_amount();
+                self.change_state(State::Jumping, level);
             }
         }
     }
