@@ -1,4 +1,4 @@
-use macroquad::math::{Rect, Vec2};
+use macroquad::math::{vec2, Rect, Vec2};
 
 use crate::{level::Level, resources::Resources};
 
@@ -27,6 +27,13 @@ impl EntityCollisionSides {
         }
     }
 }
+
+// Default entity - able to be picked up and does nothing
+pub const COL_TOP:   Vec2 = vec2( 8.0,  0.1);
+pub const COL_BOT_L: Vec2 = vec2( 4.0, 15.9);
+pub const COL_BOT_R: Vec2 = vec2(12.0, 15.9);
+pub const COL_LEFT:  Vec2 = vec2( 0.1,  8.0);
+pub const COL_RIGHT: Vec2 = vec2(15.9,  8.0);
 
 pub trait Entity {
     fn update(&mut self, level: &mut Level, deltatime: f32);

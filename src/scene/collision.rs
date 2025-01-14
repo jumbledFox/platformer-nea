@@ -80,11 +80,15 @@ pub fn collision_top(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_ki
     collision
 }
 
-pub fn collision_bottom(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, others: &[&mut Box<dyn Entity>], level: &mut Level) -> Collision {
+pub fn collision_bottom(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_kind: Option<TileHitKind>, others: &[&mut Box<dyn Entity>], level: &mut Level) -> Collision {
     let collision = point_collision(Side::Bottom, point, *pos, others, &level);
 
     if !collision.is_tile() {
         return collision;
+    }
+
+    if let Some(hit_kind) = hit_kind {
+        level.hit_tile_at_pos(*pos + point, hit_kind);
     }
 
     // Push the pos up so it's touching the nearest tile
@@ -96,11 +100,15 @@ pub fn collision_bottom(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, oth
     collision
 }
 
-pub fn collision_left(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, others: &[&mut Box<dyn Entity>], level: &mut Level) -> Collision {
+pub fn collision_left(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_kind: Option<TileHitKind>, others: &[&mut Box<dyn Entity>], level: &mut Level) -> Collision {
     let collision = point_collision(Side::Left, point, *pos, others, &level);
 
     if !collision.is_tile() {
         return collision;
+    }
+
+    if let Some(hit_kind) = hit_kind {
+        level.hit_tile_at_pos(*pos + point, hit_kind);
     }
 
     // Push this entity right so it's touching the nearest tile
@@ -112,11 +120,15 @@ pub fn collision_left(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, other
     collision
 }
 
-pub fn collision_right(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, others: &[&mut Box<dyn Entity>], level: &mut Level) -> Collision {
+pub fn collision_right(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_kind: Option<TileHitKind>, others: &[&mut Box<dyn Entity>], level: &mut Level) -> Collision {
     let collision = point_collision(Side::Right, point, *pos, others, &level);
 
     if !collision.is_tile() {
         return collision;
+    }
+
+    if let Some(hit_kind) = hit_kind {
+        level.hit_tile_at_pos(*pos + point, hit_kind);
     }
 
     // Push this entity left so it's touching the nearest tile

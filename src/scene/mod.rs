@@ -21,14 +21,14 @@ impl Default for Scene {
     fn default() -> Self {
         Self {
             level: Level::default(),
-            timer: 100.0,
+            timer: 420.0,
             chips: 42,
             entities: vec![
                 // Box::new(ColTest::new(vec2(30.0, 30.0),vec2(0.0,0.0), false)),
                 // Box::new(ColTest::new(vec2(50.0, 30.0),vec2(0.0,0.0), false)),
                 // Box::new(ColTest::new(vec2(60.0, 10.0),vec2(0.0,0.0), false)),
                 Box::new(Player::default()),
-                Box::new(ColTest::new(vec2(30.0, 10.0),vec2(0.0,0.0), true)),
+                // Box::new(ColTest::new(vec2(30.0, 10.0),vec2(0.0,0.0), true)),
                 Box::new(ColTest::new(vec2(50.0, 10.0),vec2(0.0,0.0), false)),
             ],
         }
@@ -41,6 +41,8 @@ impl Scene {
     }
 
     pub fn update(&mut self, deltatime: f32,) {
+        self.timer -= deltatime;
+
         if is_key_pressed(KeyCode::Key4) {
             let mut pos = vec2(40.0, 0.0);
             for _ in 0..4 {
@@ -85,7 +87,7 @@ impl Scene {
         render_text("*",   WHITE,  vec2( 40.0, 24.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
         render_text("BOOTS",   WHITE,  vec2(176.0, 10.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
         render_text("HELMET",  WHITE,  vec2(176.0, 22.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
-        render_text("420",     WHITE,  vec2(305.0,  3.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
-        render_text("69",      GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
+        render_text(&format!("{:?}", self.timer.floor() as usize), WHITE,  vec2(305.0,  3.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
+        render_text(&format!("{:?}", self.chips), GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
     }
 }

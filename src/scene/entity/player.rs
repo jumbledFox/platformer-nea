@@ -277,8 +277,8 @@ impl Entity for Player {
     }
 
     fn update_collision(&mut self, others: &mut [&mut Box<dyn Entity>], level: &mut Level) {
-        collision_left(SIDE_L, &mut self.pos, Some(&mut self.vel), others, level);
-        collision_right(SIDE_R, &mut self.pos, Some(&mut self.vel), others, level);
+        collision_left(SIDE_L, &mut self.pos, Some(&mut self.vel), None, others, level);
+        collision_right(SIDE_R, &mut self.pos, Some(&mut self.vel), None, others, level);
         if self.state == State::Jumping {
             let hit_kind = match self.head_powerup {
                 HeadPowerup::None   => TileHitKind::Soft,
@@ -286,18 +286,24 @@ impl Entity for Player {
             };
             collision_top(HEAD, &mut self.pos, Some(&mut self.vel), Some(hit_kind), others, level);
         } else {
-            let foot_l = collision_bottom(FOOT_L, &mut self.pos, Some(&mut self.vel), others, level);
-            let foot_r = collision_bottom(FOOT_R, &mut self.pos, Some(&mut self.vel), others, level);
+            let foot_l = collision_bottom(FOOT_L, &mut self.pos, Some(&mut self.vel), None, others, level);
+            let foot_r = collision_bottom(FOOT_R, &mut self.pos, Some(&mut self.vel), None, others, level);
             self.grounded = false;
             if foot_l.is_tile() || foot_r.is_tile() {
                 self.grounded = true;
             }
 
+            let mut stomp = false;
             if let Collision::Entity(i) = foot_l {
                 others[i].stomp();
+                stomp = true;
             }
             if let Collision::Entity(i) = foot_r {
                 others[i].stomp();
+                stomp = true;
+            }
+            if stomp {
+                self.vel.y = -self.jump_amount();
             }
         }
     }

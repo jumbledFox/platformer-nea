@@ -1,6 +1,6 @@
 use macroquad::{color::{BLUE, ORANGE, RED, WHITE}, input::{is_key_down, KeyCode}, math::{vec2, Rect, Vec2}, shapes::{draw_circle, draw_rectangle_lines}, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{level::Level, resources::Resources, scene::collision::{collision_bottom, collision_left, collision_right, collision_top}};
+use crate::{level::{tile::TileHitKind, Level}, resources::Resources, scene::collision::{collision_bottom, collision_left, collision_right, collision_top}};
 
 use super::{Entity, EntityCollision, EntityCollisionSides};
 
@@ -46,15 +46,15 @@ impl Entity for ColTest {
     }
 
     fn update_collision(&mut self, others: &mut [&mut Box<dyn Entity>], level: &mut Level) {
-        if !collision_left(COL_LEFT, &mut self.pos, Some(&mut self.vel), others, level).is_none() {
+        if !collision_left(COL_LEFT, &mut self.pos, Some(&mut self.vel), Some(TileHitKind::Soft), others, level).is_none() {
             self.dir = false;
         }
-        if !collision_right(COL_RIGHT, &mut self.pos, Some(&mut self.vel), others, level).is_none() {
+        if !collision_right(COL_RIGHT, &mut self.pos, Some(&mut self.vel), Some(TileHitKind::Soft),others, level).is_none() {
             self.dir = true;
         }
         collision_top(COL_TOP, &mut self.pos, Some(&mut self.vel), None, others, level);
-        collision_bottom(COL_BOTTOM_L, &mut self.pos, Some(&mut self.vel), others, level);
-        collision_bottom(COL_BOTTOM_R, &mut self.pos, Some(&mut self.vel), others, level);
+        collision_bottom(COL_BOTTOM_L, &mut self.pos, Some(&mut self.vel), None, others, level);
+        collision_bottom(COL_BOTTOM_R, &mut self.pos, Some(&mut self.vel), None, others, level);
     }
 
     fn draw(&self, resources: &Resources, debug: bool) {
