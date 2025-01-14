@@ -1,7 +1,7 @@
 // The current level being played along with the stuff it needs
 // e.g. level, player, enemies, timer, etc
 
-use entity::{col_test::ColTest, player::Player, Entity};
+use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
 use macroquad::{color::{GREEN, ORANGE, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Vec2}};
 
 use crate::{level::Level, resources::Resources, text_renderer::{render_text, Align}};
@@ -30,6 +30,18 @@ impl Default for Scene {
                 Box::new(Player::default()),
                 // Box::new(ColTest::new(vec2(30.0, 10.0),vec2(0.0,0.0), true)),
                 Box::new(ColTest::new(vec2(50.0, 10.0),vec2(0.0,0.0), false)),
+                Box::new(Frog::new()),
+                Box::new(Frog::new()),
+                Box::new(Frog::new()),
+                Box::new(Frog::new()),
+                Box::new(Frog::new()),
+                Box::new(Frog::new()),
+                Box::new(Frog::new()),
+                Box::new(Frog::new()),
+                Box::new(Frog::new()),
+                Box::new(Frog::new()),
+                Box::new(Frog::new()),
+                Box::new(Frog::new()),
             ],
         }
     }
@@ -51,10 +63,6 @@ impl Scene {
             }
         }
 
-        for e in &mut self.entities {
-            e.update(&mut self.level, deltatime);
-        }
-
         let mut others: Vec<&mut Box<dyn Entity>>;
         for i in 0..self.entities.len() {
             let (left, right) = self.entities.split_at_mut(i);
@@ -66,6 +74,7 @@ impl Scene {
                 .chain(right.iter_mut())
                 .collect();
 
+            entity.update(&mut others, &mut self.level, deltatime);
             entity.update_collision(&mut others, &mut self.level);
         }
 
@@ -76,8 +85,9 @@ impl Scene {
 
     pub fn draw(&self, lives: usize, resources: &Resources, debug: bool) {
         self.level.render_below(resources);
-        for entity in &self.entities {
-            entity.draw(resources, debug);
+        // Draw the entities in reverse so the player is always on top
+        for (i, entity) in self.entities.iter().enumerate().rev() {
+            entity.draw(resources, i, debug);
         }
         self.level.render_above(resources);
         self.level.render_bumped_tiles(resources);

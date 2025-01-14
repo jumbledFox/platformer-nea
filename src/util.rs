@@ -1,3 +1,5 @@
+use macroquad::{color::Color, math::Rect, shapes::draw_rectangle_lines};
+
 // For some reason, checking if two strings in rust isn't possible in a const function.
 // I've written my own to allow this.
 pub const fn const_str_eq(a: &str, b: &str) -> bool {
@@ -27,4 +29,8 @@ pub fn approach_target(val: &mut f32, step: f32, target: f32) {
     } else if *val > target {
         *val = (*val - step).max(target);
     }
+}
+
+pub fn draw_rect_lines(rect: Rect, color: Color) {
+    draw_rectangle_lines(rect.x.round(), rect.y.round(), rect.w.round(), rect.h.round(), 2.0, color);
 }

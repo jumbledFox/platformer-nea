@@ -1,6 +1,6 @@
-use macroquad::{color::{BLUE, ORANGE, RED, WHITE}, input::{is_key_down, KeyCode}, math::{vec2, Rect, Vec2}, shapes::{draw_circle, draw_rectangle_lines}, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{BLUE, GREEN, ORANGE, RED, WHITE}, input::{is_key_down, KeyCode}, math::{vec2, Rect, Vec2}, shapes::{draw_circle, draw_rectangle_lines}, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{level::{tile::TileHitKind, Level}, resources::Resources, scene::collision::{collision_bottom, collision_left, collision_right, collision_top}};
+use crate::{level::{tile::TileHitKind, Level}, resources::Resources, scene::collision::{collision_bottom, collision_left, collision_right, collision_top}, text_renderer::{render_text, Align}};
 
 use super::{Entity, EntityCollision, EntityCollisionSides};
 
@@ -25,10 +25,10 @@ impl ColTest {
 }
 
 impl Entity for ColTest {
-    fn update(&mut self, _level: &mut Level, deltatime: f32) {
+    fn update(&mut self, _others: &mut [&mut Box<dyn Entity>],_level: &mut Level, deltatime: f32) {
         self.vel.x = 0.0;
 
-        let speed = 64.0;
+        let speed = 16.0 * 2.0;
         self.vel.x = match self.dir {
             true => -speed,
             false => speed,
@@ -57,7 +57,7 @@ impl Entity for ColTest {
         collision_bottom(COL_BOTTOM_R, &mut self.pos, Some(&mut self.vel), None, others, level);
     }
 
-    fn draw(&self, resources: &Resources, debug: bool) {
+    fn draw(&self, resources: &Resources, id: usize, debug: bool) {
         draw_texture_ex(resources.tiles_atlas(), self.pos.x.round(), self.pos.y.round(), WHITE, DrawTextureParams {
             source: Some(Rect::new(16.0 * 4.0, 16.0 * 0.0, 16.0, 16.0)),
             ..Default::default()
@@ -65,7 +65,14 @@ impl Entity for ColTest {
 
         if debug {
             let hitbox = self.hitbox();
-            draw_rectangle_lines(hitbox.x.round(), hitbox.y.round(), hitbox.w, hitbox.h, 2.0, BLUE);
+            draw_rectangle_lines(
+                hitbox.x + self.pos.x,
+                hitbox.y + self.pos.y,
+                hitbox.w,
+                hitbox.h,
+                2.0,
+                BLUE,
+            );
 
             for (p, color) in [
                 (COL_LEFT, ORANGE),
@@ -78,6 +85,9 @@ impl Entity for ColTest {
             }
             // render_text(&format!("pos: [{:8.3}, {:8.3}]", self.pos.x, self.pos.y), GREEN, self.pos + vec2(0.0, -20.0), Vec2::ONE, Align::End, resources.font_atlas());
             // render_text(&format!("vel: [{:8.3}, {:8.3}]", self.vel.x, self.vel.y), GREEN, self.pos + vec2(0.0, -10.0), Vec2::ONE, Align::End, resources.font_atlas());
+
+            render_text(&format!("{:?}", id), GREEN, self.pos, Vec2::ONE, Align::End, resources.font_atlas());
+
         }
     }
 
@@ -91,7 +101,7 @@ impl Entity for ColTest {
     fn should_delete(&self) -> bool { self.delete }
     
     fn hitbox(&self) -> Rect {
-        Rect::new(self.pos.x, self.pos.y, 16.0, 16.0)
+        Rect::new(0.0, 0.0, 16.0, 16.0)
     }
     fn collision_sides(&self) -> &'static EntityCollisionSides {
         EntityCollisionSides::none()

@@ -3,7 +3,7 @@
 
 use macroquad::{color::{BLUE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, shapes::{draw_circle, draw_rectangle_lines}, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{level::{tile::TileHitKind, Level}, resources::{PlayerArmKind, PlayerPart, Resources}, scene::collision::{collision_bottom, collision_left, collision_right, collision_top, Collision}, text_renderer::{render_text, Align}, util::approach_target};
+use crate::{level::{tile::TileHitKind, Level}, resources::Resources, scene::collision::{collision_bottom, collision_left, collision_right, collision_top, Collision}, text_renderer::{render_text, Align}, util::approach_target};
 
 use super::{Entity, EntityCollisionSides};
 
@@ -21,6 +21,7 @@ const KEY_RIGHT: KeyCode = KeyCode::D;
 const KEY_JUMP:  KeyCode = KeyCode::Space;
 const KEY_RUN:   KeyCode = KeyCode::LeftShift;
 
+// FSM for movement
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 enum State {
     Standing,
@@ -29,14 +30,25 @@ enum State {
     Falling,
 }
 
+// Powerups
 #[derive(Clone, Copy)]
 pub enum HeadPowerup {
     None, Helmet,
 }
-
 #[derive(Clone, Copy)]
 pub enum FeetPowerup {
     None, Boots, MoonShoes,
+}
+
+// Rendering
+pub enum PlayerArmKind {
+    Normal, Tilted, Holding, HoldingBack, Jump,
+}
+pub enum PlayerPart {
+    Head(HeadPowerup),
+    Body,
+    Arm(PlayerArmKind),
+    Feet { kind: FeetPowerup, run: bool },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -244,10 +256,26 @@ impl Player {
 
         self.vel.y = (self.vel.y + self.deltatime * self.fall_gravity()).min(self.max_fall_speed);
     }
+
+    pub fn part_rect(part: PlayerPart) -> Rect {
+        let (y, height) = match part {
+            PlayerPart::Head(_)     => ( 0.0, 15.0),
+            PlayerPart::Body        => (16.0,  7.0),
+            PlayerPart::Arm(_)      => (24.0, 19.0),
+            PlayerPart::Feet { .. } => (44.0,  8.0),
+        };
+        let x = match part {
+            PlayerPart::Body => 0.0,
+            PlayerPart::Head(kind) => 16.0 * kind as usize as f32,
+            PlayerPart::Arm(kind)  => 16.0 * kind as usize as f32,
+            PlayerPart::Feet { kind, run } => 32.0 * kind as usize as f32 + if run { 16.0 } else { 0.0 }
+        };
+        Rect::new(x, y, 16.0, height)
+    }
 }
 
 impl Entity for Player {
-    fn update(&mut self, level: &mut Level, deltatime: f32) {
+    fn update(&mut self, _others: &mut [&mut Box<dyn Entity>], level: &mut Level, deltatime: f32) {
 
         // Walking animation
         self.step_anim = (self.step_anim + self.vel.x.abs() / 12.0).rem_euclid(1.0);
@@ -308,7 +336,7 @@ impl Entity for Player {
         }
     }
 
-    fn draw(&self, resources: &Resources, debug: bool) {
+    fn draw(&self, resources: &Resources, id: usize, debug: bool) {
         let holding = is_key_down(KeyCode::Key1);
         let (front_arm, back_arm) = match (self.state, holding) {
             (_, true) => (PlayerArmKind::Holding, Some(PlayerArmKind::HoldingBack)),
@@ -348,7 +376,7 @@ impl Entity for Player {
             
             let rounded_pos = self.pos.round();
             draw_texture_ex(resources.player_atlas(), rounded_pos.x, rounded_pos.y + y - y_offset, WHITE, DrawTextureParams {
-                source: Some(Resources::player_part_rect(part)),
+                source: Some(Player::part_rect(part)),
                 flip_x,
                 ..Default::default()
             });
@@ -368,7 +396,14 @@ impl Entity for Player {
             render_text(&format!("vel: [{:8.3}, {:8.3}]", self.vel.x, self.vel.y), RED, vec2(1.0, 41.0), Vec2::ONE, Align::End, resources.font_atlas());
             render_text(&format!("state: {:?}", self.state), RED, vec2(1.0, 52.0), Vec2::ONE, Align::End, resources.font_atlas());
 
-            draw_rectangle_lines(self.hitbox().x, self.hitbox().y, self.hitbox().w, self.hitbox().h, 2.0, BLUE);
+            draw_rectangle_lines(
+                self.hitbox().x + self.pos.x,
+                self.hitbox().y + self.pos.y,
+                self.hitbox().w,
+                self.hitbox().h,
+                2.0,
+                BLUE,
+            );
 
             // Debug points
             for (point, color) in [
@@ -391,7 +426,7 @@ impl Entity for Player {
     fn should_delete(&self) -> bool { false }
     
     fn hitbox(&self) -> Rect {
-        Rect::new(self.pos.x + 3.5, self.pos.y, 9.0, 16.0)
+        Rect::new(3.5, 0.0, 9.0, 16.0)
     }
     fn collision_sides(&self) -> &'static EntityCollisionSides {
         EntityCollisionSides::none()

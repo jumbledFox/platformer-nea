@@ -50,7 +50,7 @@ pub fn point_collision(side: Side, point: Vec2, pos: Vec2, others: &[&mut Box<dy
 
     // Tile check didn't have any, check for entites !!
     for (i, other) in others.iter().enumerate() {
-        let hitbox = other.hitbox();
+        let hitbox = other.hitbox().offset(other.pos());
         if hitbox.contains(pos + point) {
             return Collision::Entity(i);
         }

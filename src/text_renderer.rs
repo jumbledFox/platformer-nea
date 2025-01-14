@@ -32,7 +32,7 @@ pub fn render_text(text: &str, color: Color, pos: Vec2, size: Vec2, align: Align
             CHAR_HEIGHT,
         );
 
-        draw_texture_ex(atlas, x, y, color, DrawTextureParams {
+        draw_texture_ex(atlas, x.round(), y.round(), color, DrawTextureParams {
             source: Some(source),
             dest_size: Some(size * vec2(CHAR_WIDTH, CHAR_HEIGHT)),
             ..Default::default()
