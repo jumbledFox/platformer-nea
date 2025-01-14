@@ -53,7 +53,7 @@ impl Entity for Frog {
                 }
                 // If the wait timer reaches zero... jump!
                 else if *t <= 0.0 {
-                    self.vel.y = -4.0;
+                    self.vel.y = -6.0;
                     // Jump towards the player
                     let player_x = others[0].pos().x;
 
@@ -98,9 +98,9 @@ impl Entity for Frog {
         } else {
             let col_l = collision_bottom(COL_BOT_L, &mut self.pos, Some(&mut self.vel), None, others, level);
             let col_r = collision_bottom(COL_BOT_R, &mut self.pos, Some(&mut self.vel), None, others, level);
-            self.grounded = true;
-            if !col_l.is_tile() || !col_r.is_tile() {
-                self.grounded = false;
+            self.grounded = false;
+            if col_l.is_tile() || col_r.is_tile() {
+                self.grounded = true;
             }
         }
     }
