@@ -3,7 +3,7 @@
 use std::f32::consts::PI;
 
 use macroquad::math::{vec2, Vec2};
-use tile::{get_tile_by_name, render_tile, tile_data, TileCollision, TileHit, TileHitKind, TileTextureConnection};
+use tile::{get_tile_by_name, render_tile, tile_data, Tile, TileCollision, TileHit, TileHitKind, TileTextureConnection};
 
 use crate::{resources::Resources, scene::entity::player::HeadPowerup};
 
@@ -41,7 +41,7 @@ pub struct Level {
 
 #[derive(Clone, Copy)]
 pub struct TileRenderData {
-    tile: usize,
+    tile: Tile,
     draw_kind: TileDrawKind,
     pos: Vec2,
 }
@@ -277,10 +277,10 @@ impl Level {
             }
 
             let draw_kind = match &texture.connection {
-                TileTextureConnection::None       => TileDrawKind::Single(0),
-                TileTextureConnection::Horizontal => connected_texture_single(tile, i, (-1,  0), (1, 0)),
-                TileTextureConnection::Vertical   => connected_texture_single(tile, i, ( 0, -1), (0, 1)),
-                TileTextureConnection::Both       => connected_texture_both(tile, i),
+                None => TileDrawKind::Single(0),
+                Some(TileTextureConnection::Horizontal) => connected_texture_single(tile, i, (-1,  0), (1, 0)),
+                Some(TileTextureConnection::Vertical)   => connected_texture_single(tile, i, ( 0, -1), (0, 1)),
+                Some(TileTextureConnection::Both)       => connected_texture_both(tile, i),
             };
 
             let render_data = TileRenderData { tile, draw_kind, pos: self.tile_pos(i) };
