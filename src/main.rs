@@ -1,6 +1,6 @@
 use std::{thread::sleep, time::Duration};
 
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, WHITE}, input::is_key_pressed, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width, Conf}};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, WHITE}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width, Conf}};
 use resources::Resources;
 use scene::Scene;
 
@@ -76,7 +76,11 @@ async fn main() {
 
         // Wait for the next frame
         // We sleep here to stop macroquad from going over ~60 fps, which would be pointless and hog the CPU
-        sleep(Duration::from_millis(14));
+        if is_key_down(KeyCode::F) {
+            // sleep(Duration::from_millis(0));
+        } else {
+            sleep(Duration::from_millis(100));
+        }
         next_frame().await
     }
 }

@@ -7,8 +7,8 @@ use crate::{resources::Resources, scene::collision::{collision_bottom, collision
 use super::{Entity, EntityCollision, EntityCollisionSides};
 
 const COL_TOP:   Vec2 = vec2( 9.0,  7.0);
-const COL_BOT_L: Vec2 = vec2( 5.0, 16.9);
-const COL_BOT_R: Vec2 = vec2(13.0, 16.9);
+const COL_BOT_L: Vec2 = vec2( 5.0, 26.9);
+const COL_BOT_R: Vec2 = vec2(13.0, 26.9);
 const COL_LEFT:  Vec2 = vec2( 3.0, 11.0);
 const COL_RIGHT: Vec2 = vec2(15.0, 11.0);
 
