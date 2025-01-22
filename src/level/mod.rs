@@ -86,6 +86,8 @@ impl Default for Level {
         tiles[22 * 4 + 6] = Tile::SwitchBlockOn(true);
         tiles[22 * 4 + 7] = Tile::SwitchBlockOn(true);
 
+        tiles[0] = Tile::Spikes;
+
         Self {
             width:  22,
             height: 14,

@@ -48,7 +48,9 @@ pub enum Tile {
     Lock(LockColor), LockBlock(LockColor),
 }
 
-// Manages all of the data for tiles
+// This struct manages the data for all of the tiles
+// If a tile isn't in the hashmap yet, it'll display the error tile.
+// The hashmap will always be fully populated, however I don't want to 'unwrap' an Option as that's not good rust practice.
 pub struct TileDataManager {
     data: HashMap<Tile, TileData>,
     error: TileData,
@@ -108,24 +110,8 @@ impl TileDataManager {
     }
 }
 
-// const TILE_ERROR: TileData = TileData::new("Error", Some(TileTexture::fixed(0, TileTextureConnection::None, false)), TileCollision::None);
-// const TILE_SOLID_EMPTY: TileData = TileData::new("Solid Empty", None, TileCollision::solid_default(false));
 
-// const TILE_EMPTY: TileData = TileData::new("Empty", None, TileCollision::None);
-
-// const TILE_GRASS: TileData = TileData::new("Grass", Some(TileTexture::fixed( 6, TileTextureConnection::Both, false)), TileCollision::solid_default(false));
-// const TILE_METAL: TileData = TileData::new("Metal", Some(TileTexture::fixed(11, TileTextureConnection::Both, false)), TileCollision::solid_default(false));
-// const TILE_CHECKER: TileData = TileData::new("Checker", Some(TileTexture::fixed(27, TileTextureConnection::Both, false)), TileCollision::solid_default(false));
-
-// const SWITCH_OFF: TileData = TileData::new("Switch", Some(TileTexture::fixed(16, TileTextureConnection::None, false)), TileCollision::solid_default(true));
-// const SWITCH_ON:  TileData = TileData::new("Switch", Some(TileTexture::fixed(17, TileTextureConnection::None, false)), TileCollision::solid_default(true));
-// const SWITCH_BLOCK_OFF_ACTIVE:   TileData = TileData::new("Switch Block Off", Some(TileTexture::fixed(18, TileTextureConnection::None, false)), TileCollision::solid_default(true));
-// const SWITCH_BLOCK_OFF_INACTIVE: TileData = TileData::new("Switch Block Off", Some(TileTexture::fixed(19, TileTextureConnection::None, false)), TileCollision::None);
-// const SWITCH_BLOCK_ON_ACTIVE:    TileData = TileData::new("Switch Block On",  Some(TileTexture::fixed(18, TileTextureConnection::None, false)), TileCollision::solid_default(true));
-// const SWITCH_BLOCK_ON_INACTIVE:  TileData = TileData::new("Switch Block On",  Some(TileTexture::fixed(19, TileTextureConnection::None, false)), TileCollision::None);
-
-
-// Tile data
+// Struct that contains each tile's data
 pub struct TileData {
     name: String,
     texture: Option<TileTexture>,
