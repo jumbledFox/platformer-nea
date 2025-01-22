@@ -2,7 +2,7 @@
 
 use macroquad::math::Vec2;
 
-use crate::level::{tile::{TileCollision, TileHitKind}, Level};
+use crate::{level::{tile::{Tile, TileCollision, TileHitKind}, Level}, resources::Resources};
 
 use super::entity::Entity;
 
@@ -20,9 +20,7 @@ pub enum Side {
 
 pub enum Collision {
     None,
-    // Using the static lifetime here makes my life MUCH easier and makes the code more efficient
-    // Woof woof :3
-    Tile(&'static TileCollision),
+    Tile(Tile),
     Entity(usize),
 }
 
@@ -37,14 +35,16 @@ impl Collision {
 }
 
 // Each 'point' is an offset from 'pos'
-pub fn point_collision(side: Side, point: Vec2, pos: Vec2, others: &[&mut Box<dyn Entity>], level: &Level) -> Collision {
-    let tile_collision = level.tile_at_pos_collision(pos + point);
+pub fn point_collision(side: Side, point: Vec2, pos: Vec2, others: &[&mut Box<dyn Entity>], level: &Level, resources: &Resources) -> Collision {
+    let tile = level.tile_at_pos(pos + point);
+    let tile_collision = resources.tile_data_manager().data(tile).collision();
 
-    if let Some(tc) = tile_collision {
+    // grrr....
+    if !matches!(tile_collision, TileCollision::None) {
         // TODO: Slopes ?
         // If the tile is solid, or if it's a platform and the position is in the top part of the tile, we hit it
-        if tc.is_solid() || tc.is_platform() && (pos.y + point.y).rem_euclid(16.0) <= 6.0 && side == Side::Bottom {
-            return Collision::Tile(tc);
+        if tile_collision.is_solid() || tile_collision.is_platform() && (pos.y + point.y).rem_euclid(16.0) <= 6.0 && side == Side::Bottom {
+            return Collision::Tile(tile);
         }
     }
 
@@ -59,8 +59,8 @@ pub fn point_collision(side: Side, point: Vec2, pos: Vec2, others: &[&mut Box<dy
     Collision::None
 }
 
-pub fn collision_top(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_kind: Option<TileHitKind>, others: &[&mut Box<dyn Entity>], level: &mut Level) -> Collision {
-    let collision = point_collision(Side::Top, point, *pos, others, &level);
+pub fn collision_top(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_kind: Option<TileHitKind>, others: &[&mut Box<dyn Entity>], level: &mut Level, resources: &Resources) -> Collision {
+    let collision = point_collision(Side::Top, point, *pos, others, &level, resources);
 
     if !collision.is_tile() {
         return collision;
@@ -68,7 +68,7 @@ pub fn collision_top(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_ki
 
     // i KNOW that this means the position is calculated into an index twice, room for optimisation
     if let Some(hit_kind) = hit_kind {
-        level.hit_tile_at_pos(*pos + point, hit_kind);
+        level.hit_tile_at_pos(*pos + point, hit_kind, resources);
     }
 
     // Push this entity down so it's touching the nearest tile
@@ -80,15 +80,15 @@ pub fn collision_top(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_ki
     collision
 }
 
-pub fn collision_bottom(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_kind: Option<TileHitKind>, others: &[&mut Box<dyn Entity>], level: &mut Level) -> Collision {
-    let collision = point_collision(Side::Bottom, point, *pos, others, &level);
+pub fn collision_bottom(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_kind: Option<TileHitKind>, others: &[&mut Box<dyn Entity>], level: &mut Level, resources: &Resources) -> Collision {
+    let collision = point_collision(Side::Bottom, point, *pos, others, &level, resources);
 
     if !collision.is_tile() {
         return collision;
     }
 
     if let Some(hit_kind) = hit_kind {
-        level.hit_tile_at_pos(*pos + point, hit_kind);
+        level.hit_tile_at_pos(*pos + point, hit_kind, resources);
     }
 
     // Push the pos up so it's touching the nearest tile
@@ -100,15 +100,15 @@ pub fn collision_bottom(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit
     collision
 }
 
-pub fn collision_left(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_kind: Option<TileHitKind>, others: &[&mut Box<dyn Entity>], level: &mut Level) -> Collision {
-    let collision = point_collision(Side::Left, point, *pos, others, &level);
+pub fn collision_left(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_kind: Option<TileHitKind>, others: &[&mut Box<dyn Entity>], level: &mut Level, resources: &Resources) -> Collision {
+    let collision = point_collision(Side::Left, point, *pos, others, &level, resources);
 
     if !collision.is_tile() {
         return collision;
     }
 
     if let Some(hit_kind) = hit_kind {
-        level.hit_tile_at_pos(*pos + point, hit_kind);
+        level.hit_tile_at_pos(*pos + point, hit_kind, resources);
     }
 
     // Push this entity right so it's touching the nearest tile
@@ -120,15 +120,15 @@ pub fn collision_left(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_k
     collision
 }
 
-pub fn collision_right(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_kind: Option<TileHitKind>, others: &[&mut Box<dyn Entity>], level: &mut Level) -> Collision {
-    let collision = point_collision(Side::Right, point, *pos, others, &level);
+pub fn collision_right(point: Vec2, pos: &mut Vec2, vel: Option<&mut Vec2>, hit_kind: Option<TileHitKind>, others: &[&mut Box<dyn Entity>], level: &mut Level, resources: &Resources) -> Collision {
+    let collision = point_collision(Side::Right, point, *pos, others, &level, resources);
 
     if !collision.is_tile() {
         return collision;
     }
 
     if let Some(hit_kind) = hit_kind {
-        level.hit_tile_at_pos(*pos + point, hit_kind);
+        level.hit_tile_at_pos(*pos + point, hit_kind, resources);
     }
 
     // Push this entity left so it's touching the nearest tile

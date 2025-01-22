@@ -90,19 +90,19 @@ impl Entity for Frog {
             return;
         }
 
-        collision_left(COL_LEFT, &mut self.pos, Some(&mut self.vel), None, others, level);
-        collision_right(COL_RIGHT, &mut self.pos, Some(&mut self.vel), None, others, level);
+        // collision_left(COL_LEFT, &mut self.pos, Some(&mut self.vel), None, others, level);
+        // collision_right(COL_RIGHT, &mut self.pos, Some(&mut self.vel), None, others, level);
 
-        if matches!(self.state, State::Jumping) {
-            collision_top(COL_TOP, &mut self.pos, Some(&mut self.vel), None, others, level);
-        } else {
-            let col_l = collision_bottom(COL_BOT_L, &mut self.pos, Some(&mut self.vel), None, others, level);
-            let col_r = collision_bottom(COL_BOT_R, &mut self.pos, Some(&mut self.vel), None, others, level);
-            self.grounded = false;
-            if col_l.is_tile() || col_r.is_tile() {
-                self.grounded = true;
-            }
-        }
+        // if matches!(self.state, State::Jumping) {
+        //     collision_top(COL_TOP, &mut self.pos, Some(&mut self.vel), None, others, level);
+        // } else {
+        //     let col_l = collision_bottom(COL_BOT_L, &mut self.pos, Some(&mut self.vel), None, others, level);
+        //     let col_r = collision_bottom(COL_BOT_R, &mut self.pos, Some(&mut self.vel), None, others, level);
+        //     self.grounded = false;
+        //     if col_l.is_tile() || col_r.is_tile() {
+        //         self.grounded = true;
+        //     }
+        // }
     }
 
     fn draw(&self, resources: &Resources, id: usize, debug: bool) {

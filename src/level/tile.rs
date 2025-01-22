@@ -6,9 +6,12 @@ use crate::resources::Resources;
 
 use super::{TileDrawKind, TileRenderData};
 
-#[derive(PartialEq, Eq, Clone, Copy, Hash)]
+pub const RAINBOW_LOCK_FRAME_DUR: f64 = 0.1;
+
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
 pub enum LockColor {
     Red, Green, Blue, Yellow, White, Black,
+    // TODO: Maybe make keys that have multiple colors they cycle through that can unlock multiple types, rather than a rainbow block
     Rainbow, // The rainbow one is special and cute because it has a neat animated texture :3
 }
 
@@ -26,16 +29,20 @@ impl LockColor {
     } 
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
 pub enum Tile {
     // Tile not intended to be part of regular levels, just for the bounds... maybe a better way to do this
     SolidEmpty,
-
+    
     Empty, 
 
     Grass, Metal, Checker,
 
-    StoneBlock, Spikes, Glass, Block,
+    Bridge, Rope,
+
+    StoneBlock, Glass, Block,
+
+    Spikes,
     
     Switch(bool), SwitchBlockOff(bool), SwitchBlockOn(bool),
     Lock(LockColor), LockBlock(LockColor),
@@ -44,39 +51,61 @@ pub enum Tile {
 // Manages all of the data for tiles
 pub struct TileDataManager {
     data: HashMap<Tile, TileData>,
+    error: TileData,
 }
-
-// Holy fucking shit why can't my parents be progressive I hate living in this house
 
 // All of the tile data for the game
 impl Default for TileDataManager {
     fn default() -> Self {
+        let error = TileData::new("Error!".to_string(), Some(TileTexture::fixed(0, TileTextureConnection::None, false)), TileCollision::None);
         let mut data = HashMap::new();
 
-        data.insert(Tile::Grass, TileData::new("Grass".to_owned(), TileTexture::fixed(6, TileTextureConnection::Both, false), TileCollision::solid_default(false)));
+        data.insert(Tile::Empty,      TileData::new("Empty".to_owned(),       None, TileCollision::None));
+        data.insert(Tile::SolidEmpty, TileData::new("Solid Empty".to_owned(), None, TileCollision::solid_default(false)));
+
+        data.insert(Tile::Grass,   TileData::new("Grass".to_owned(),   Some(TileTexture::fixed( 6, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Metal,   TileData::new("Metal".to_owned(),   Some(TileTexture::fixed(11, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Checker, TileData::new("Checker".to_owned(), Some(TileTexture::fixed(27, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
+
+        data.insert(Tile::Bridge, TileData::new("Bridge".to_owned(), Some(TileTexture::fixed(92, TileTextureConnection::Horizontal, true)), TileCollision::platform(1.0, 0.0)));
+        data.insert(Tile::Rope,   TileData::new("Rope".to_owned(),   Some(TileTexture::fixed(76, TileTextureConnection::Horizontal, true)), TileCollision::None));
 
         // Switch blocks
         data.insert(Tile::Switch(false), TileData::new_default("Switch".to_owned(), 16, true));
         data.insert(Tile::Switch(true),  TileData::new_default("Switch".to_owned(), 17, true));
-        data.insert(Tile::SwitchBlockOff(false), TileData::new("Switch Block Off".to_owned(), TileTexture::fixed(18, TileTextureConnection::None, false), TileCollision::None));
+        data.insert(Tile::SwitchBlockOff(false), TileData::new("Switch Block Off".to_owned(), Some(TileTexture::fixed(18, TileTextureConnection::None, false)), TileCollision::None));
         data.insert(Tile::SwitchBlockOff(true),  TileData::new_default("Switch Block Off".to_owned(), 19, false));
-        data.insert(Tile::SwitchBlockOn(false),  TileData::new("Switch Block On".to_owned(),  TileTexture::fixed(20, TileTextureConnection::None, false), TileCollision::None));
+        data.insert(Tile::SwitchBlockOn(false),  TileData::new("Switch Block On".to_owned(),  Some(TileTexture::fixed(20, TileTextureConnection::None, false)), TileCollision::None));
         data.insert(Tile::SwitchBlockOn(true),   TileData::new_default("Switch Block On".to_owned(),  21, false));
 
         // Lock blocks
         let lock_cols = [LockColor::Red, LockColor::Green, LockColor::Blue, LockColor::Yellow, LockColor::White, LockColor::Black, LockColor::Rainbow];
         for (i, color) in lock_cols.iter().enumerate() {
+            // Give rainbow tiles an animated texture
+            let (lock_tex, lock_block_tex) = match color {
+                LockColor::Rainbow => (
+                    TileTexture::animated(&[32, 33, 34, 35], RAINBOW_LOCK_FRAME_DUR, TileTextureConnection::None, false),
+                    TileTexture::animated(&[48, 49, 50, 51], RAINBOW_LOCK_FRAME_DUR, TileTextureConnection::None, false),
+                ),
+                _ => (
+                    TileTexture::fixed(32 + i, TileTextureConnection::None, false),
+                    TileTexture::fixed(48 + i, TileTextureConnection::None, false),
+                ),
+            };
+
             let color_str = color.str();
-            data.insert(Tile::Lock(*color),      TileData::new_default(format!("{} Lock",       color_str), 32 + i, false));
-            data.insert(Tile::LockBlock(*color), TileData::new_default(format!("{} Lock Block", color_str), 48 + i, false));
+            data.insert(Tile::Lock(*color),      TileData::new(format!("{} Lock",       color_str), Some(lock_tex),       TileCollision::solid_default(false)));
+            data.insert(Tile::LockBlock(*color), TileData::new(format!("{} Lock Block", color_str), Some(lock_block_tex), TileCollision::solid_default(false)));
         }
 
-        Self { data }
+        Self { data, error }
     }
 }
 
 impl TileDataManager {
-
+    pub fn data(&self, tile: Tile) -> &TileData {
+        self.data.get(&tile).unwrap_or_else(|| &self.error)
+    }
 }
 
 // const TILE_ERROR: TileData = TileData::new("Error", Some(TileTexture::fixed(0, TileTextureConnection::None, false)), TileCollision::None);
@@ -95,92 +124,34 @@ impl TileDataManager {
 // const SWITCH_BLOCK_ON_ACTIVE:    TileData = TileData::new("Switch Block On",  Some(TileTexture::fixed(18, TileTextureConnection::None, false)), TileCollision::solid_default(true));
 // const SWITCH_BLOCK_ON_INACTIVE:  TileData = TileData::new("Switch Block On",  Some(TileTexture::fixed(19, TileTextureConnection::None, false)), TileCollision::None);
 
-pub const RAINBOW_LOCK_FRAME_DUR: f64 = 0.1;
-
-const fn tile_name(tile: Tile) -> &'static str {
-    match tile {
-        // Tile::Switch => "Switch",
-        Tile::Lock(color) => match color {
-            LockColor::Red     => "Lock Red",
-            LockColor::Green   => "Lock Green",
-            LockColor::Blue    => "Lock Blue",
-            LockColor::Yellow  => "Lock Yellow",
-            LockColor::White   => "Lock White",
-            LockColor::Black   => "Lock Black",
-            LockColor::Rainbow => "Lock Rainbow",
-        },
-        Tile::LockBlock(color) => match color {
-            LockColor::Red     => "Lock Block Red",
-            LockColor::Green   => "Lock Block Green",
-            LockColor::Blue    => "Lock Block Blue",
-            LockColor::Yellow  => "Lock Block Yellow",
-            LockColor::White   => "Lock Block White",
-            LockColor::Black   => "Lock Block Black",
-            LockColor::Rainbow => "Lock Block Rainbow",
-        },
-        _ => "Error",
-    }
-}
-
-const fn tile_texture(tile: Tile, switch_state: bool) -> &'static Option<TileTexture> {
-    match tile {
-        // Switches
-        // Tile::Switch         if switch_state => &Some(TileTexture { render: TileTextureRenderType::Fixed(17), connection: TileTextureConnection::None, above: false, }),
-        // Tile::SwitchBlockOn  if switch_state => &Some(TileTexture { render: TileTextureRenderType::Fixed(19), connection: TileTextureConnection::None, above: false, }),
-        // Tile::SwitchBlockOff if switch_state => &Some(TileTexture { render: TileTextureRenderType::Fixed(21), connection: TileTextureConnection::None, above: false, }),
-        // Tile::Switch         => &Some(TileTexture { render: TileTextureRenderType::Fixed(16), connection: TileTextureConnection::None, above: false, }),
-        // Tile::SwitchBlockOn  => &Some(TileTexture { render: TileTextureRenderType::Fixed(18), connection: TileTextureConnection::None, above: false, }),
-        // Tile::SwitchBlockOff => &Some(TileTexture { render: TileTextureRenderType::Fixed(20), connection: TileTextureConnection::None, above: false, }),
-        // Tile::SwitchBlockOff => &Some(TileTexture::fixed(1, TileTextureConnection::None, false)),
-        // Locks
-        Tile::Lock(color) => match color {
-            LockColor::Red     => &Some(TileTexture { render: TileTextureRenderType::Fixed(32), connection: TileTextureConnection::None, above: false, }),
-            LockColor::Green   => &Some(TileTexture { render: TileTextureRenderType::Fixed(33), connection: TileTextureConnection::None, above: false, }),
-            LockColor::Blue    => &Some(TileTexture { render: TileTextureRenderType::Fixed(34), connection: TileTextureConnection::None, above: false, }),
-            LockColor::Yellow  => &Some(TileTexture { render: TileTextureRenderType::Fixed(35), connection: TileTextureConnection::None, above: false, }),
-            LockColor::White   => &Some(TileTexture { render: TileTextureRenderType::Fixed(36), connection: TileTextureConnection::None, above: false, }),
-            LockColor::Black   => &Some(TileTexture { render: TileTextureRenderType::Fixed(37), connection: TileTextureConnection::None, above: false, }),
-            LockColor::Rainbow => &Some(TileTexture {
-                render: TileTextureRenderType::Animated{frames: &[32, 33, 34, 35, 36], frame_duration: RAINBOW_LOCK_FRAME_DUR},
-                connection: TileTextureConnection::None,
-                above: false,
-            }),
-        }
-        Tile::LockBlock(color) => match color {
-            LockColor::Red     => &Some(TileTexture { render: TileTextureRenderType::Fixed(48), connection: TileTextureConnection::None, above: false, }),
-            LockColor::Green   => &Some(TileTexture { render: TileTextureRenderType::Fixed(49), connection: TileTextureConnection::None, above: false, }),
-            LockColor::Blue    => &Some(TileTexture { render: TileTextureRenderType::Fixed(50), connection: TileTextureConnection::None, above: false, }),
-            LockColor::Yellow  => &Some(TileTexture { render: TileTextureRenderType::Fixed(51), connection: TileTextureConnection::None, above: false, }),
-            LockColor::White   => &Some(TileTexture { render: TileTextureRenderType::Fixed(52), connection: TileTextureConnection::None, above: false, }),
-            LockColor::Black   => &Some(TileTexture { render: TileTextureRenderType::Fixed(53), connection: TileTextureConnection::None, above: false, }),
-            LockColor::Rainbow => &Some(TileTexture {
-                render: TileTextureRenderType::Animated{frames: &[48, 49, 50, 51, 52], frame_duration: RAINBOW_LOCK_FRAME_DUR},
-                connection: TileTextureConnection::None,
-                above: false,
-            }),
-        }
-
-        _ => &None
-    }
-}
 
 // Tile data
 pub struct TileData {
     name: String,
-    texture: TileTexture,
+    texture: Option<TileTexture>,
     collision: TileCollision,
 }
 
 impl TileData {
-    pub fn new(name: String, texture: TileTexture, collision: TileCollision) -> Self {
+    pub fn new(name: String, texture: Option<TileTexture>, collision: TileCollision) -> Self {
         Self { name, texture, collision }
     }
     pub fn new_default(name: String, texture: usize, bump: bool) -> Self {
         Self {
             name,
-            texture: TileTexture::fixed(texture, TileTextureConnection::None, false),
+            texture: Some(TileTexture::fixed(texture, TileTextureConnection::None, false)),
             collision: TileCollision::solid_default(bump),
         }
+    }
+
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    pub fn texture(&self) -> &Option<TileTexture> {
+        &self.texture
+    }
+    pub fn collision(&self) -> &TileCollision {
+        &self.collision
     }
 }
 
@@ -189,7 +160,6 @@ pub enum TileTextureRenderType {
     Fixed(usize),
     Animated {
         frames: &'static [usize],
-        // frames: Vec<usize>,
         frame_duration: f64,
     },
 }
@@ -297,11 +267,11 @@ impl TileCollision {
 
 
 // Rendering a tile
-pub fn render_tile(switch_state: bool, render_data: &TileRenderData, resources: &Resources) {
+pub fn render_tile(render_data: &TileRenderData, resources: &Resources) {
     let TileRenderData { tile, draw_kind, pos } = *render_data;
 
     // If the tile doesn't have a texture, don't render it
-    let texture = match tile_texture(tile, switch_state) {
+    let texture = match resources.tile_data_manager().data(tile).texture() {
         Some(t) => t,
         None => return,
     };

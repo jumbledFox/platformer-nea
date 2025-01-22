@@ -4,7 +4,7 @@
 use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
 use macroquad::{color::{GREEN, ORANGE, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Vec2}};
 
-use crate::{level::Level, resources::Resources, text_renderer::{render_text, Align}};
+use crate::{level::{tile::LockColor, Level}, resources::Resources, text_renderer::{render_text, Align}};
 
 pub mod collision;
 pub mod entity;
@@ -22,7 +22,7 @@ impl Default for Scene {
         Self {
             level: Level::default(),
             timer: 420.0,
-            chips: 42,
+            chips: 42000,
             entities: vec![
                 // Box::new(ColTest::new(vec2(30.0, 30.0),vec2(0.0,0.0), false)),
                 // Box::new(ColTest::new(vec2(50.0, 30.0),vec2(0.0,0.0), false)),
@@ -48,11 +48,16 @@ impl Default for Scene {
 }
 
 impl Scene {
-    pub fn foo(&mut self) {
-        self.level.update_tile_render_data();
-    }
+    pub fn update(&mut self, deltatime: f32, resources: &Resources) {
+        if is_key_pressed(KeyCode::H) { self.level.hit_tile_at_pos(vec2(3.5, 9.5) * 16.0, crate::level::tile::TileHitKind::Hard, resources); }
+        if is_key_pressed(KeyCode::Z) { self.level.remove_lock_blocks(LockColor::Red); }
+        if is_key_pressed(KeyCode::X) { self.level.remove_lock_blocks(LockColor::Green); }
+        if is_key_pressed(KeyCode::C) { self.level.remove_lock_blocks(LockColor::Blue); }
+        if is_key_pressed(KeyCode::V) { self.level.remove_lock_blocks(LockColor::Yellow); }
+        if is_key_pressed(KeyCode::B) { self.level.remove_lock_blocks(LockColor::White); }
+        if is_key_pressed(KeyCode::N) { self.level.remove_lock_blocks(LockColor::Black); }
+        if is_key_pressed(KeyCode::M) { self.level.remove_lock_blocks(LockColor::Rainbow); }
 
-    pub fn update(&mut self, deltatime: f32,) {
         self.timer -= deltatime;
 
         if is_key_pressed(KeyCode::Key4) {
@@ -81,6 +86,7 @@ impl Scene {
         self.entities.retain(|e| !e.should_delete());
 
         self.level.update_bumped_tiles(deltatime);
+        self.level.update_if_should(resources);
     }
 
     pub fn draw(&self, lives: usize, resources: &Resources, debug: bool) {
@@ -93,10 +99,14 @@ impl Scene {
         self.level.render_bumped_tiles(resources);
         
         // Draw the UI
-        render_text("- fox -", ORANGE, vec2( 40.0,  8.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
-        render_text("*",   WHITE,  vec2( 40.0, 24.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        // Lives
+        render_text("- fox -",           ORANGE, vec2( 40.0,  8.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text("*",                 WHITE,  vec2( 40.0, 24.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text(&format!("{lives}"), WHITE,  vec2( 60.0, 24.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        // Powerups
         render_text("BOOTS",   WHITE,  vec2(176.0, 10.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
         render_text("HELMET",  WHITE,  vec2(176.0, 22.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        // Timer and points
         render_text(&format!("{:?}", self.timer.floor() as usize), WHITE,  vec2(305.0,  3.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
         render_text(&format!("{:?}", self.chips), GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
     }

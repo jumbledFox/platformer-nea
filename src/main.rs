@@ -46,7 +46,7 @@ async fn main() {
     world_cam.render_target = Some(render_target.clone());
 
     let mut test_scene = Scene::default();
-    test_scene.foo();
+    // test_scene.foo(&resources);
 
     let mut test_debug = true;
 
@@ -57,13 +57,13 @@ async fn main() {
 
         let deltatime = get_frame_time();
         resources.update_tile_animation_timer(deltatime);
-        test_scene.update(deltatime);
+        test_scene.update(deltatime, &resources);
 
         // Draw to the render target
         set_camera(&world_cam);
         clear_background(Color::from_hex(0x6dcaff));
 
-        test_scene.draw(4, &resources, test_debug);
+        test_scene.draw(3, &resources, test_debug);
 
         // Draw render target
         set_default_camera();
@@ -76,8 +76,8 @@ async fn main() {
 
         // Wait for the next frame
         // We sleep here to stop macroquad from going over ~60 fps, which would be pointless and hog the CPU
-        if is_key_down(KeyCode::F) {
-            // sleep(Duration::from_millis(0));
+        if !is_key_down(KeyCode::F) {
+            // sleep(Duration::from_millis(14));
         } else {
             sleep(Duration::from_millis(100));
         }

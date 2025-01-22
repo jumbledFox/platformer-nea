@@ -46,15 +46,15 @@ impl Entity for ColTest {
     }
 
     fn update_collision(&mut self, others: &mut [&mut Box<dyn Entity>], level: &mut Level) {
-        if !collision_left(COL_LEFT, &mut self.pos, Some(&mut self.vel), Some(TileHitKind::Soft), others, level).is_none() {
-            self.dir = false;
-        }
-        if !collision_right(COL_RIGHT, &mut self.pos, Some(&mut self.vel), Some(TileHitKind::Soft),others, level).is_none() {
-            self.dir = true;
-        }
-        collision_top(COL_TOP, &mut self.pos, Some(&mut self.vel), None, others, level);
-        collision_bottom(COL_BOTTOM_L, &mut self.pos, Some(&mut self.vel), None, others, level);
-        collision_bottom(COL_BOTTOM_R, &mut self.pos, Some(&mut self.vel), None, others, level);
+        // if !collision_left(COL_LEFT, &mut self.pos, Some(&mut self.vel), Some(TileHitKind::Soft), others, level).is_none() {
+        //     self.dir = false;
+        // }
+        // if !collision_right(COL_RIGHT, &mut self.pos, Some(&mut self.vel), Some(TileHitKind::Soft),others, level).is_none() {
+        //     self.dir = true;
+        // }
+        // collision_top(COL_TOP, &mut self.pos, Some(&mut self.vel), None, others, level);
+        // collision_bottom(COL_BOTTOM_L, &mut self.pos, Some(&mut self.vel), None, others, level);
+        // collision_bottom(COL_BOTTOM_R, &mut self.pos, Some(&mut self.vel), None, others, level);
     }
 
     fn draw(&self, resources: &Resources, id: usize, debug: bool) {

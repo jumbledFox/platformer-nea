@@ -1,6 +1,6 @@
-use macroquad::{math::Rect, texture::Texture2D};
+use macroquad::texture::Texture2D;
 
-use crate::scene::entity::player::{FeetPowerup, HeadPowerup};
+use crate::level::tile::TileDataManager;
 
 const TILES_TEXTURE:  &[u8] = include_bytes!("../res/tiles.png");
 const FONT_TEXTURE:   &[u8] = include_bytes!("../res/font.png");
@@ -8,6 +8,7 @@ const PLAYER_TEXTURE: &[u8] = include_bytes!("../res/player.png");
 const ENTITY_TEXTURE: &[u8] = include_bytes!("../res/entity.png");
 
 pub struct Resources {
+    tile_data_manager: TileDataManager,
     tiles_atlas: Texture2D,
     font_atlas:  Texture2D,
     player_atlas: Texture2D,
@@ -18,6 +19,7 @@ pub struct Resources {
 impl Default for Resources {
     fn default() -> Self {
         Self {
+            tile_data_manager: TileDataManager::default(),
             tiles_atlas: Texture2D::from_file_with_format(TILES_TEXTURE, None),
             font_atlas:  Texture2D::from_file_with_format(FONT_TEXTURE, None),
             player_atlas: Texture2D::from_file_with_format(PLAYER_TEXTURE, None),
@@ -28,6 +30,10 @@ impl Default for Resources {
 }
 
 impl Resources {
+    pub fn tile_data_manager(&self) -> &TileDataManager {
+        &self.tile_data_manager
+    }
+
     pub fn tiles_atlas(&self) -> &Texture2D {
         &self.tiles_atlas
     }
