@@ -17,6 +17,9 @@ pub struct Editor {
     cursor_pos: Option<Vec2>,
 
     playing_scene: bool,
+    // TODO: Replace the camera with an editor player that flies about the scene and the view is focused on them
+    // When you test the level midway through it spawns you there rather than at the default spawn
+    // Also a 'player spawn' thingy that... spawns the player at a position
     camera: EditorCamera,
 }
 
@@ -35,12 +38,24 @@ impl Editor {
     }
 
     fn draw_editor_logo(resources: &Resources) {
-        render_text("Fox game editor - jumbledFox 2025 !!!", Color::from_rgba(255, 255, 255, 128), vec2(0.0, 214.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
+        render_text("Fox game editor - jumbledFox 2025 !!!", Color::from_rgba(255, 255, 255, 255), vec2(0.0, 214.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
     }
 }
 
 impl GameState for Editor {
     fn update(&mut self, deltatime: f32, resources: &crate::resources::Resources) {
+        if is_key_pressed(KeyCode::Enter) {
+            self.playing_scene = !self.playing_scene;
+            if self.playing_scene {
+                self.scene = Scene::from_editor_level(&self.editor_level);
+            }
+        }
+        if self.playing_scene {
+            self.scene.update(deltatime, resources);
+            return;
+        }
+
+
         // Dragging the camera with the middle mouse button
         if is_mouse_button_down(MouseButton::Middle) {
             let new_camera_pos = self.camera.pos() + mouse_delta_position() * 8.0 * vec2(VIEW_WIDTH as f32, VIEW_HEIGHT as f32);
@@ -60,6 +75,14 @@ impl GameState for Editor {
             };
             self.camera.set_pos(self.camera.pos() + camera_arrow_delta * deltatime * 16.0 * speed, &self.editor_level);
         }
+
+        if is_key_pressed(KeyCode::Key1) { self.selected_tile = Tile::Grass; }
+        if is_key_pressed(KeyCode::Key2) { self.selected_tile = Tile::CheckerBlock(CheckerBlockColor::Cyan); }
+        if is_key_pressed(KeyCode::Key3) { self.selected_tile = Tile::CheckerBlock(CheckerBlockColor::Orange); }
+        if is_key_pressed(KeyCode::Key4) { self.selected_tile = Tile::CheckerBlock(CheckerBlockColor::Purple); }
+        if is_key_pressed(KeyCode::Key5) { self.selected_tile = Tile::Lock(LockColor::Rainbow); }
+        if is_key_pressed(KeyCode::Key6) { self.selected_tile = Tile::LockBlock(LockColor::Rainbow); }
+        if is_key_pressed(KeyCode::Key7) { self.selected_tile = Tile::Checker; }
 
         // Setting the position of the tile
         let mouse_tile = ((mouse_position_local() / 2.0 + 0.5) * VIEW_SIZE / 16.0 + self.camera.pos() / 16.0).floor();
@@ -81,16 +104,6 @@ impl GameState for Editor {
             }
         }
 
-        println!("{:?}", mouse_tile);
-        // Placing tiles
-
-        if is_key_pressed(KeyCode::Enter) {
-            self.playing_scene = !self.playing_scene;
-        }
-        if self.playing_scene {
-            self.scene.update(deltatime, resources);
-            return;
-        }
         self.editor_level.update_if_should(resources);
     }
 

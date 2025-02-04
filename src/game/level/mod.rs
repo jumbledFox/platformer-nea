@@ -9,6 +9,7 @@ use crate::resources::Resources;
 
 pub mod tile;
 
+#[derive(Clone, Copy)]
 pub enum LevelPhysics {
     Air, Water,
 }
@@ -20,9 +21,9 @@ pub struct BumpedTile {
 }
 
 pub struct Level {
+    tiles: Vec<Tile>,
     width: usize,
     height: usize,
-    tiles: Vec<Tile>,
     bumped_tiles: Vec<BumpedTile>,
 
     physics: LevelPhysics,
@@ -98,9 +99,9 @@ impl Default for Level {
         tiles[0] = Tile::Spikes;
 
         Self {
+            tiles,
             width:  22,
             height: 14,
-            tiles,
             bumped_tiles: Vec::with_capacity(10),
             physics: LevelPhysics::Air,
             should_update_render_data: true,
@@ -111,6 +112,16 @@ impl Default for Level {
 }
 
 impl Level {
+    pub fn new(tiles: Vec<Tile>, width: usize, height: usize, physics: LevelPhysics) -> Self {
+        Self {
+            tiles, width, height, physics,
+            bumped_tiles: vec![],
+            should_update_render_data: true,
+            tiles_below: vec![],
+            tiles_above: vec![],
+        }
+    }
+
     // Switch blocks - sets the state of all switch tiles in the level
     fn set_switch_state(&mut self, enabled: bool) {
         for t in &mut self.tiles {

@@ -4,7 +4,7 @@
 use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
 use macroquad::{color::{GREEN, ORANGE, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Vec2}};
 
-use crate::{game::level::{tile::LockColor, Level}, resources::Resources, text_renderer::{render_text, Align}};
+use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, resources::Resources, text_renderer::{render_text, Align}};
 
 pub mod collision;
 pub mod entity;
@@ -48,6 +48,16 @@ impl Default for Scene {
 }
 
 impl Scene {
+    pub fn from_editor_level(editor_level: &EditorLevel) -> Self {
+        let level = Level::new(editor_level.tiles().clone(), editor_level.width(), editor_level.height(), editor_level.physics());
+        Scene {
+            level,
+            timer: 0.0,
+            chips: 0,
+            entities: vec![Box::new(Player::default())],
+        }
+    }
+
     pub fn update(&mut self, deltatime: f32, resources: &Resources) {
         if is_key_pressed(KeyCode::H) { self.level.hit_tile_at_pos(vec2(3.5, 9.5) * 16.0, crate::game::level::tile::TileHitKind::Hard, resources); }
         if is_key_pressed(KeyCode::Z) { self.level.remove_lock_blocks(LockColor::Red); }

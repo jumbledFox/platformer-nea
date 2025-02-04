@@ -1,11 +1,12 @@
 use macroquad::math::Vec2;
 
-use crate::{game::level::{tile::Tile, Level, TileRenderData}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
+use crate::{game::level::{tile::Tile, Level, LevelPhysics, TileRenderData}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
 
 pub struct EditorLevel {
     tiles: Vec<Tile>,
     width: usize,
     height: usize,
+    physics: LevelPhysics,
 
     tiles_below: Vec<TileRenderData>,
     tiles_above: Vec<TileRenderData>,
@@ -17,12 +18,12 @@ const MIN_HEIGHT: usize = VIEW_HEIGHT;
 
 impl Default for EditorLevel {
     fn default() -> Self {
-        let (width, height) = (MIN_WIDTH + 50, MIN_HEIGHT + 5);
+        let (width, height) = (MIN_WIDTH, MIN_HEIGHT);
         let mut tiles = vec![Tile::Empty; width * height];
 
         for t in &mut tiles {
             if macroquad::rand::gen_range(0, 2) == 0 {
-                *t = Tile::CheckerBlock(crate::game::level::tile::CheckerBlockColor::Cyan)
+                // *t = Tile::CheckerBlock(crate::game::level::tile::CheckerBlockColor::Cyan)
             }
         }
 
@@ -30,6 +31,7 @@ impl Default for EditorLevel {
             tiles,
             width,
             height,
+            physics: LevelPhysics::Air,
 
             tiles_above: vec![],
             tiles_below: vec![],
@@ -39,11 +41,17 @@ impl Default for EditorLevel {
 }
 
 impl EditorLevel {
+    pub fn tiles(&self) -> &Vec<Tile> {
+        &self.tiles
+    }
     pub fn width(&self) -> usize {
         self.width
     }
     pub fn height(&self) -> usize {
         self.height
+    }
+    pub fn physics(&self) -> LevelPhysics {
+        self.physics
     }
 
     // Maybe make a 'pos' version?
