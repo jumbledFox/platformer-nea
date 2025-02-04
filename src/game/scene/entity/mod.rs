@@ -1,6 +1,6 @@
 use macroquad::math::{vec2, Rect, Vec2};
 
-use crate::{level::Level, resources::Resources};
+use crate::{game::level::Level, resources::Resources};
 
 pub mod player;
 pub mod frog;

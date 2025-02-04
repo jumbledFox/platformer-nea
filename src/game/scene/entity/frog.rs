@@ -2,7 +2,7 @@
 
 use macroquad::{color::{BLUE, RED, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range, shapes::draw_circle, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{resources::Resources, scene::collision::{collision_bottom, collision_left, collision_right, collision_top}, util::draw_rect_lines};
+use crate::{resources::Resources, game::scene::collision::{collision_bottom, collision_left, collision_right, collision_top}, util::draw_rect_lines};
 
 use super::{Entity, EntityCollision, EntityCollisionSides};
 
@@ -41,7 +41,7 @@ impl Frog {
 }
 
 impl Entity for Frog {
-    fn update(&mut self, others: &mut [&mut Box<dyn Entity>], level: &mut crate::level::Level, deltatime: f32) {
+    fn update(&mut self, others: &mut [&mut Box<dyn Entity>], level: &mut crate::game::level::Level, deltatime: f32) {
         match &mut self.state {
             State::Waiting(t) => {
                 *t -= deltatime;
@@ -84,7 +84,7 @@ impl Entity for Frog {
         self.pos += self.vel;
     }
 
-    fn update_collision(&mut self, others: &mut [&mut Box<dyn Entity>], level: &mut crate::level::Level) {
+    fn update_collision(&mut self, others: &mut [&mut Box<dyn Entity>], level: &mut crate::game::level::Level) {
         // Don't update collision if dead
         if matches!(self.state, State::Dead(_)) {
             return;

@@ -11,6 +11,7 @@ pub enum Align {
     Beg, Mid, End,
 }
 
+// TODO: Make this modular and take in a 'font' and resources and stuff...
 pub fn render_text(text: &str, color: Color, pos: Vec2, size: Vec2, align: Align, atlas: &Texture2D) {
     let text_size = vec2(text.len() as f32 * (CHAR_WIDTH + CHAR_SPACING), CHAR_HEIGHT) * size;
     let Vec2 { mut x, y } = match align {

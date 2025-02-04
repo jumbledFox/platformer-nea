@@ -42,9 +42,9 @@ pub struct Level {
 
 #[derive(Clone, Copy)]
 pub struct TileRenderData {
-    tile: Tile,
-    draw_kind: TileDrawKind,
-    pos: Vec2,
+    pub tile: Tile,
+    pub draw_kind: TileDrawKind,
+    pub pos: Vec2,
 }
 
 // The texture offset from the tile's start texture
@@ -57,6 +57,15 @@ pub enum TileDrawKind {
 impl Default for Level {
     fn default() -> Self {
         let mut tiles = vec![Tile::Empty; 22*14];
+
+        // for t in &mut tiles {
+        //     *t = match macroquad::rand::gen_range(0, 4) {
+        //         0 => Tile::CheckerBlock(tile::CheckerBlockColor::Cyan),
+        //         1 => Tile::CheckerBlock(tile::CheckerBlockColor::Orange),
+        //         2 => Tile::CheckerBlock(tile::CheckerBlockColor::Purple),
+        //         _ => *t,
+        //     };
+        // }
 
         for x in 0..22 {
             tiles[22 * 12 + x] = Tile::Grass;
@@ -170,12 +179,12 @@ impl Level {
         }
     }
 
-    pub fn render_bumped_tiles(&self, resources: &Resources) {
+    pub fn render_bumped_tiles(&self, camera_pos: Vec2, resources: &Resources) {
         for bumped_tile in &self.bumped_tiles {
             let pos = Level::tile_pos(bumped_tile.index, self.width) - vec2(0.0, (bumped_tile.timer * PI).sin()) * 8.0;
 
             let render_data = TileRenderData { draw_kind: TileDrawKind::Single(0), tile: bumped_tile.tile, pos};
-            render_tile(&render_data, resources);
+            render_tile(&render_data, camera_pos, resources);
         }
     }
 
@@ -215,18 +224,17 @@ impl Level {
         }
     }
 
-    pub fn render_below(&self, resources: &Resources) {
-        Level::render_tiles(&self.tiles_below, resources);
+    pub fn render_below(&self, camera_pos: Vec2, resources: &Resources) {
+        Level::render_tiles(&self.tiles_below, camera_pos, resources);
     }
-    pub fn render_above(&self, resources: &Resources) {
-        Level::render_tiles(&self.tiles_above, resources);
+    pub fn render_above(&self, camera_pos: Vec2, resources: &Resources) {
+        Level::render_tiles(&self.tiles_above, camera_pos, resources);
     }
 
     // Renders a bunch of tiles
-    pub fn render_tiles(tiles: &Vec<TileRenderData>, resources: &Resources) {
+    pub fn render_tiles(tiles: &Vec<TileRenderData>, camera_pos: Vec2, resources: &Resources) {
         for render_data in tiles {
-            // Don't render if the tile is offscreen 
-            render_tile(render_data, resources);
+            render_tile(render_data, camera_pos, resources);
         }
     }
 

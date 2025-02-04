@@ -2,7 +2,7 @@
 
 use macroquad::math::Vec2;
 
-use crate::{level::{tile::{Tile, TileCollision, TileHitKind}, Level}, resources::Resources};
+use crate::{game::level::{tile::{Tile, TileCollision, TileHitKind}, Level}, resources::Resources};
 
 use super::entity::Entity;
 

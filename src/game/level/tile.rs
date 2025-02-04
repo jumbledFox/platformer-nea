@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use macroquad::{color::WHITE, math::Rect, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{Color, WHITE}, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
 
 use crate::resources::Resources;
 
@@ -15,18 +15,9 @@ pub enum LockColor {
     Rainbow, // The rainbow one is special and cute because it has a neat animated texture :3
 }
 
-impl LockColor {
-    pub const fn str(&self) -> &'static str {
-        match self {
-            LockColor::Red     => "Red",
-            LockColor::Green   => "Green",
-            LockColor::Blue    => "Blue",
-            LockColor::Yellow  => "Yellow",
-            LockColor::White   => "White",
-            LockColor::Black   => "Black",
-            LockColor::Rainbow => "Rainbow",
-        }
-    } 
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
+pub enum CheckerBlockColor {
+    Cyan, Orange, Purple,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
@@ -37,6 +28,7 @@ pub enum Tile {
     Empty, 
 
     Grass, Metal, Checker,
+    CheckerBlock(CheckerBlockColor),
 
     Bridge, Rope,
 
@@ -72,6 +64,11 @@ impl Default for TileDataManager {
         data.insert(Tile::Bridge, TileData::new("Bridge".to_owned(), Some(TileTexture::fixed(92, TileTextureConnection::Horizontal, true)), TileCollision::platform(1.0, 0.0)));
         data.insert(Tile::Rope,   TileData::new("Rope".to_owned(),   Some(TileTexture::fixed(76, TileTextureConnection::Horizontal, true)), TileCollision::None));
 
+        // Checker blocks
+        for (i, color) in [CheckerBlockColor::Cyan, CheckerBlockColor::Orange, CheckerBlockColor::Purple].iter().enumerate() {
+            data.insert(Tile::CheckerBlock(*color), TileData::new(format!("{:?} Checker Block", color),   Some(TileTexture::fixed((i+4)*16+6, TileTextureConnection::Both, false)), TileCollision::None));
+        }
+
         // Switch blocks
         data.insert(Tile::Switch(false), TileData::new_default("Switch".to_owned(), 16, true));
         data.insert(Tile::Switch(true),  TileData::new_default("Switch".to_owned(), 17, true));
@@ -95,11 +92,10 @@ impl Default for TileDataManager {
                 ),
             };
 
-            let color_str = color.str();
-            data.insert(Tile::Lock(*color),      TileData::new(format!("{} Lock",       color_str), Some(lock_tex),       TileCollision::solid_default(false)));
-            data.insert(Tile::LockBlock(*color), TileData::new(format!("{} Lock Block", color_str), Some(lock_block_tex), TileCollision::solid_default(false)));
+            data.insert(Tile::Lock(*color),      TileData::new(format!("{:?} Lock",     color),   Some(lock_tex),       TileCollision::solid_default(false)));
+            data.insert(Tile::LockBlock(*color), TileData::new(format!("{:?} Lock Block", color), Some(lock_block_tex), TileCollision::solid_default(false)));
         }
-
+        
         Self { data, error }
     }
 }
@@ -253,8 +249,10 @@ impl TileCollision {
 
 
 // Rendering a tile
-pub fn render_tile(render_data: &TileRenderData, resources: &Resources) {
+pub fn render_tile(render_data: &TileRenderData, camera_pos: Vec2, resources: &Resources) {
     let TileRenderData { tile, draw_kind, pos } = *render_data;
+
+    // TODO: Skip rendering if offscreen
 
     // If the tile doesn't have a texture, don't render it
     let texture = match resources.tile_data_manager().data(tile).texture() {
@@ -286,7 +284,7 @@ pub fn render_tile(render_data: &TileRenderData, resources: &Resources) {
 
     // Draws a tile that's a single texture
     let draw_single = |offset: usize| {
-        draw_texture_ex(resources.tiles_atlas(), pos.x, pos.y, WHITE, DrawTextureParams {
+        draw_texture_ex(resources.tiles_atlas(), pos.x - camera_pos.x, pos.y - camera_pos.y, WHITE, DrawTextureParams {
             source: Some(tile_rect(start_texture + offset)),
             ..Default::default()
         });
@@ -300,7 +298,7 @@ pub fn render_tile(render_data: &TileRenderData, resources: &Resources) {
             (br, 8.0, 8.0),
         ] {
             let texture_start = tile_rect(start_texture + offset).point();
-            draw_texture_ex(resources.tiles_atlas(), pos.x + x, pos.y + y, WHITE, DrawTextureParams {
+            draw_texture_ex(resources.tiles_atlas(), pos.x - camera_pos.x + x, pos.y - camera_pos.y + y, WHITE, DrawTextureParams {
                 source: Some(Rect::new(texture_start.x + x, texture_start.y + y, 8.0, 8.0)),
                 ..Default::default()
             });

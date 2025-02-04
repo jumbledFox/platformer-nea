@@ -4,7 +4,7 @@
 use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
 use macroquad::{color::{GREEN, ORANGE, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Vec2}};
 
-use crate::{level::{tile::LockColor, Level}, resources::Resources, text_renderer::{render_text, Align}};
+use crate::{game::level::{tile::LockColor, Level}, resources::Resources, text_renderer::{render_text, Align}};
 
 pub mod collision;
 pub mod entity;
@@ -49,7 +49,7 @@ impl Default for Scene {
 
 impl Scene {
     pub fn update(&mut self, deltatime: f32, resources: &Resources) {
-        if is_key_pressed(KeyCode::H) { self.level.hit_tile_at_pos(vec2(3.5, 9.5) * 16.0, crate::level::tile::TileHitKind::Hard, resources); }
+        if is_key_pressed(KeyCode::H) { self.level.hit_tile_at_pos(vec2(3.5, 9.5) * 16.0, crate::game::level::tile::TileHitKind::Hard, resources); }
         if is_key_pressed(KeyCode::Z) { self.level.remove_lock_blocks(LockColor::Red); }
         if is_key_pressed(KeyCode::X) { self.level.remove_lock_blocks(LockColor::Green); }
         if is_key_pressed(KeyCode::C) { self.level.remove_lock_blocks(LockColor::Blue); }
@@ -90,13 +90,16 @@ impl Scene {
     }
 
     pub fn draw(&self, lives: usize, resources: &Resources, debug: bool) {
-        self.level.render_below(resources);
+        // Temporary
+        let camera_pos = Vec2::ZERO;
+
+        self.level.render_below(camera_pos, resources);
         // Draw the entities in reverse so the player is always on top
         for (i, entity) in self.entities.iter().enumerate().rev() {
             entity.draw(resources, i, debug);
         }
-        self.level.render_above(resources);
-        self.level.render_bumped_tiles(resources);
+        self.level.render_above(camera_pos, resources);
+        self.level.render_bumped_tiles(camera_pos, resources);
         
         // Draw the UI
         // Lives

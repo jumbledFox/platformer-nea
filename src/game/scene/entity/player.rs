@@ -3,7 +3,7 @@
 
 use macroquad::{color::{BLUE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, shapes::{draw_circle, draw_rectangle_lines}, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{level::{tile::TileHitKind, Level}, resources::Resources, scene::collision::{collision_bottom, collision_left, collision_right, collision_top, Collision}, text_renderer::{render_text, Align}, util::approach_target};
+use crate::{game::level::{tile::TileHitKind, Level}, resources::Resources, game::scene::collision::{collision_bottom, collision_left, collision_right, collision_top, Collision}, text_renderer::{render_text, Align}, util::approach_target};
 
 use super::{Entity, EntityCollisionSides};
 
@@ -156,10 +156,6 @@ impl Player {
     fn state_standing(&mut self, level: &mut Level) {
         // Moving
         if is_key_down(KEY_LEFT) || is_key_down(KEY_RIGHT) {
-            self.facing = match is_key_down(KEY_RIGHT) {
-                true => Dir::Right,
-                false => Dir::Left,
-            };
             return self.change_state(State::Moving, level);
         }
         // Falling
@@ -282,6 +278,10 @@ impl Entity for Player {
         if self.vel.x == 0.0 {
             self.step_anim = 0.4;
         }
+
+        // GRRR
+        if is_key_pressed(KEY_RIGHT) { self.facing = Dir::Right; }
+        if is_key_pressed(KEY_LEFT)  { self.facing = Dir::Left; }
 
         if is_key_pressed(KeyCode::Key2) {
             self.head_powerup = match self.head_powerup {

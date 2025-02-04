@@ -1,19 +1,20 @@
 use std::{thread::sleep, time::Duration};
 
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, WHITE}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width, Conf}};
+use editor::Editor;
+use game::Game;
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, WHITE}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width, Conf}};
 use resources::Resources;
-use scene::Scene;
 
 pub mod util;
 pub mod resources;
 pub mod text_renderer;
-pub mod level;
 pub mod game;
-pub mod scene;
+pub mod editor;
 
 // How many tiles the screen should be
 pub const VIEW_WIDTH:  usize = 22;
 pub const VIEW_HEIGHT: usize = 14;
+pub const VIEW_SIZE: Vec2 = vec2((VIEW_WIDTH * 16) as f32, (VIEW_HEIGHT * 16) as f32);
 
 fn window_conf()-> Conf {
     let scale_factor = 4;
@@ -24,6 +25,12 @@ fn window_conf()-> Conf {
         ..Default::default()
     }
 }
+
+pub trait GameState {
+    fn update(&mut self, deltatime: f32, resources: &Resources);
+    fn draw(&self, resources: &Resources, debug: bool);
+}
+
 #[macroquad::main(window_conf())]
 async fn main() {
     // Seed the randomness
@@ -45,27 +52,26 @@ async fn main() {
     );
     world_cam.render_target = Some(render_target.clone());
 
-    let mut test_scene = Scene::default();
-    // test_scene.foo(&resources);
-
-    let mut test_debug = true;
+    let mut debug = true;
+    let mut game_state: Box<dyn GameState> = Box::new(Editor::new());
 
     loop {
         if is_key_pressed(macroquad::input::KeyCode::Key0) {
-            test_debug = !test_debug;
+            debug = !debug;
         }
 
+        // Update the game state
         let deltatime = get_frame_time();
         resources.update_tile_animation_timer(deltatime);
-        test_scene.update(deltatime, &resources);
+        game_state.update(deltatime, &resources);
 
         // Draw to the render target
         set_camera(&world_cam);
         clear_background(Color::from_hex(0x6dcaff));
 
-        test_scene.draw(3, &resources, test_debug);
+        game_state.draw(&resources, debug);
 
-        // Draw render target
+        // Draw the render target
         set_default_camera();
         clear_background(BLACK);
         draw_texture_ex(&render_target.texture, 0.0, 0.0, WHITE, DrawTextureParams {

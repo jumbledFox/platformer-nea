@@ -1,6 +1,6 @@
 use macroquad::{color::{BLUE, GREEN, ORANGE, RED, WHITE}, input::{is_key_down, KeyCode}, math::{vec2, Rect, Vec2}, shapes::{draw_circle, draw_rectangle_lines}, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{level::{tile::TileHitKind, Level}, resources::Resources, scene::collision::{collision_bottom, collision_left, collision_right, collision_top}, text_renderer::{render_text, Align}};
+use crate::{game::level::{tile::TileHitKind, Level}, resources::Resources, game::scene::collision::{collision_bottom, collision_left, collision_right, collision_top}, text_renderer::{render_text, Align}};
 
 use super::{Entity, EntityCollision, EntityCollisionSides};
 

@@ -1,6 +1,6 @@
 use macroquad::texture::Texture2D;
 
-use crate::level::tile::TileDataManager;
+use crate::game::level::tile::TileDataManager;
 
 const TILES_TEXTURE:  &[u8] = include_bytes!("../res/tiles.png");
 const FONT_TEXTURE:   &[u8] = include_bytes!("../res/font.png");
