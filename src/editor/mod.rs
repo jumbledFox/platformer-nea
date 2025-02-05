@@ -38,7 +38,7 @@ impl Editor {
     }
 
     fn draw_editor_logo(resources: &Resources) {
-        render_text("Fox game editor - jumbledFox 2025 !!!", Color::from_rgba(255, 255, 255, 255), vec2(0.0, 214.0), vec2(1.0, 1.0), Align::End, Font::Small, resources);
+        render_text("Fox game editor - jumbledFox 2025 !!!", Color::from_rgba(255, 255, 255, 255), vec2(1.0, 215.0), vec2(1.0, 1.0), Align::End, Font::Small, resources);
     }
 }
 
@@ -90,10 +90,10 @@ impl GameState for Editor {
         if is_key_pressed(KeyCode::Key1) { self.selected_tile = Tile::Grass; }
         if is_key_pressed(KeyCode::Key2) { self.selected_tile = Tile::CheckerBlock(CheckerBlockColor::Cyan); }
         if is_key_pressed(KeyCode::Key3) { self.selected_tile = Tile::CheckerBlock(CheckerBlockColor::Orange); }
-        if is_key_pressed(KeyCode::Key4) { self.selected_tile = Tile::CheckerBlock(CheckerBlockColor::Purple); }
-        if is_key_pressed(KeyCode::Key5) { self.selected_tile = Tile::Lock(LockColor::Rainbow); }
-        if is_key_pressed(KeyCode::Key6) { self.selected_tile = Tile::LockBlock(LockColor::Rainbow); }
-        if is_key_pressed(KeyCode::Key7) { self.selected_tile = Tile::Checker; }
+        if is_key_pressed(KeyCode::Key4) { self.selected_tile = Tile::Cloud; }
+        if is_key_pressed(KeyCode::Key5) { self.selected_tile = Tile::Ladder; }
+        if is_key_pressed(KeyCode::Key6) { self.selected_tile = Tile::Vine; }
+        if is_key_pressed(KeyCode::Key7) { self.selected_tile = Tile::Door; }
         if is_key_pressed(KeyCode::Key8) { self.selected_tile = Tile::Bridge; }
         if is_key_pressed(KeyCode::Key9) { self.selected_tile = Tile::Rope; }
 

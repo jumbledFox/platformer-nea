@@ -27,10 +27,13 @@ pub enum Tile {
     
     Empty, 
 
-    Grass, Metal, Checker,
+    Door,
+
+    Grass, Metal, Checker, Cloud,
     CheckerBlock(CheckerBlockColor),
 
     Bridge, Rope,
+    Ladder, Vine,
 
     StoneBlock, Glass, Block,
 
@@ -57,9 +60,12 @@ impl Default for TileDataManager {
         data.insert(Tile::Empty,      TileData::new("Empty".to_owned(),       None, TileCollision::None));
         data.insert(Tile::SolidEmpty, TileData::new("Solid Empty".to_owned(), None, TileCollision::solid_default(false)));
 
+        data.insert(Tile::Door, TileData::new("Door".to_owned(), Some(TileTexture::fixed(140, TileTextureConnection::Vertical, false)), TileCollision::None));
+
         data.insert(Tile::Grass,   TileData::new("Grass".to_owned(),   Some(TileTexture::fixed( 6, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
         data.insert(Tile::Metal,   TileData::new("Metal".to_owned(),   Some(TileTexture::fixed(11, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
         data.insert(Tile::Checker, TileData::new("Checker".to_owned(), Some(TileTexture::fixed(27, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Cloud,   TileData::new("Cloud".to_owned(),   Some(TileTexture::fixed(38, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
 
         data.insert(Tile::Bridge, TileData::new("Bridge".to_owned(), Some(TileTexture::fixed(92, TileTextureConnection::Horizontal, true)), TileCollision::platform(1.0, 0.0)));
         data.insert(Tile::Rope,   TileData::new("Rope".to_owned(),   Some(TileTexture::fixed(76, TileTextureConnection::Horizontal, true)), TileCollision::None));
@@ -76,6 +82,10 @@ impl Default for TileDataManager {
         data.insert(Tile::SwitchBlockOff(true),  TileData::new_default("Switch Block Off".to_owned(), 19, false));
         data.insert(Tile::SwitchBlockOn(false),  TileData::new("Switch Block On".to_owned(),  Some(TileTexture::fixed(20, TileTextureConnection::None, false)), TileCollision::None));
         data.insert(Tile::SwitchBlockOn(true),   TileData::new_default("Switch Block On".to_owned(),  21, false));
+
+        data.insert(Tile::Ladder, TileData::new("Ladder".to_owned(), Some(TileTexture::fixed(108, TileTextureConnection::Vertical, false)), TileCollision::Ladder));
+        data.insert(Tile::Vine, TileData::new("Vine".to_owned(), Some(TileTexture::fixed(64, TileTextureConnection::None, false)), TileCollision::Ladder));
+
 
         // Lock blocks
         let lock_cols = [LockColor::Red, LockColor::Green, LockColor::Blue, LockColor::Yellow, LockColor::White, LockColor::Black, LockColor::Rainbow];
@@ -212,6 +222,7 @@ pub enum TileCollision {
         hit_hard: TileHit ,
         // damage
     },
+    Ladder,
 }
 
 pub enum TileHitKind {
