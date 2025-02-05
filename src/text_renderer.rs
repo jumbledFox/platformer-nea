@@ -17,7 +17,7 @@ pub enum Font {
 
 pub struct FontDataManager {
     large: FontData,
-    // small: FontData,
+    small: FontData,
 }
 
 impl Default for FontDataManager {
@@ -29,9 +29,16 @@ impl Default for FontDataManager {
                 char_spacing: -1.0,
                 atlas_width: 13,
                 atlas_chars: String::from(" 0123456789!?abcdefghijklmnopqrstuvwxyz[]():;.,*+-=/"),
-                atlas: Texture2D::from_file_with_format(include_bytes!("../res/font.png"), None),
+                atlas: Texture2D::from_file_with_format(include_bytes!("../res/font_large.png"), None),
             },
-            // small: todo!()
+            small: FontData {
+                char_width: 9.0,
+                char_height: 9.0,
+                char_spacing: -1.0,
+                atlas_width: 13,
+                atlas_chars: String::from(" 0123456789:;abcdefghijklmnopqrstuvwxyz()[]<>!?.,\"'|\\/+-=*_'@£&"),
+                atlas: Texture2D::from_file_with_format(include_bytes!("../res/font_small.png"), None),
+            },
         }
     }
 }
@@ -39,7 +46,8 @@ impl Default for FontDataManager {
 impl FontDataManager {
     pub fn font_data(&self, font: Font) -> &FontData {
         match font {
-            _ => &self.large
+            Font::Large => &self.large,
+            Font::Small => &self.small,
         }
     }
 }
@@ -48,7 +56,6 @@ pub enum Align {
     Beg, Mid, End,
 }
 
-// TODO: Make this modular and take in a 'font' and resources and stuff...
 pub fn render_text(text: &str, color: Color, pos: Vec2, size: Vec2, align: Align, font: Font, resources: &Resources) {
     let d = resources.font_data_manager().font_data(font);
 
