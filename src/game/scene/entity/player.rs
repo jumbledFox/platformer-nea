@@ -3,7 +3,7 @@
 
 use macroquad::{color::{BLUE, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, shapes::{draw_circle, draw_rectangle_lines}, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{game::level::{tile::TileHitKind, Level}, resources::Resources, game::scene::collision::{collision_bottom, collision_left, collision_right, collision_top, Collision}, text_renderer::{render_text, Align}, util::approach_target};
+use crate::{game::{level::{tile::TileHitKind, Level}, scene::collision::{collision_bottom, collision_left, collision_right, collision_top, Collision}}, resources::Resources, text_renderer::{render_text, Align, Font}, util::approach_target};
 
 use super::{Entity, EntityCollisionSides};
 
@@ -89,7 +89,7 @@ impl Default for Player {
             head_powerup: HeadPowerup::None,
             feet_powerup: FeetPowerup::None,
 
-            pos: Vec2::ZERO,
+            pos: Vec2::new(16.0, 16.0),
             vel: Vec2::ZERO,
 
             state:     State::Standing,
@@ -392,9 +392,9 @@ impl Entity for Player {
         draw_player_part(PlayerPart::Arm(front_arm));
 
         if debug {
-            render_text(&format!("pos: [{:8.3}, {:8.3}]", self.pos.x, self.pos.y), RED, vec2(1.0, 30.0), Vec2::ONE, Align::End, resources.font_atlas());
-            render_text(&format!("vel: [{:8.3}, {:8.3}]", self.vel.x, self.vel.y), RED, vec2(1.0, 41.0), Vec2::ONE, Align::End, resources.font_atlas());
-            render_text(&format!("state: {:?}", self.state), RED, vec2(1.0, 52.0), Vec2::ONE, Align::End, resources.font_atlas());
+            render_text(&format!("pos: [{:8.3}, {:8.3}]", self.pos.x, self.pos.y), RED, vec2(1.0, 30.0), Vec2::ONE, Align::End, Font::Small, resources);
+            render_text(&format!("vel: [{:8.3}, {:8.3}]", self.vel.x, self.vel.y), RED, vec2(1.0, 41.0), Vec2::ONE, Align::End, Font::Small, resources);
+            render_text(&format!("state: {:?}", self.state), RED, vec2(1.0, 52.0), Vec2::ONE, Align::End, Font::Small, resources);
 
             draw_rectangle_lines(
                 self.hitbox().x + self.pos.x,

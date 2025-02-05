@@ -86,7 +86,7 @@ impl Entity for ColTest {
             // render_text(&format!("pos: [{:8.3}, {:8.3}]", self.pos.x, self.pos.y), GREEN, self.pos + vec2(0.0, -20.0), Vec2::ONE, Align::End, resources.font_atlas());
             // render_text(&format!("vel: [{:8.3}, {:8.3}]", self.vel.x, self.vel.y), GREEN, self.pos + vec2(0.0, -10.0), Vec2::ONE, Align::End, resources.font_atlas());
 
-            render_text(&format!("{:?}", id), GREEN, self.pos, Vec2::ONE, Align::End, resources.font_atlas());
+            // render_text(&format!("{:?}", id), GREEN, self.pos, Vec2::ONE, Align::End, resources.font_atlas());
 
         }
     }

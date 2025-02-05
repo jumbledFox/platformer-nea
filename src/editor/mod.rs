@@ -3,7 +3,7 @@ use editor_camera::EditorCamera;
 use editor_level::EditorLevel;
 use macroquad::{camera::{set_camera, Camera2D}, color::{Color, BLUE, GREEN, RED, WHITE}, color_u8, input::{is_key_down, is_key_pressed, is_mouse_button_down, mouse_delta_position, mouse_position_local, KeyCode, MouseButton}, math::{vec2, Vec2}, shapes::{draw_line, draw_rectangle, draw_rectangle_lines}};
 
-use crate::{game::{level::{tile::{render_tile, CheckerBlockColor, LockColor, Tile}, TileDrawKind, TileRenderData}, scene::Scene}, resources::Resources, text_renderer::{render_text, Align}, GameState, VIEW_HEIGHT, VIEW_SIZE, VIEW_WIDTH};
+use crate::{game::{level::{tile::{render_tile, CheckerBlockColor, LockColor, Tile}, TileDrawKind, TileRenderData}, scene::Scene}, resources::Resources, text_renderer::{render_text, Align, Font}, GameState, VIEW_HEIGHT, VIEW_SIZE, VIEW_WIDTH};
 
 pub mod editor_camera;
 pub mod editor_level;
@@ -38,7 +38,7 @@ impl Editor {
     }
 
     fn draw_editor_logo(resources: &Resources) {
-        render_text("Fox game editor - jumbledFox 2025 !!!", Color::from_rgba(255, 255, 255, 255), vec2(0.0, 214.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
+        render_text("Fox game editor - jumbledFox 2025 !!!", Color::from_rgba(255, 255, 255, 255), vec2(0.0, 214.0), vec2(1.0, 1.0), Align::End, Font::Small, resources);
     }
 }
 
@@ -76,6 +76,17 @@ impl GameState for Editor {
             self.camera.set_pos(self.camera.pos() + camera_arrow_delta * deltatime * 16.0 * speed, &self.editor_level);
         }
 
+        // Changing the level size
+        if is_key_pressed(KeyCode::O) { self.editor_level.move_left_border(false, &mut self.camera); }
+        if is_key_pressed(KeyCode::P) { self.editor_level.move_left_border(true,  &mut self.camera); }
+        if is_key_pressed(KeyCode::K) { self.editor_level.move_right_border(false); }
+        if is_key_pressed(KeyCode::L) { self.editor_level.move_right_border(true); }
+        if is_key_pressed(KeyCode::U) { self.editor_level.move_top_border(false, &mut self.camera); }
+        if is_key_pressed(KeyCode::I) { self.editor_level.move_top_border(true,  &mut self.camera); }
+        if is_key_pressed(KeyCode::H) { self.editor_level.move_bot_border(false); }
+        if is_key_pressed(KeyCode::J) { self.editor_level.move_bot_border(true); }
+        println!("{:?}", self.editor_level.width());
+
         if is_key_pressed(KeyCode::Key1) { self.selected_tile = Tile::Grass; }
         if is_key_pressed(KeyCode::Key2) { self.selected_tile = Tile::CheckerBlock(CheckerBlockColor::Cyan); }
         if is_key_pressed(KeyCode::Key3) { self.selected_tile = Tile::CheckerBlock(CheckerBlockColor::Orange); }
@@ -83,6 +94,8 @@ impl GameState for Editor {
         if is_key_pressed(KeyCode::Key5) { self.selected_tile = Tile::Lock(LockColor::Rainbow); }
         if is_key_pressed(KeyCode::Key6) { self.selected_tile = Tile::LockBlock(LockColor::Rainbow); }
         if is_key_pressed(KeyCode::Key7) { self.selected_tile = Tile::Checker; }
+        if is_key_pressed(KeyCode::Key8) { self.selected_tile = Tile::Bridge; }
+        if is_key_pressed(KeyCode::Key9) { self.selected_tile = Tile::Rope; }
 
         // Setting the position of the tile
         let mouse_tile = ((mouse_position_local() / 2.0 + 0.5) * VIEW_SIZE / 16.0 + self.camera.pos() / 16.0).floor();

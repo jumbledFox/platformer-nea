@@ -4,7 +4,7 @@
 use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
 use macroquad::{color::{GREEN, ORANGE, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Vec2}};
 
-use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, resources::Resources, text_renderer::{render_text, Align}};
+use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, resources::Resources, text_renderer::{render_text, Align, Font}};
 
 pub mod collision;
 pub mod entity;
@@ -113,14 +113,14 @@ impl Scene {
         
         // Draw the UI
         // Lives
-        render_text("- fox -",           ORANGE, vec2( 40.0,  8.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
-        render_text("*",                 WHITE,  vec2( 40.0, 24.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
-        render_text(&format!("{lives}"), WHITE,  vec2( 60.0, 24.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text("- fox -",           ORANGE, vec2( 40.0,  8.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+        render_text("*",                 WHITE,  vec2( 40.0, 24.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+        render_text(&format!("{lives}"), WHITE,  vec2( 60.0, 24.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         // Powerups
-        render_text("BOOTS",   WHITE,  vec2(176.0, 10.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
-        render_text("HELMET",  WHITE,  vec2(176.0, 22.0), vec2(1.0, 1.0), Align::Mid, resources.font_atlas());
+        render_text("BOOTS",   WHITE,  vec2(176.0, 10.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+        render_text("HELMET",  WHITE,  vec2(176.0, 22.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         // Timer and points
-        render_text(&format!("{:?}", self.timer.floor() as usize), WHITE,  vec2(305.0,  3.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
-        render_text(&format!("{:?}", self.chips), GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, resources.font_atlas());
+        render_text(&format!("{:?}", self.timer.floor() as usize), WHITE,  vec2(305.0,  3.0), vec2(1.0, 1.0), Align::End, Font::Large, resources);
+        render_text(&format!("{:?}", self.chips), GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, Font::Large, resources);
     }
 }

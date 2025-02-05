@@ -1,19 +1,58 @@
 use macroquad::{color::Color, math::{vec2, Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
 
-const CHAR_WIDTH:   f32 =  9.0;
-const CHAR_HEIGHT:  f32 = 10.0;
-const CHAR_SPACING: f32 = -1.0;
+use crate::resources::Resources;
 
-const ATLAS_WIDTH: usize = 13;
-const ATLAS_CHARS: &str = " 0123456789!?abcdefghijklmnopqrstuvwxyz[]():;.,*+-=/";
+pub struct FontData {
+    char_width:   f32,
+    char_height:  f32,
+    char_spacing: f32,
+    atlas_width: usize,
+    atlas_chars: String,
+    atlas: Texture2D,
+}
+
+pub enum Font {
+    Large, Small
+}
+
+pub struct FontDataManager {
+    large: FontData,
+    // small: FontData,
+}
+
+impl Default for FontDataManager {
+    fn default() -> Self {
+        Self {
+            large: FontData {
+                char_width: 9.0,
+                char_height: 10.0,
+                char_spacing: -1.0,
+                atlas_width: 13,
+                atlas_chars: String::from(" 0123456789!?abcdefghijklmnopqrstuvwxyz[]():;.,*+-=/"),
+                atlas: Texture2D::from_file_with_format(include_bytes!("../res/font.png"), None),
+            },
+            // small: todo!()
+        }
+    }
+}
+
+impl FontDataManager {
+    pub fn font_data(&self, font: Font) -> &FontData {
+        match font {
+            _ => &self.large
+        }
+    }
+}
 
 pub enum Align {
     Beg, Mid, End,
 }
 
 // TODO: Make this modular and take in a 'font' and resources and stuff...
-pub fn render_text(text: &str, color: Color, pos: Vec2, size: Vec2, align: Align, atlas: &Texture2D) {
-    let text_size = vec2(text.len() as f32 * (CHAR_WIDTH + CHAR_SPACING), CHAR_HEIGHT) * size;
+pub fn render_text(text: &str, color: Color, pos: Vec2, size: Vec2, align: Align, font: Font, resources: &Resources) {
+    let d = resources.font_data_manager().font_data(font);
+
+    let text_size = vec2(text.len() as f32 * (d.char_width + d.char_spacing), d.char_height) * size;
     let Vec2 { mut x, y } = match align {
         Align::Beg => pos - text_size,
         Align::Mid => pos - text_size / 2.0,
@@ -21,24 +60,24 @@ pub fn render_text(text: &str, color: Color, pos: Vec2, size: Vec2, align: Align
     };
 
     for character in text.chars() {
-        let character_index = ATLAS_CHARS
+        let character_index = d.atlas_chars
             .chars()
             .position(|c| c == character.to_ascii_lowercase())
             .unwrap_or(0);
 
         let source = Rect::new(
-            (character_index % ATLAS_WIDTH) as f32 * CHAR_WIDTH,
-            (character_index / ATLAS_WIDTH) as f32 * CHAR_HEIGHT,
-            CHAR_WIDTH,
-            CHAR_HEIGHT,
+            (character_index % d.atlas_width) as f32 * d.char_width,
+            (character_index / d.atlas_width) as f32 * d.char_height,
+            d.char_width,
+            d.char_height,
         );
 
-        draw_texture_ex(atlas, x.round(), y.round(), color, DrawTextureParams {
+        draw_texture_ex(&d.atlas, x.round(), y.round(), color, DrawTextureParams {
             source: Some(source),
-            dest_size: Some(size * vec2(CHAR_WIDTH, CHAR_HEIGHT)),
+            dest_size: Some(size * vec2(d.char_width, d.char_height)),
             ..Default::default()
         });
         
-        x += (CHAR_WIDTH + CHAR_SPACING) * size.x;
+        x += (d.char_width + d.char_spacing) * size.x;
     }
 }
