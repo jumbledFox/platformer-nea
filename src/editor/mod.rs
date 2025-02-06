@@ -38,7 +38,7 @@ impl Editor {
     }
 
     fn draw_editor_logo(resources: &Resources) {
-        render_text("Fox game editor - jumbledFox 2025 !!!", Color::from_rgba(255, 255, 255, 255), vec2(1.0, 215.0), vec2(1.0, 1.0), Align::End, Font::Small, resources);
+        render_text("editor! press esc for menu/help", Color::from_rgba(255, 255, 255, 255), vec2(1.0, 215.0), vec2(1.0, 1.0), Align::End, Font::Small, resources);
     }
 }
 
@@ -54,6 +54,9 @@ impl GameState for Editor {
             self.scene.update(deltatime, resources);
             return;
         }
+
+        // TODO: Space to open tile/entity selection menu
+        // Esc to open menu for naming level, switching level, shuffling in pack, saving pack, testing level
 
 
         // Dragging the camera with the middle mouse button
@@ -85,7 +88,6 @@ impl GameState for Editor {
         if is_key_pressed(KeyCode::I) { self.editor_level.move_top_border(true,  &mut self.camera); }
         if is_key_pressed(KeyCode::H) { self.editor_level.move_bot_border(false); }
         if is_key_pressed(KeyCode::J) { self.editor_level.move_bot_border(true); }
-        println!("{:?}", self.editor_level.width());
 
         if is_key_pressed(KeyCode::Key1) { self.selected_tile = Tile::Grass; }
         if is_key_pressed(KeyCode::Key2) { self.selected_tile = Tile::CheckerBlock(CheckerBlockColor::Cyan); }
