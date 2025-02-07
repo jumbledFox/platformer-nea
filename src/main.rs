@@ -4,10 +4,12 @@ use editor::Editor;
 use game::Game;
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, WHITE}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width, Conf}};
 use resources::Resources;
+use ui::Ui;
 
 pub mod util;
 pub mod resources;
 pub mod text_renderer;
+pub mod ui;
 pub mod game;
 pub mod editor;
 
@@ -27,8 +29,8 @@ fn window_conf()-> Conf {
 }
 
 pub trait GameState {
-    fn update(&mut self, deltatime: f32, resources: &Resources);
-    fn draw(&self, resources: &Resources, debug: bool);
+    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &Resources);
+    fn draw(&self, ui: &Ui, resources: &Resources, debug: bool);
 }
 
 #[macroquad::main(window_conf())]
@@ -42,6 +44,8 @@ async fn main() {
     let render_target = render_target(VIEW_WIDTH as u32 * 16, VIEW_HEIGHT as u32 * 16);
     render_target.texture.set_filter(FilterMode::Nearest);
 
+    let mut ui = Ui::new();
+
     let mut world_cam = Camera2D::from_display_rect(
         Rect::new(
             0.0,
@@ -53,9 +57,11 @@ async fn main() {
     world_cam.render_target = Some(render_target.clone());
 
     let mut debug = true;
-    let mut game_state: Box<dyn GameState> = Box::new(Editor::new());
+    let mut game_state: Box<dyn GameState> = Box::new(Editor::new(&resources));
 
     loop {
+        ui.begin_frame();
+
         if is_key_pressed(macroquad::input::KeyCode::Key0) {
             debug = !debug;
         }
@@ -63,13 +69,14 @@ async fn main() {
         // Update the game state
         let deltatime = get_frame_time();
         resources.update_tile_animation_timer(deltatime);
-        game_state.update(deltatime, &resources);
+        game_state.update(deltatime, &mut ui, &resources);
 
         // Draw to the render target
         set_camera(&world_cam);
         clear_background(Color::from_hex(0x6dcaff));
 
-        game_state.draw(&resources, debug);
+        game_state.draw(&ui, &resources, debug);
+        ui.draw(&resources);
 
         // Draw the render target
         set_default_camera();

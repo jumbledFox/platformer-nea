@@ -37,4 +37,9 @@ impl EditorCamera {
         let max_pos = vec2((editor_level.width() - VIEW_WIDTH) as f32, (editor_level.height() - VIEW_HEIGHT) as f32) + self.tile_pad;
         self.pos = pos.clamp(min_pos * 16.0, max_pos * 16.0);
     }
+
+    // We don't need to do any bounds-checking to reset the camera to 0, 0...
+    pub fn reset_pos(&mut self) {
+        self.pos = Vec2::ZERO;
+    }
 }

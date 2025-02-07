@@ -3,7 +3,7 @@
 
 use scene::Scene;
 
-use crate::GameState;
+use crate::{resources::Resources, ui::Ui, GameState};
 
 pub mod level;
 pub mod scene;
@@ -23,11 +23,11 @@ impl Game {
 }
 
 impl GameState for Game {
-    fn update(&mut self, deltatime: f32, resources: &crate::resources::Resources) {
+    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &Resources) {
         self.scene.update(deltatime, resources);
     }
 
-    fn draw(&self, resources: &crate::resources::Resources, debug: bool) {
+    fn draw(&self, ui: &Ui, resources: &Resources, debug: bool) {
         self.scene.draw(self.lives, resources, debug);
     }
 }
