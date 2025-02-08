@@ -145,12 +145,11 @@ impl Button {
         let color = match self.state {
             ButtonState::Disabled => DARKGRAY,
             ButtonState::Hovered  => Color::from_rgba(250, 135, 0, 255),
-
-            ButtonState::Idle     |
-            ButtonState::Released => Color::from_rgba(210, 105, 0, 255),
-
+            ButtonState::Idle     => Color::from_rgba(210, 105, 0, 255),
+            
             ButtonState::Clicked  |
-            ButtonState::Held     => Color::from_rgba(170,  80, 0, 255),
+            ButtonState::Held     |
+            ButtonState::Released => Color::from_rgba(170,  80, 0, 255),
         };
         draw_rect(self.rect, color);
         draw_rect_lines(self.rect, BLACK);

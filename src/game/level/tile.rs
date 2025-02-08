@@ -95,7 +95,7 @@ impl Default for TileDataManager {
 
         data.insert(Tile::StoneBlock, TileData::new("Stone Block".to_owned(), Some(TileTexture::fixed(2, TileTextureConnection::None, false)), TileCollision::solid_default(false)));
         data.insert(Tile::Glass, TileData::new("Glass".to_owned(), Some(TileTexture::fixed(4, TileTextureConnection::None, false)), TileCollision::solid_default(false)));
-        data.insert(Tile::Block, TileData::new("Black".to_owned(), Some(TileTexture::fixed(5, TileTextureConnection::None, false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Block, TileData::new("Block".to_owned(), Some(TileTexture::fixed(5, TileTextureConnection::None, false)), TileCollision::solid_default(false)));
 
 
         // Lock blocks
