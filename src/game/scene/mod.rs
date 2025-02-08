@@ -49,7 +49,7 @@ impl Default for Scene {
 
 impl Scene {
     pub fn from_editor_level(editor_level: &EditorLevel) -> Self {
-        let level = Level::new(editor_level.tiles().clone(), editor_level.width(), editor_level.height(), editor_level.physics());
+        let level = Level::new(editor_level.tiles().clone(), editor_level.tiles_bg().clone(), editor_level.width(), editor_level.height(), editor_level.physics());
         Scene {
             level,
             timer: 0.0,
@@ -103,6 +103,7 @@ impl Scene {
         // Temporary
         let camera_pos = Vec2::ZERO;
 
+        self.level.render_bg(camera_pos, resources);
         self.level.render_below(camera_pos, resources);
         // Draw the entities in reverse so the player is always on top
         for (i, entity) in self.entities.iter().enumerate().rev() {

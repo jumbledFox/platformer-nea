@@ -64,7 +64,7 @@ pub fn render_text(text: &str, color: Color, pos: Vec2, size: Vec2, align: Align
         Align::Beg => pos - text_size,
         Align::Mid => pos - text_size / 2.0,
         Align::End => pos,
-    };
+    }.floor();
 
     for character in text.chars() {
         let character_index = d.atlas_chars
@@ -87,4 +87,9 @@ pub fn render_text(text: &str, color: Color, pos: Vec2, size: Vec2, align: Align
         
         x += (d.char_width + d.char_spacing) * size.x;
     }
+}
+
+pub fn text_size(text: &str, size: Vec2, font: Font, resources: &Resources) -> Vec2 {
+    let d = resources.font_data_manager().font_data(font);
+    vec2(text.len() as f32 * (d.char_width + d.char_spacing), d.char_height) * size
 }

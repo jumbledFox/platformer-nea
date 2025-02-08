@@ -3,7 +3,7 @@
 use std::f32::consts::PI;
 
 use macroquad::math::{vec2, Vec2};
-use tile::{render_tile, LockColor, Tile, TileCollision, TileHit, TileHitKind, TileTextureConnection};
+use tile::{render_tile, LockColor, Tile, TileCollision, TileHit, TileHitKind, TileRenderLayer, TileTextureConnection};
 
 use crate::resources::Resources;
 
@@ -22,6 +22,7 @@ pub struct BumpedTile {
 
 pub struct Level {
     tiles: Vec<Tile>,
+    tiles_bg: Vec<Tile>,
     width: usize,
     height: usize,
     bumped_tiles: Vec<BumpedTile>,
@@ -39,6 +40,7 @@ pub struct Level {
     should_update_render_data: bool,
     tiles_below: Vec<TileRenderData>,
     tiles_above: Vec<TileRenderData>,
+    tiles_background: Vec<TileRenderData>,
 }
 
 #[derive(Clone, Copy)]
@@ -58,6 +60,7 @@ pub enum TileDrawKind {
 impl Default for Level {
     fn default() -> Self {
         let mut tiles = vec![Tile::Empty; 22*14];
+        let tiles_bg = vec![Tile::Empty; 22*14];
 
         // for t in &mut tiles {
         //     *t = match macroquad::rand::gen_range(0, 4) {
@@ -100,6 +103,7 @@ impl Default for Level {
 
         Self {
             tiles,
+            tiles_bg,
             width:  22,
             height: 14,
             bumped_tiles: Vec::with_capacity(10),
@@ -107,24 +111,26 @@ impl Default for Level {
             should_update_render_data: true,
             tiles_above: Vec::with_capacity(16*8),
             tiles_below: Vec::with_capacity(16*8),
+            tiles_background: Vec::with_capacity(16*8),
         }
     }
 }
 
 impl Level {
-    pub fn new(tiles: Vec<Tile>, width: usize, height: usize, physics: LevelPhysics) -> Self {
+    pub fn new(tiles: Vec<Tile>, tiles_bg: Vec<Tile>, width: usize, height: usize, physics: LevelPhysics) -> Self {
         Self {
-            tiles, width, height, physics,
+            tiles, tiles_bg, width, height, physics,
             bumped_tiles: vec![],
             should_update_render_data: true,
-            tiles_below: vec![],
-            tiles_above: vec![],
+            tiles_below:      vec![],
+            tiles_above:      vec![],
+            tiles_background: vec![],
         }
     }
 
-    // Switch blocks - sets the state of all switch tiles in the level
+    // Switch blocks - sets the state of all switch tiles in the level and the background
     fn set_switch_state(&mut self, enabled: bool) {
-        for t in &mut self.tiles {
+        for t in self.tiles.iter_mut().chain(self.tiles_bg.iter_mut()) {
             match t {
                 Tile::Switch(state) |
                 Tile::SwitchBlockOn(state)  => *state =  enabled,
@@ -136,12 +142,19 @@ impl Level {
 
     // Lock blocks - removes all of the specified colour and spawns particles
     pub fn remove_lock_blocks(&mut self, color: LockColor) {
-        for t in &mut self.tiles {
+        let mut check_tile = |t: &mut Tile, _bg: bool| {
             if *t == Tile::Lock(color) || *t == Tile::LockBlock(color) {
                 self.should_update_render_data = true;
                 *t = Tile::Empty;
                 // spawn particles;
             }
+        };
+
+        for t in &mut self.tiles {
+            check_tile(t, false);
+        }
+        for t in &mut self.tiles_bg {
+            check_tile(t, true);
         }
     }
 
@@ -195,7 +208,7 @@ impl Level {
             let pos = Level::tile_pos(bumped_tile.index, self.width) - vec2(0.0, (bumped_tile.timer * PI).sin()) * 8.0;
 
             let render_data = TileRenderData { draw_kind: TileDrawKind::Single(0), tile: bumped_tile.tile, pos};
-            render_tile(&render_data, camera_pos, resources);
+            render_tile(&render_data, camera_pos, TileRenderLayer::Foreground(false), resources);
         }
     }
 
@@ -230,22 +243,25 @@ impl Level {
     // If we should update the tiles, do it!
     pub fn update_if_should(&mut self, resources: &Resources) {
         if self.should_update_render_data {
-            Level::update_tile_render_data(&mut self.tiles_below, &mut self.tiles_above, Some(&self.bumped_tiles), &self.tiles, self.width, self.height, resources);
+            Level::update_tile_render_data(&mut self.tiles_below, &mut self.tiles_above, &mut self.tiles_background, Some(&self.bumped_tiles), &self.tiles, &self.tiles_bg, self.width, self.height, resources);
             self.should_update_render_data = false;
         }
     }
 
+    pub fn render_bg(&self, camera_pos: Vec2, resources: &Resources) {
+        Level::render_tiles(&self.tiles_background, camera_pos, TileRenderLayer::Background, resources);
+    }
     pub fn render_below(&self, camera_pos: Vec2, resources: &Resources) {
-        Level::render_tiles(&self.tiles_below, camera_pos, resources);
+        Level::render_tiles(&self.tiles_below, camera_pos, TileRenderLayer::Foreground(false), resources);
     }
     pub fn render_above(&self, camera_pos: Vec2, resources: &Resources) {
-        Level::render_tiles(&self.tiles_above, camera_pos, resources);
+        Level::render_tiles(&self.tiles_above, camera_pos, TileRenderLayer::Foreground(false), resources);
     }
 
     // Renders a bunch of tiles
-    pub fn render_tiles(tiles: &Vec<TileRenderData>, camera_pos: Vec2, resources: &Resources) {
+    pub fn render_tiles(tiles: &Vec<TileRenderData>, camera_pos: Vec2, render_layer: TileRenderLayer, resources: &Resources) {
         for render_data in tiles {
-            render_tile(render_data, camera_pos, resources);
+            render_tile(render_data, camera_pos, render_layer, resources);
         }
     }
 
@@ -260,11 +276,22 @@ impl Level {
     }
 
     // Prepare tiles for rendering
-    pub fn update_tile_render_data(tiles_below: &mut Vec<TileRenderData>, tiles_above: &mut Vec<TileRenderData>, bumped_tiles: Option<&Vec<BumpedTile>>, tiles: &Vec<Tile>, width: usize, height: usize, resources: &Resources) {
+    pub fn update_tile_render_data(
+        tiles_below:      &mut Vec<TileRenderData>,
+        tiles_above:      &mut Vec<TileRenderData>,
+        tiles_background: &mut Vec<TileRenderData>,
+        bumped_tiles: Option<&Vec<BumpedTile>>,
+        tiles:    &Vec<Tile>,
+        tiles_bg: &Vec<Tile>,
+        width: usize,
+        height: usize,
+        resources: &Resources
+    ) {
         tiles_below.clear();
         tiles_above.clear();
+        tiles_background.clear();
 
-        let tile_connects = |tile: Tile, index: usize, offset: (isize, isize)| -> bool {
+        let tile_connects = |tile: Tile, index: usize, offset: (isize, isize), tiles: &Vec<Tile>| -> bool {
             // The coordinates of the tile to check
             let x = (index % width) as isize + offset.0;
             let y = (index / width) as isize + offset.1;
@@ -281,9 +308,9 @@ impl Level {
 
         // For Horizontal and Vertical connected textures.
         // Checks two neighbours and returns the offset.
-        let connected_texture_single = |tile: Tile, index: usize, first_offset: (isize, isize), second_offset: (isize, isize)| -> TileDrawKind {
-            let first  = tile_connects(tile, index, first_offset);
-            let second = tile_connects(tile, index, second_offset);
+        let connected_texture_single = |tile: Tile, index: usize, first_offset: (isize, isize), second_offset: (isize, isize), tiles: &Vec<Tile>| -> TileDrawKind {
+            let first  = tile_connects(tile, index, first_offset, tiles);
+            let second = tile_connects(tile, index, second_offset, tiles);
 
             let texture = match (first, second) {
                 (false, false) => 0,
@@ -297,15 +324,15 @@ impl Level {
 
         // For 'Both' connected textures.
         // Check's all of the tiles neighbours.
-        let connected_texture_both = |tile: Tile, index: usize| -> TileDrawKind {
-            let n  = tile_connects(tile, index, ( 0, -1));
-            let e  = tile_connects(tile, index, ( 1,  0));
-            let s  = tile_connects(tile, index, ( 0,  1));
-            let w  = tile_connects(tile, index, (-1,  0));
-            let ne = tile_connects(tile, index, ( 1, -1));
-            let nw = tile_connects(tile, index, (-1, -1));
-            let se = tile_connects(tile, index, ( 1,  1));
-            let sw = tile_connects(tile, index, (-1,  1));
+        let connected_texture_both = |tile: Tile, index: usize, tiles: &Vec<Tile>| -> TileDrawKind {
+            let n  = tile_connects(tile, index, ( 0, -1), tiles);
+            let e  = tile_connects(tile, index, ( 1,  0), tiles);
+            let s  = tile_connects(tile, index, ( 0,  1), tiles);
+            let w  = tile_connects(tile, index, (-1,  0), tiles);
+            let ne = tile_connects(tile, index, ( 1, -1), tiles);
+            let nw = tile_connects(tile, index, (-1, -1), tiles);
+            let se = tile_connects(tile, index, ( 1,  1), tiles);
+            let sw = tile_connects(tile, index, (-1,  1), tiles);
 
             let (mut tl, mut tr, mut bl, mut br) = (0, 0, 0, 0);
             // the horizontal, vertical, corner neighbours of each quarter
@@ -340,9 +367,9 @@ impl Level {
 
             let draw_kind = match &texture.connection {
                 TileTextureConnection::None       => TileDrawKind::Single(0),
-                TileTextureConnection::Horizontal => connected_texture_single(tile, i, (-1,  0), (1, 0)),
-                TileTextureConnection::Vertical   => connected_texture_single(tile, i, ( 0, -1), (0, 1)),
-                TileTextureConnection::Both       => connected_texture_both(tile, i),
+                TileTextureConnection::Horizontal => connected_texture_single(tile, i, (-1,  0), (1, 0), tiles),
+                TileTextureConnection::Vertical   => connected_texture_single(tile, i, ( 0, -1), (0, 1), tiles),
+                TileTextureConnection::Both       => connected_texture_both(tile, i, tiles),
             };
 
             let render_data = TileRenderData { tile, draw_kind, pos: Level::tile_pos(i, width) };
@@ -352,6 +379,25 @@ impl Level {
             } else {
                 tiles_below.push(render_data);
             }
+        }
+
+        // Add the background tiles
+        for (i, &tile) in tiles_bg.iter().enumerate() {
+            // Don't render the tile if it doesn't have a texture
+            let texture = match resources.tile_data_manager().data(tile).texture() {
+                Some(t) => t,
+                None => continue,
+            };
+
+            let draw_kind = match &texture.connection {
+                TileTextureConnection::None       => TileDrawKind::Single(0),
+                TileTextureConnection::Horizontal => connected_texture_single(tile, i, (-1,  0), (1, 0), tiles_bg),
+                TileTextureConnection::Vertical   => connected_texture_single(tile, i, ( 0, -1), (0, 1), tiles_bg),
+                TileTextureConnection::Both       => connected_texture_both(tile, i, tiles_bg),
+            };
+
+            let render_data = TileRenderData { tile, draw_kind, pos: Level::tile_pos(i, width) };
+            tiles_background.push(render_data);
         }
     }
 }

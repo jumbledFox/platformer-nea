@@ -25,7 +25,7 @@ impl Editor {
         Self {
             scene: Scene::default(),
             editor_level: EditorLevel::default(),
-            level_view: LevelView::new(crate::game::level::tile::Tile::Checker),
+            level_view: LevelView::new(),
             object_selector: ObjectSelector::new(resources),
 
             playing_scene: false,
@@ -58,15 +58,15 @@ impl GameState for Editor {
         if self.object_selector.active() {
             let object = self.object_selector.update(ui);
 
-            if let Some(o) = object {
-                self.level_view.blah_set_tile(o);
+            if let Some(object) = object {
+                self.level_view.set_selected_object(object);
             }
         } else {
-            self.level_view.update(&mut self.editor_level, deltatime, resources);
+            self.level_view.update(&mut self.editor_level, deltatime, ui, resources);
         }
     }
 
-    fn draw(&self, ui: &Ui, resources: &Resources, debug: bool) {
+    fn draw(&self, _ui: &Ui, resources: &Resources, debug: bool) {
         if self.playing_scene {
             self.scene.draw(0, resources, debug);
             Editor::draw_editor_logo(resources);

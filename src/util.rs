@@ -1,4 +1,4 @@
-use macroquad::{color::Color, math::Rect, shapes::draw_rectangle_lines};
+use macroquad::{color::Color, math::Rect, shapes::{draw_rectangle, draw_rectangle_lines}};
 
 // For some reason, checking if two strings in rust isn't possible in a const function.
 // I've written my own to allow this.
@@ -31,6 +31,9 @@ pub fn approach_target(val: &mut f32, step: f32, target: f32) {
     }
 }
 
+pub fn draw_rect(rect: Rect, color: Color) {
+    draw_rectangle(rect.x.floor(), rect.y.floor(), rect.w.floor(), rect.h.floor(), color);
+}
 pub fn draw_rect_lines(rect: Rect, color: Color) {
-    draw_rectangle_lines(rect.x.round(), rect.y.round(), rect.w.round(), rect.h.round(), 2.0, color);
+    draw_rectangle_lines(rect.x.floor(), rect.y.floor(), rect.w.floor(), rect.h.floor(), 2.0, color);
 }

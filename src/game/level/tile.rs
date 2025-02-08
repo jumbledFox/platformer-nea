@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use macroquad::{color::{Color, WHITE}, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{Color, GRAY, WHITE}, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
 
 use crate::resources::Resources;
 
@@ -13,6 +13,12 @@ pub enum LockColor {
     Red, Green, Blue, Yellow, White, Black,
     // TODO: Maybe make keys that have multiple colors they cycle through that can unlock multiple types, rather than a rainbow block
     Rainbow, // The rainbow one is special and cute because it has a neat animated texture :3
+}
+
+impl LockColor {
+    pub fn colors() -> &'static [LockColor] {
+        &[Self::Red, Self::Green, Self::Blue, Self::Yellow, Self::White, Self::Black, Self::Rainbow]
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
@@ -29,7 +35,7 @@ pub enum Tile {
 
     Door,
 
-    Grass, Metal, Checker, Cloud,
+    Grass, Stone, Cloud, Metal, Checker,
     CheckerBlock(CheckerBlockColor),
 
     Bridge, Rope,
@@ -63,6 +69,7 @@ impl Default for TileDataManager {
         data.insert(Tile::Door, TileData::new("Door".to_owned(), Some(TileTexture::fixed(140, TileTextureConnection::Vertical, false)), TileCollision::None));
 
         data.insert(Tile::Grass,   TileData::new("Grass".to_owned(),   Some(TileTexture::fixed( 6, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Stone,   TileData::new("Stone".to_owned(),   Some(TileTexture::fixed(22, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
         data.insert(Tile::Metal,   TileData::new("Metal".to_owned(),   Some(TileTexture::fixed(11, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
         data.insert(Tile::Checker, TileData::new("Checker".to_owned(), Some(TileTexture::fixed(27, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
         data.insert(Tile::Cloud,   TileData::new("Cloud".to_owned(),   Some(TileTexture::fixed(38, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
@@ -85,6 +92,10 @@ impl Default for TileDataManager {
 
         data.insert(Tile::Ladder, TileData::new("Ladder".to_owned(), Some(TileTexture::fixed(108, TileTextureConnection::Vertical, false)), TileCollision::Ladder));
         data.insert(Tile::Vine, TileData::new("Vine".to_owned(), Some(TileTexture::fixed(64, TileTextureConnection::None, false)), TileCollision::Ladder));
+
+        data.insert(Tile::StoneBlock, TileData::new("Stone Block".to_owned(), Some(TileTexture::fixed(2, TileTextureConnection::None, false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Glass, TileData::new("Glass".to_owned(), Some(TileTexture::fixed(4, TileTextureConnection::None, false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Block, TileData::new("Black".to_owned(), Some(TileTexture::fixed(5, TileTextureConnection::None, false)), TileCollision::solid_default(false)));
 
 
         // Lock blocks
@@ -258,9 +269,14 @@ impl TileCollision {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum TileRenderLayer {
+    Foreground(bool), // Transparent or not
+    Background,
+}
 
 // Rendering a tile
-pub fn render_tile(render_data: &TileRenderData, camera_pos: Vec2, resources: &Resources) {
+pub fn render_tile(render_data: &TileRenderData, camera_pos: Vec2, render_layer: TileRenderLayer, resources: &Resources) {
     let TileRenderData { tile, draw_kind, pos } = *render_data;
 
     // TODO: Skip rendering if offscreen
@@ -293,9 +309,16 @@ pub fn render_tile(render_data: &TileRenderData, camera_pos: Vec2, resources: &R
         )
     };
 
+    // If it's a background tile we want to draw it darker
+    let color = match render_layer {
+        TileRenderLayer::Foreground(false) => WHITE,
+        TileRenderLayer::Foreground(true)  => Color::from_rgba(255, 255, 255,  64),
+        TileRenderLayer::Background        => Color::from_rgba(150, 150, 150, 255),
+    };
+
     // Draws a tile that's a single texture
     let draw_single = |offset: usize| {
-        draw_texture_ex(resources.tiles_atlas(), pos.x - camera_pos.x, pos.y - camera_pos.y, WHITE, DrawTextureParams {
+        draw_texture_ex(resources.tiles_atlas(), pos.x - camera_pos.x, pos.y - camera_pos.y, color, DrawTextureParams {
             source: Some(tile_rect(start_texture + offset)),
             ..Default::default()
         });
@@ -309,7 +332,7 @@ pub fn render_tile(render_data: &TileRenderData, camera_pos: Vec2, resources: &R
             (br, 8.0, 8.0),
         ] {
             let texture_start = tile_rect(start_texture + offset).point();
-            draw_texture_ex(resources.tiles_atlas(), pos.x - camera_pos.x + x, pos.y - camera_pos.y + y, WHITE, DrawTextureParams {
+            draw_texture_ex(resources.tiles_atlas(), pos.x - camera_pos.x + x, pos.y - camera_pos.y + y, color, DrawTextureParams {
                 source: Some(Rect::new(texture_start.x + x, texture_start.y + y, 8.0, 8.0)),
                 ..Default::default()
             });
