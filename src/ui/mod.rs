@@ -9,14 +9,14 @@ use crate::{resources::Resources, text_renderer::{render_text, text_size, Align,
 // Makes sure two buttons can't be interacted with at the same time, also handles tooltips
 pub struct Ui {
     tooltip: String,
-    button_interacted: bool,
+    interacted: bool,
 }
 
 impl Ui {
     pub fn new() -> Self {
         Self {
             tooltip: String::with_capacity(64),
-            button_interacted: false,
+            interacted: false,
         }
     }
 
@@ -24,12 +24,12 @@ impl Ui {
         (mouse_position_local() / 2.0 + 0.5) * VIEW_SIZE
     }
 
-    pub fn button_interacted(&self) -> bool {
-        self.button_interacted
+    pub fn interacted(&self) -> bool {
+        self.interacted
     }
 
     pub fn interact(&mut self) {
-        self.button_interacted = true;
+        self.interacted = true;
     }
 
     pub fn set_tooltip(&mut self, tooltip: impl AsRef<str>) {
@@ -38,8 +38,14 @@ impl Ui {
     }
 
     pub fn begin_frame(&mut self) {
-        self.button_interacted = false;
+        self.interacted = false;
         self.tooltip.clear();
+    }
+
+    pub fn end_frame(&mut self) {
+        if !is_mouse_button_down(MouseButton::Left) {
+            self.interacted = false;
+        }
     }
 
     pub fn draw(&self, resources: &Resources) {
@@ -64,11 +70,12 @@ impl Ui {
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum ButtonState {
-    Disabled, Idle, Hovered, Clicked, Held, Released,
+    Idle, Hovered, Clicked, Held, Released,
 }
 
 pub struct Button {
     state: ButtonState,
+    disabled: bool,
     rect: Rect,
     label: Option<String>,
     tooltip: Option<String>,
@@ -76,7 +83,7 @@ pub struct Button {
 
 impl Button {
     pub fn new(rect: Rect, label: Option<String>, tooltip: Option<String>) -> Self {
-        Button { state: ButtonState::Idle, rect, label, tooltip }
+        Button { state: ButtonState::Idle, disabled: false, rect, label, tooltip }
     }
 
     pub fn rect(&self) -> Rect {
@@ -104,14 +111,12 @@ impl Button {
     }
 
     pub fn set_disabled(&mut self, disabled: bool) {
-        self.state = match disabled {
-            true  => ButtonState::Disabled,
-            false => ButtonState::Idle,
-        }
+        self.disabled = disabled;
     }
 
     pub fn update(&mut self, ui: &mut Ui) {
-        if self.state == ButtonState::Disabled {
+        // Don't update disabled buttons
+        if self.disabled {
             return;
         }
         // If the mouse isn't over the button, make it idle and return!
@@ -119,8 +124,8 @@ impl Button {
             self.state = ButtonState::Idle;
             return;
         }
-
-        if ui.button_interacted() {
+        // If a ui element has already been interacted with, don't update, otherwise interact!!
+        if ui.interacted() {
            return; 
         }
         ui.interact();
@@ -129,21 +134,29 @@ impl Button {
         if let Some(t) = &self.tooltip {
             ui.set_tooltip(t);
         }
-
-        self.state = ButtonState::Hovered;
         
-        if is_mouse_button_pressed(MouseButton::Left) {
+        // If the button is idle, make it hovered
+        // If the button is hovered and clicked on, make it clicked
+        // If the button is clicked or held and being held, make/keep it held
+        // If the button is held and the mouse has been released, make it released
+        // If the button is released, make it hovered.
+
+        if self.state == ButtonState::Idle {
+            self.state = ButtonState::Hovered;
+        } else if is_mouse_button_pressed(MouseButton::Left) && self.state == ButtonState::Hovered {
             self.state = ButtonState::Clicked;
-        } else if is_mouse_button_down(MouseButton::Left) {
+        } else if is_mouse_button_down(MouseButton::Left) && (self.state == ButtonState::Clicked || self.state == ButtonState::Held) {
             self.state = ButtonState::Held;
-        } else if is_mouse_button_released(MouseButton::Left) {
+        } else if is_mouse_button_released(MouseButton::Left) && self.state == ButtonState::Held {
             self.state = ButtonState::Released;
+        } else if self.state == ButtonState::Released {
+            self.state = ButtonState::Hovered;
         }
     }
 
     pub fn draw(&self, resources: &Resources) {
         let color = match self.state {
-            ButtonState::Disabled => DARKGRAY,
+            _ if self.disabled    => DARKGRAY,
             ButtonState::Hovered  => Color::from_rgba(250, 135, 0, 255),
 
             ButtonState::Idle     |

@@ -1,6 +1,6 @@
 use macroquad::math::{vec2, Vec2};
 
-use crate::{game::level::{tile::{Tile, TileRenderLayer}, Level, LevelPhysics, TileRenderData}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
+use crate::{game::level::{tile::{Tile, TileRenderLayer}, Door, Level, LevelPhysics, Sign, TileRenderData}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
 
 use super::editor_camera::EditorCamera;
 
@@ -10,6 +10,10 @@ pub struct EditorLevel {
     width: usize,
     height: usize,
     physics: LevelPhysics,
+
+    signs: Vec<Sign>,
+    // Jim Morrison called...
+    doors: Vec<Door>,
 
     // Rendering stuff
     tiles_below: Vec<TileRenderData>,
@@ -68,6 +72,9 @@ impl Default for EditorLevel {
             height,
             physics: LevelPhysics::Air,
 
+            signs: vec![],
+            doors: vec![],
+
             tiles_above:      vec![],
             tiles_below:      vec![],
             tiles_background: vec![],
@@ -93,6 +100,30 @@ impl EditorLevel {
         self.physics
     }
 
+    pub fn signs(&self) -> &Vec<Sign> {
+        &self.signs
+    }
+    pub fn add_sign(&mut self, pos: Vec2, lines: [String; 4]) {
+        if let Some(sign) = self.signs.iter_mut().find(|s| s.pos() == pos) {
+            sign.set_lines(lines);
+        } else {
+            self.signs.push(Sign::new(pos, lines));
+        }
+    }
+    pub fn try_remove_sign(&mut self, pos: Vec2) {
+        self.signs.retain(|s| s.pos() != pos);
+    }
+
+    pub fn doors(&self) -> &Vec<Door> {
+        &self.doors
+    }
+    pub fn add_door(&mut self, pos: Vec2, dest: Vec2) {
+        self.doors.push(Door::new(pos, dest));
+    }
+    pub fn try_remove_door(&mut self, pos: Vec2) {
+        self.doors.retain(|d| d.pos() != pos);
+    }
+
     // This doesn't check if pos is valid and could crash if it's not,
     // HOWEVER, it's only called by the editor if the cursor_pos is valid.
     pub fn set_tile_at_pos(&mut self, tile: Tile, pos: Vec2, bg: bool) {
@@ -104,7 +135,6 @@ impl EditorLevel {
         self.should_update_render_data = true;
     }
 
-
     // These functions are for moving the borders of the level, increasing/decreasing the level's size.
     pub fn can_change_width(&self, increase: bool) -> bool {
             increase && self.width < MAX_WIDTH
@@ -115,6 +145,17 @@ impl EditorLevel {
         || !increase && self.height > MIN_HEIGHT
     }
 
+    fn translate_all_entities(&mut self, offset: Vec2) {
+        // Translate the signs and doors
+        for s in &mut self.signs {
+            s.translate(offset);
+        }
+        for d in &mut self.doors {
+            d.translate(offset);
+        }
+    }
+    
+    // TODO: Make it so when entities go off the edge of the level when moving the border, they get removed!!!!
     pub fn move_left_border(&mut self, increase: bool) {
         if !self.can_change_width(increase) {
             return;
@@ -128,6 +169,8 @@ impl EditorLevel {
             }
             // Increase the width
             self.width += 1;
+            // Move all the entities
+            self.translate_all_entities(vec2(16.0, 0.0));
         } else {
             // Delete the tiles along the left edge
             for h in (0..self.height()).rev() {
@@ -136,6 +179,8 @@ impl EditorLevel {
             }
             // Decrease the width
             self.width -= 1;
+            // Move all the entities
+            self.translate_all_entities(vec2(-16.0, 0.0));
         }
         self.should_update_render_data = true;
     }
@@ -182,12 +227,16 @@ impl EditorLevel {
             }
             // Increase the height
             self.height += 1;
+            // Move all the entities
+            self.translate_all_entities(vec2(0.0, 16.0));
         } else {
             // Delete the tiles along the top edge
             self.tiles.drain(0..self.width());
             self.tiles_bg.drain(0..self.width());
             // Decrease the height
             self.height -= 1;
+            // Move all the entities
+            self.translate_all_entities(vec2(0.0, -16.0));
         }
         self.should_update_render_data = true;
     }

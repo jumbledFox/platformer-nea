@@ -18,7 +18,7 @@ pub struct Game {
 
 impl Game {
     pub fn new() -> Self {
-        Self { scene: Scene::default(), chips: 0, lives: 3 }
+        Self { scene: todo!(), chips: 0, lives: 3 }
     }
 }
 

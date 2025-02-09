@@ -35,7 +35,7 @@ pub enum Tile {
 
     Door,
 
-    Grass, Stone, Cloud, Metal, Checker,
+    Grass, Dirt, Stone, Cloud, Metal, Checker,
     CheckerBlock(CheckerBlockColor),
 
     Bridge, Rope,
@@ -66,20 +66,21 @@ impl Default for TileDataManager {
         data.insert(Tile::Empty,      TileData::new("Empty".to_owned(),       None, TileCollision::None));
         data.insert(Tile::SolidEmpty, TileData::new("Solid Empty".to_owned(), None, TileCollision::solid_default(false)));
 
-        data.insert(Tile::Door, TileData::new("Door".to_owned(), Some(TileTexture::fixed(140, TileTextureConnection::Vertical, false)), TileCollision::None));
+        data.insert(Tile::Door, TileData::new("Door".to_owned(), Some(TileTexture::fixed(140, TileTextureConnection::Vertical(TileTextureConnectionKind::None), false)), TileCollision::None));
 
-        data.insert(Tile::Grass,   TileData::new("Grass".to_owned(),   Some(TileTexture::fixed( 6, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
-        data.insert(Tile::Stone,   TileData::new("Stone".to_owned(),   Some(TileTexture::fixed(22, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
-        data.insert(Tile::Metal,   TileData::new("Metal".to_owned(),   Some(TileTexture::fixed(11, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
-        data.insert(Tile::Checker, TileData::new("Checker".to_owned(), Some(TileTexture::fixed(27, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
-        data.insert(Tile::Cloud,   TileData::new("Cloud".to_owned(),   Some(TileTexture::fixed(38, TileTextureConnection::Both, false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Grass,   TileData::new("Grass".to_owned(),   Some(TileTexture::fixed( 6, TileTextureConnection::Both(TileTextureConnectionKind::Only(vec![Tile::Dirt])), false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Dirt,    TileData::new("Dirt".to_owned(),   Some(TileTexture::fixed(118, TileTextureConnection::Both(TileTextureConnectionKind::Only(vec![Tile::Grass])), false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Stone,   TileData::new("Stone".to_owned(),   Some(TileTexture::fixed(22, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Metal,   TileData::new("Metal".to_owned(),   Some(TileTexture::fixed(11, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Checker, TileData::new("Checker".to_owned(), Some(TileTexture::fixed(27, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Cloud,   TileData::new("Cloud".to_owned(),   Some(TileTexture::fixed(38, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
 
-        data.insert(Tile::Bridge, TileData::new("Bridge".to_owned(), Some(TileTexture::fixed(92, TileTextureConnection::Horizontal, true)), TileCollision::platform(1.0, 0.0)));
-        data.insert(Tile::Rope,   TileData::new("Rope".to_owned(),   Some(TileTexture::fixed(76, TileTextureConnection::Horizontal, true)), TileCollision::None));
+        data.insert(Tile::Bridge, TileData::new("Bridge".to_owned(), Some(TileTexture::fixed(92, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::platform(1.0, 0.0)));
+        data.insert(Tile::Rope,   TileData::new("Rope".to_owned(),   Some(TileTexture::fixed(76, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::None));
 
         // Checker blocks
         for (i, color) in [CheckerBlockColor::Cyan, CheckerBlockColor::Orange, CheckerBlockColor::Purple].iter().enumerate() {
-            data.insert(Tile::CheckerBlock(*color), TileData::new(format!("{:?} Checker Block", color),   Some(TileTexture::fixed((i+4)*16+6, TileTextureConnection::Both, false)), TileCollision::None));
+            data.insert(Tile::CheckerBlock(*color), TileData::new(format!("{:?} Checker Block", color),   Some(TileTexture::fixed((i+4)*16+6, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::None));
         }
 
         // Switch blocks
@@ -90,7 +91,7 @@ impl Default for TileDataManager {
         data.insert(Tile::SwitchBlockOn(false),  TileData::new("Switch Block On".to_owned(),  Some(TileTexture::fixed(20, TileTextureConnection::None, false)), TileCollision::None));
         data.insert(Tile::SwitchBlockOn(true),   TileData::new_default("Switch Block On".to_owned(),  21, false));
 
-        data.insert(Tile::Ladder, TileData::new("Ladder".to_owned(), Some(TileTexture::fixed(108, TileTextureConnection::Vertical, false)), TileCollision::Ladder));
+        data.insert(Tile::Ladder, TileData::new("Ladder".to_owned(), Some(TileTexture::fixed(108, TileTextureConnection::Vertical(TileTextureConnectionKind::None), false)), TileCollision::Ladder));
         data.insert(Tile::Vine, TileData::new("Vine".to_owned(), Some(TileTexture::fixed(64, TileTextureConnection::None, false)), TileCollision::Ladder));
 
         data.insert(Tile::StoneBlock, TileData::new("Stone Block".to_owned(), Some(TileTexture::fixed(2, TileTextureConnection::None, false)), TileCollision::solid_default(false)));
@@ -167,7 +168,12 @@ pub enum TileTextureRenderType {
     },
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum TileTextureConnectionKind {
+    None,
+    AllBut(Vec<Tile>),
+    Only(Vec<Tile>),
+}
+
 pub enum TileTextureConnection {
     None,
 
@@ -175,14 +181,14 @@ pub enum TileTextureConnection {
     // e.g. A tile with texture 4 that's connected both ways would also use textures 5, 6, 7, and 8. 
 
     // Uses 4 tiles
-    Horizontal,
-    Vertical,
+    Horizontal(TileTextureConnectionKind),
+    Vertical(TileTextureConnectionKind),
     // Uses 5 tiles
     // The four corners of the 5 tiles used to form the connected texture.
     // This has some limitations, as each separate part can't leave the 8x8 area
     // (meaning that for example, the top of grass can't extend below the top 8 pixels),
     // but that's okay!
-    Both,
+    Both(TileTextureConnectionKind),
 }
 
 pub struct TileTexture {
@@ -278,7 +284,7 @@ pub enum TileRenderLayer {
 // Rendering a tile
 pub fn render_tile(render_data: &TileRenderData, camera_pos: Vec2, render_layer: TileRenderLayer, resources: &Resources) {
     let TileRenderData { tile, draw_kind, pos } = *render_data;
-
+    let pos = pos.floor();
     // TODO: Skip rendering if offscreen
 
     // If the tile doesn't have a texture, don't render it

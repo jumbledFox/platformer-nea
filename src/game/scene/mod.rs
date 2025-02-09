@@ -17,39 +17,9 @@ pub struct Scene {
     // enemies
 }
 
-impl Default for Scene {
-    fn default() -> Self {
-        Self {
-            level: Level::default(),
-            timer: 420.0,
-            chips: 42000,
-            entities: vec![
-                // Box::new(ColTest::new(vec2(30.0, 30.0),vec2(0.0,0.0), false)),
-                // Box::new(ColTest::new(vec2(50.0, 30.0),vec2(0.0,0.0), false)),
-                // Box::new(ColTest::new(vec2(60.0, 10.0),vec2(0.0,0.0), false)),
-                Box::new(Player::default()),
-                // Box::new(ColTest::new(vec2(30.0, 10.0),vec2(0.0,0.0), true)),
-                Box::new(ColTest::new(vec2(50.0, 10.0),vec2(0.0,0.0), false)),
-                Box::new(Frog::new()),
-                Box::new(Frog::new()),
-                Box::new(Frog::new()),
-                Box::new(Frog::new()),
-                Box::new(Frog::new()),
-                Box::new(Frog::new()),
-                Box::new(Frog::new()),
-                Box::new(Frog::new()),
-                Box::new(Frog::new()),
-                Box::new(Frog::new()),
-                Box::new(Frog::new()),
-                Box::new(Frog::new()),
-            ],
-        }
-    }
-}
-
 impl Scene {
     pub fn from_editor_level(editor_level: &EditorLevel) -> Self {
-        let level = Level::new(editor_level.tiles().clone(), editor_level.tiles_bg().clone(), editor_level.width(), editor_level.height(), editor_level.physics());
+        let level = Level::from_editor_level(editor_level);
         Scene {
             level,
             timer: 0.0,

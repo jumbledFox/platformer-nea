@@ -21,9 +21,6 @@ impl EditorCamera {
     pub fn pos(&self) -> Vec2 {
         self.pos
     }
-    pub fn rounded_pos(&self) -> Vec2 {
-        self.pos.round()
-    }
 
     pub fn world_to_screen(&self, pos: Vec2) -> Vec2 {
         pos - self.pos

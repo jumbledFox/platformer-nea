@@ -11,6 +11,12 @@ pub struct FontData {
     atlas: Texture2D,
 }
 
+impl FontData {
+    pub fn valid_char(&self, c: char) -> bool {
+        self.atlas_chars.contains(c)
+    }
+}
+
 pub enum Font {
     Large, Small
 }
@@ -36,7 +42,8 @@ impl Default for FontDataManager {
                 char_height: 9.0,
                 char_spacing: -1.0,
                 atlas_width: 13,
-                atlas_chars: String::from(" 0123456789:;abcdefghijklmnopqrstuvwxyz()[]<>!?.,\"'|\\/+-=*_'@£&"),
+                // Find a nice way for the arrows and others to be typed
+                atlas_chars: String::from(" 0123456789:;abcdefghijklmnopqrstuvwxyz()[]<>!?.,\"'|\\/+-=*_'@£&🮤🮥🮧🮦"),
                 atlas: Texture2D::from_file_with_format(include_bytes!("../res/font_small.png"), None),
             },
         }
@@ -59,7 +66,7 @@ pub enum Align {
 pub fn render_text(text: &str, color: Color, pos: Vec2, size: Vec2, align: Align, font: Font, resources: &Resources) {
     let d = resources.font_data_manager().font_data(font);
 
-    let text_size = vec2(text.len() as f32 * (d.char_width + d.char_spacing), d.char_height) * size;
+    let text_size = vec2(text.chars().count() as f32 * (d.char_width + d.char_spacing), d.char_height) * size;
     let Vec2 { mut x, y } = match align {
         Align::Beg => pos - text_size,
         Align::Mid => pos - text_size / 2.0,
