@@ -27,8 +27,6 @@ pub struct LevelView {
     sign_popup: Option<SignPopup>,
     // The sign being cut
     cut_sign: Option<[String; 4]>,
-    // The door start position, used for the two stages of adding a door
-    door_start: Option<Vec2>,
 
     // TODO: Replace the camera with an editor player that flies about the scene and the view is focused on them
     // When you test the level midway through it spawns you there rather than at the default spawn
@@ -60,7 +58,6 @@ impl LevelView {
             object_selector: ObjectSelector::new(resources),
             sign_popup: None,
             cut_sign: None,
-            door_start: None,
             camera: EditorCamera::default()
         }
     }
@@ -69,8 +66,8 @@ impl LevelView {
         self.camera.reset_pos();
     }
 
-    pub fn update_resize_buttons(&mut self, editor_level: &mut EditorLevel, ui: &mut Ui) {
-        // i KNOW i copy some code here... just let me live man
+    fn update_resize_buttons(&mut self, editor_level: &mut EditorLevel, ui: &mut Ui) {
+        // i KNOW i copy some code here from the draw function... just let me live man
         let level_size = vec2(editor_level.width() as f32, editor_level.height() as f32) * 16.0;
         let left_edge  = -self.camera.pos().floor().x - 0.5;
         let right_edge = -self.camera.pos().floor().x + 0.5 + level_size.x;
@@ -178,7 +175,7 @@ impl LevelView {
             let object = self.object_selector.update(ui);
             // If the user clicked on something, choose it and close the menu
             if let Some(object) = object {
-                self.door_start = None;
+                editor_level.set_door_start(None);
                 self.selected_object = object;
                 self.object_selector.set_active(false);
             } else {
@@ -294,8 +291,8 @@ impl LevelView {
                     // If we press right click and we're adding a door, stop
                     // If we're not adding a door though, try to remove a door if ONLY it's pos is here, not it's dest
                     if is_mouse_button_pressed(MouseButton::Right) {
-                        if self.door_start.is_some() {
-                            self.door_start = None;
+                        if editor_level.door_start().is_some() {
+                            editor_level.set_door_start(None);
                         } else {
                             editor_level.try_remove_door(cursor_pos);
                         }
@@ -304,14 +301,24 @@ impl LevelView {
                     // If we've already put a start position, finish the door!!
                     // If we've not put a start position down, do that (unless it's on a door.. in that case do nothing idk)
                     if is_mouse_button_pressed(MouseButton::Left) {
-                        if let Some(door_start) = self.door_start {
+                        if let Some(door_start) = editor_level.door_start() {
                             editor_level.add_door(door_start, cursor_pos);
-                            self.door_start = None;
+                            editor_level.set_door_start(None);
                         } else {
                             if !editor_level.doors().iter().any(|d| d.pos() == cursor_pos) {
-                                self.door_start = Some(cursor_pos);
+                                editor_level.set_door_start(Some(cursor_pos));
                             }
                         }
+                    }
+                }
+                // Spawn point / finish point
+                else if let Object::Other(OtherKind::Spawn) = self.selected_object {
+                    if is_mouse_button_pressed(MouseButton::Left) {
+                        editor_level.set_spawn(cursor_pos);
+                    }
+                } else if let Object::Other(OtherKind::Finish) = self.selected_object {
+                    if is_mouse_button_pressed(MouseButton::Left) {
+                        editor_level.set_finish(cursor_pos);
                     }
                 }
             }
@@ -387,9 +394,12 @@ impl LevelView {
             draw_from_atlas(dest, Rect::new(208.0, 0.0, 16.0, 16.0));
             draw_line(pos.x + 8.0, pos.y + 8.0, dest.x + 8.0, dest.y + 8.0, 1.0, Color::from_rgba(255, 0, 255, 128));
         }
-        if let Some(door_start) = self.door_start {
+        if let Some(door_start) = editor_level.door_start() {
             draw_from_atlas(door_start - self.camera.pos().floor(), Rect::new(224.0, 0.0, 16.0, 16.0));
         }
+
+        draw_from_atlas(editor_level.spawn()  - self.camera.pos().floor(), Rect::new(208.0, 16.0, 16.0, 16.0));
+        draw_from_atlas(editor_level.finish() - self.camera.pos().floor(), Rect::new(240.0, 16.0, 16.0, 16.0));
 
         // Draw the tile/entity the player is adding
         if let Some(pos) = self.cursor_pos {
@@ -420,8 +430,8 @@ impl LevelView {
                     _ => WHITE,
                 };
                 let transparent = match other {
-                    OtherKind::Sign => true,
-                    _ => false,
+                    OtherKind::Door => false,
+                    _ => true,
                 };
                 draw_outline(vec2(16.0, 16.0), outline_col);
                 ObjectSelector::draw_object_other(pos.floor() - self.camera.pos().floor(), other, transparent, resources);

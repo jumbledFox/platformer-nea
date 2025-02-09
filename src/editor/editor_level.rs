@@ -12,8 +12,13 @@ pub struct EditorLevel {
     physics: LevelPhysics,
 
     signs: Vec<Sign>,
+    // The door start position, used for the two stages of adding a door
+    door_start: Option<Vec2>,
     // Jim Morrison called...
     doors: Vec<Door>,
+    spawn:  Vec2,
+    finish: Vec2,
+
 
     // Rendering stuff
     tiles_below: Vec<TileRenderData>,
@@ -31,8 +36,13 @@ const MAX_HEIGHT: usize = 256;
 impl Default for EditorLevel {
     fn default() -> Self {
         let (width, height) = (MIN_WIDTH, MIN_HEIGHT);
-        let tiles    = vec![Tile::Empty; width * height];
-        let tiles_bg = vec![Tile::Empty; width * height];
+        let mut tiles = vec![Tile::Empty; width * height];
+        let tiles_bg  = vec![Tile::Empty; width * height];
+
+        // Put some platforms down for the default spawn and finish points
+        for x in [2, 3, 4, 9, 10, 11, 12, 17, 18, 19] {
+            tiles[width*8+x] = Tile::Grass;
+        }
 
         /*
         // Silly little start level
@@ -73,7 +83,10 @@ impl Default for EditorLevel {
             physics: LevelPhysics::Air,
 
             signs: vec![],
+            door_start: None,
             doors: vec![],
+            spawn:  Vec2::new( 3.0, 7.0) * 16.0,
+            finish: Vec2::new(18.0, 7.0) * 16.0,
 
             tiles_above:      vec![],
             tiles_below:      vec![],
@@ -114,6 +127,13 @@ impl EditorLevel {
         self.signs.retain(|s| s.pos() != pos);
     }
 
+    pub fn door_start(&self) -> Option<Vec2> {
+        self.door_start
+    }
+    pub fn set_door_start(&mut self, door_start: Option<Vec2>) {
+        self.door_start = door_start;
+    }
+
     pub fn doors(&self) -> &Vec<Door> {
         &self.doors
     }
@@ -122,6 +142,20 @@ impl EditorLevel {
     }
     pub fn try_remove_door(&mut self, pos: Vec2) {
         self.doors.retain(|d| d.pos() != pos);
+    }
+
+    pub fn spawn(&self) -> Vec2 {
+        self.spawn
+    }
+    pub fn set_spawn(&mut self, spawn: Vec2) {
+        self.spawn = spawn;
+    }
+
+    pub fn finish(&self) -> Vec2 {
+        self.finish
+    }
+    pub fn set_finish(&mut self, finish: Vec2) {
+        self.finish = finish;
     }
 
     // This doesn't check if pos is valid and could crash if it's not,
@@ -153,9 +187,38 @@ impl EditorLevel {
         for d in &mut self.doors {
             d.translate(offset);
         }
+        self.spawn += offset;
+        self.finish += offset;
+        self.door_start = self.door_start.map(|p| p + offset);
+    }
+
+    fn handle_out_of_bounds_entities(&mut self) {
+        let max = (vec2(self.width as f32, self.height as f32) - 1.0) * 16.0;
+        let should_remove = |pos: Vec2| -> bool {
+            pos.x < 0.0 || pos.x > max.x || pos.y < 0.0 || pos.y > max.y
+        };
+
+        // Remove all out-of-bounds signs, doors, door start, checkpoints
+        for i in (0..self.signs.len()).rev() {
+            if should_remove(self.signs[i].pos()) {
+                self.signs.remove(i);
+            }
+        }
+        for i in (0..self.doors.len()).rev() {
+            if should_remove(self.doors[i].pos()) || should_remove(self.doors[i].dest()) {
+                self.doors.remove(i);
+            }
+        }
+        if self.door_start.is_some_and(|p| should_remove(p)) {
+            self.door_start = None;
+        }
+        
+        // Clamp the spawn and finish since they can never be destroyed because im laaaaazy :3
+        self.spawn  = self.spawn .clamp(Vec2::ZERO, max);
+        self.finish = self.finish.clamp(Vec2::ZERO, max);
     }
     
-    // TODO: Make it so when entities go off the edge of the level when moving the border, they get removed!!!!
+    // TODO: Make it so when entities go off the edge of the level when moving the border, they get removed!!!! (or spawn/finish get clamped)
     pub fn move_left_border(&mut self, increase: bool) {
         if !self.can_change_width(increase) {
             return;
@@ -181,6 +244,7 @@ impl EditorLevel {
             self.width -= 1;
             // Move all the entities
             self.translate_all_entities(vec2(-16.0, 0.0));
+            self.handle_out_of_bounds_entities();
         }
         self.should_update_render_data = true;
     }
@@ -210,6 +274,7 @@ impl EditorLevel {
             // Move the camera and decrease the width
             self.width -= 1;
             camera.set_pos(camera.pos() - vec2(16.0, 0.0), self);
+            self.handle_out_of_bounds_entities();
         }
         self.should_update_render_data = true;
     }
@@ -237,6 +302,7 @@ impl EditorLevel {
             self.height -= 1;
             // Move all the entities
             self.translate_all_entities(vec2(0.0, -16.0));
+            self.handle_out_of_bounds_entities();
         }
         self.should_update_render_data = true;
     }
@@ -262,6 +328,7 @@ impl EditorLevel {
             // Move the camera and decrease the height
             self.height -= 1;
             camera.set_pos(camera.pos() - vec2(0.0, 16.0), self);
+            self.handle_out_of_bounds_entities();
         }
         self.should_update_render_data = true;
     }

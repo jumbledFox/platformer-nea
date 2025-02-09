@@ -96,7 +96,7 @@ impl SignPopup {
             if first_del {
                 self.lines[self.line].pop();
             } else {
-                while self.backspace_timer.is_some_and(|t| t < 0.0) {
+                if self.backspace_timer.is_some_and(|t| t < 0.0) {
                     self.lines[self.line].pop();
                     self.backspace_timer = Some(BACKSPACE_TIMER_OTHER);
                 }

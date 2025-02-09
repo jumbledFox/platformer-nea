@@ -117,6 +117,7 @@ impl Button {
     pub fn update(&mut self, ui: &mut Ui) {
         // Don't update disabled buttons
         if self.disabled {
+            self.state = ButtonState::Idle;
             return;
         }
         // If the mouse isn't over the button, make it idle and return!

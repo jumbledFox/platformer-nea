@@ -23,6 +23,8 @@ pub enum EntityKind {
 pub enum OtherKind {
     Door,
     Sign,
+    Spawn,
+    Finish,
 }
 
 pub struct ObjectSelector {
@@ -63,7 +65,7 @@ impl ObjectSelector {
         // Add all of the tiles
         let wrap = 17;
         let mut x = 8.0;
-        let mut y = 16.0;
+        let mut y = 26.0;
         for (i, t) in tiles.iter().enumerate() {
             let button = Button::new(Rect::new(x, y, 16.0, 16.0), None, Some(resources.tile_data_manager().data(*t).name().clone()));
 
@@ -79,9 +81,9 @@ impl ObjectSelector {
         // TODO: ....
 
         // Add the others
-        let others = vec![OtherKind::Sign, OtherKind::Door];
+        let others = vec![OtherKind::Sign, OtherKind::Door, OtherKind::Spawn, OtherKind::Finish];
         let mut x = 8.0;
-        let mut y = 172.0;
+        let mut y = 182.0;
         for (i, o) in others.iter().enumerate() {
             let button = Button::new(Rect::new(x, y, 16.0, 16.0), None, Some(format!("{:?}", o)));
             x += 20.0;
@@ -115,10 +117,11 @@ impl ObjectSelector {
 
     pub fn draw(&self, resources: &Resources) {
         draw_rectangle(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y, BG_COL);
+        render_text("Object Selector", WHITE, vec2(VIEW_SIZE.x/2.0, 7.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
 
-        render_text("Tiles:",    WHITE, vec2(4.0,   4.0), vec2(1.0, 1.0), Align::End, Font::Small, resources);
-        render_text("Entities:", WHITE, vec2(4.0,  80.0), vec2(1.0, 1.0), Align::End, Font::Small, resources);
-        render_text("Others:",   WHITE, vec2(4.0, 160.0), vec2(1.0, 1.0), Align::End, Font::Small, resources);
+        render_text("Tiles:",    WHITE, vec2(4.0,  14.0), vec2(1.0, 1.0), Align::End, Font::Small, resources);
+        render_text("Entities:", WHITE, vec2(4.0,  90.0), vec2(1.0, 1.0), Align::End, Font::Small, resources);
+        render_text("Others:",   WHITE, vec2(4.0, 170.0), vec2(1.0, 1.0), Align::End, Font::Small, resources);
         for (object, b) in self.object_buttons.iter() {
             let pos = b.rect().point() + match b.state() {
                 ButtonState::Hovered => -Vec2::ONE,
@@ -150,8 +153,10 @@ impl ObjectSelector {
             });
         };
         match other {
-            OtherKind::Door => draw_from_atlas(Rect::new(192.0, 0.0, 16.0, 16.0)),
-            OtherKind::Sign => draw_from_atlas(Rect::new(240.0, 0.0, 16.0, 16.0)),
+            OtherKind::Door   => draw_from_atlas(Rect::new(192.0,  0.0, 16.0, 16.0)),
+            OtherKind::Sign   => draw_from_atlas(Rect::new(240.0,  0.0, 16.0, 16.0)),
+            OtherKind::Spawn  => draw_from_atlas(Rect::new(208.0, 16.0, 16.0, 16.0)),
+            OtherKind::Finish => draw_from_atlas(Rect::new(240.0, 16.0, 16.0, 16.0)),
         }
     }
 }
