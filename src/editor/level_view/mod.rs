@@ -1,13 +1,19 @@
 // This is the 'level view', it lets the user actually edit an editor level
 
-use macroquad::{color::{Color, PURPLE, WHITE}, color_u8, input::{is_key_down, is_key_pressed, is_mouse_button_down, is_mouse_button_pressed, mouse_delta_position, KeyCode, MouseButton}, math::{vec2, Rect, Vec2}, shapes::{draw_line, draw_rectangle, draw_rectangle_lines}, texture::{draw_texture_ex, DrawTextureParams}};
+use editor_camera::EditorCamera;
+use macroquad::{color::{Color, ORANGE, PURPLE, WHITE}, color_u8, input::{is_key_down, is_key_pressed, is_mouse_button_down, is_mouse_button_pressed, mouse_delta_position, KeyCode, MouseButton}, math::{vec2, Rect, Vec2}, shapes::{draw_line, draw_rectangle, draw_rectangle_lines}, texture::{draw_texture_ex, DrawTextureParams}};
+use object_selector::{Object, ObjectSelector, OtherKind};
+use sign_popup::{SignPopup, SignPopupReturn};
 
-use crate::{editor::object_selector::ObjectSelector, game::level::{tile::{render_tile, Tile, TileRenderLayer}, TileDrawKind, TileRenderData}, resources::Resources, ui::{Button, Ui}, VIEW_HEIGHT, VIEW_SIZE};
+use crate::{game::level::{tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}, resources::Resources, ui::{Button, Ui}, util::draw_rect, VIEW_HEIGHT, VIEW_SIZE};
 
-use super::{editor_camera::EditorCamera, editor_level::EditorLevel, object_selector::{Object, OtherKind}, sign_popup::{SignPopup, SignPopupReturn}};
+use super::{editor_level::EditorLevel, editor_menu::{EditorMenu, HelpKind}};
+
+pub mod editor_camera;
+pub mod object_selector;
+pub mod sign_popup;
 
 pub struct LevelView {
-    // TODO: Make this work for entities too...
     selected_object: Object,
     // The position of the users cursor, where they're placing a tile/entity
     cursor_pos: Option<Vec2>,
@@ -28,9 +34,9 @@ pub struct LevelView {
     // The sign being cut
     cut_sign: Option<[String; 4]>,
 
-    // TODO: Replace the camera with an editor player that flies about the scene and the view is focused on them
-    // When you test the level midway through it spawns you there rather than at the default spawn
-    // Also a 'player spawn' thingy that... spawns the player at a position
+    // The position of the player to be spawned in when the player wants to test their level
+    test_spawn_point: Option<(Vec2, bool)>,    
+
     camera: EditorCamera,
 }
 
@@ -47,7 +53,7 @@ impl LevelView {
 
         Self {
             // selected_object: Object::Tile(Tile::Grass),
-            selected_object: Object::Other(OtherKind::Door),
+            selected_object: Object::Other(OtherKind::Door(true)),
             cursor_pos: None,
             began_drawing_in_area: false,
 
@@ -58,12 +64,24 @@ impl LevelView {
             object_selector: ObjectSelector::new(resources),
             sign_popup: None,
             cut_sign: None,
+            test_spawn_point: None,
             camera: EditorCamera::default()
         }
     }
 
+    pub fn test_spawn_point(&self) -> Option<(Vec2, bool)> {
+        self.test_spawn_point
+    }
+    pub fn clear_test_spawn_point(&mut self) {
+        self.test_spawn_point = None;
+    }
+
     pub fn reset_camera(&mut self) {
         self.camera.reset_pos();
+    }
+
+    pub fn close_object_selector(&mut self) {
+        self.object_selector.set_active(false);
     }
 
     fn update_resize_buttons(&mut self, editor_level: &mut EditorLevel, ui: &mut Ui) {
@@ -154,7 +172,7 @@ impl LevelView {
         }
     }
 
-    pub fn update(&mut self, editor_level: &mut EditorLevel, deltatime: f32, ui: &mut Ui, resources: &Resources) {
+    pub fn update(&mut self, editor_level: &mut EditorLevel, editor_menu: &mut EditorMenu, deltatime: f32, ui: &mut Ui, resources: &Resources) {
         // Update the sign popup
         if let Some(s) = &mut self.sign_popup {
             let sign_popup_return = s.update(deltatime, ui, resources);
@@ -167,6 +185,7 @@ impl LevelView {
                 }
             }
         }
+
         // Toggle the object selector
         if is_key_pressed(KeyCode::Space) {
             self.object_selector.set_active(!self.object_selector.active());
@@ -176,6 +195,7 @@ impl LevelView {
             // If the user clicked on something, choose it and close the menu
             if let Some(object) = object {
                 editor_level.set_door_start(None);
+                self.test_spawn_point = None;
                 self.selected_object = object;
                 self.object_selector.set_active(false);
             } else {
@@ -219,6 +239,21 @@ impl LevelView {
         // Resizing the level with buttons
         self.update_resize_buttons(editor_level, ui);
 
+        // Opening the help menu
+        if is_key_pressed(KeyCode::H) {
+            let help_kind = match self.selected_object {
+                Object::Tile(_)   => HelpKind::Tiles,
+                Object::Entity(_) => HelpKind::Entities,
+                Object::Other(OtherKind::Sign) => HelpKind::Signs,
+                Object::Other(OtherKind::Door(false)) => HelpKind::Doors,
+                Object::Other(OtherKind::Door(true))  => HelpKind::Teles,
+                Object::Other(OtherKind::Spawn) |
+                Object::Other(OtherKind::Finish) => HelpKind::SpawnFinish,
+                Object::Other(OtherKind::Checkpoint) => HelpKind::Checkpoints,
+            };
+            editor_menu.open_help_menu(help_kind);
+        }
+
         self.cursor_pos = None;
 
         if !ui.interacted() {
@@ -239,8 +274,23 @@ impl LevelView {
             }
 
             if let Some(cursor_pos) = self.cursor_pos {
+                // If the user presses tab, let them place the test spawn point
+                if is_key_pressed(KeyCode::Tab) {
+                    self.test_spawn_point = match self.test_spawn_point {
+                        None => Some((cursor_pos, false)),
+                        _ => None,
+                    };
+                }
+                // Updating the test spawn point
+                else if let Some((pos, placed)) = &mut self.test_spawn_point {
+                    *pos = cursor_pos;
+                    // If the user clicks, set the placed flag to true
+                    if is_mouse_button_pressed(MouseButton::Left) {
+                        *placed = true;
+                    }
+                }
                 // If the object is a tile
-                if let Object::Tile(tile) = self.selected_object {
+                else if let Object::Tile(tile) = self.selected_object {
                     // If the user tries to draw a tile and the cursor pos is valid, add the tile to the map!
                     if is_mouse_button_down(MouseButton::Left) && self.began_drawing_in_area {
                         editor_level.set_tile_at_pos(tile, cursor_pos, self.layer_bg);
@@ -249,7 +299,7 @@ impl LevelView {
                     }
                 }
                 // If the object is a sign
-                else if let Object::Other(OtherKind::Sign) = self.selected_object {
+                else if self.selected_object == Object::Other(OtherKind::Sign) {
                     if is_mouse_button_pressed(MouseButton::Left) {
                         // If we clicked on an existing sign, edit that
                         let lines = editor_level
@@ -273,8 +323,8 @@ impl LevelView {
                     } else if is_mouse_button_pressed(MouseButton::Right) {
                         // If a sign exists here and we've right clicked, remove it
                         editor_level.try_remove_sign(cursor_pos);
-                    } else if is_mouse_button_pressed(MouseButton::Middle) {
-                        // If the middle mouse button is pressed, cut the existing sign
+                    } else if is_key_pressed(KeyCode::X) {
+                        // If the x key is pressed, cut the existing sign
                         let lines = editor_level
                             .signs()
                             .iter()
@@ -287,7 +337,7 @@ impl LevelView {
                     }
                 }
                 // If the object is a door
-                else if let Object::Other(OtherKind::Door) = self.selected_object {
+                else if let Object::Other(OtherKind::Door(teleport)) = self.selected_object {
                     // If we press right click and we're adding a door, stop
                     // If we're not adding a door though, try to remove a door if ONLY it's pos is here, not it's dest
                     if is_mouse_button_pressed(MouseButton::Right) {
@@ -302,7 +352,7 @@ impl LevelView {
                     // If we've not put a start position down, do that (unless it's on a door.. in that case do nothing idk)
                     if is_mouse_button_pressed(MouseButton::Left) {
                         if let Some(door_start) = editor_level.door_start() {
-                            editor_level.add_door(door_start, cursor_pos);
+                            editor_level.add_door(teleport, door_start, cursor_pos);
                             editor_level.set_door_start(None);
                         } else {
                             if !editor_level.doors().iter().any(|d| d.pos() == cursor_pos) {
@@ -312,11 +362,11 @@ impl LevelView {
                     }
                 }
                 // Spawn point / finish point
-                else if let Object::Other(OtherKind::Spawn) = self.selected_object {
+                else if self.selected_object == Object::Other(OtherKind::Spawn) {
                     if is_mouse_button_pressed(MouseButton::Left) {
                         editor_level.set_spawn(cursor_pos);
                     }
-                } else if let Object::Other(OtherKind::Finish) = self.selected_object {
+                } else if self.selected_object == Object::Other(OtherKind::Finish) {
                     if is_mouse_button_pressed(MouseButton::Left) {
                         editor_level.set_finish(cursor_pos);
                     }
@@ -331,11 +381,12 @@ impl LevelView {
     pub fn draw(&self, editor_level: &EditorLevel, resources: &Resources) {
         // Draw the bounding box of the level
         let level_size = vec2(editor_level.width() as f32, editor_level.height() as f32) * 16.0;
+        let camera_pos = self.camera.pos().floor();
 
-        let left_edge  = -self.camera.pos().floor().x - 0.5;
-        let right_edge = -self.camera.pos().floor().x + 0.5 + level_size.x;
-        let top_edge   = -self.camera.pos().floor().y - 0.5;
-        let bot_edge   = -self.camera.pos().floor().y + 0.5 + level_size.y;
+        let left_edge  = -camera_pos.x - 0.5;
+        let right_edge = -camera_pos.x + 0.5 + level_size.x;
+        let top_edge   = -camera_pos.y - 0.5;
+        let bot_edge   = -camera_pos.y + 0.5 + level_size.y;
         
         const BOUNDING_BOX_OUTLINE: Color = color_u8!(  0,  63, 255, 255);
         const BOUNDING_BOX_INNER:   Color = color_u8!(  0,   0,   0,  64);
@@ -368,43 +419,35 @@ impl LevelView {
         }
 
         let draw_fg = |transparent: bool| {
-            editor_level.draw_fg(self.camera.pos().floor(), transparent, resources);
+            editor_level.draw_fg(camera_pos, transparent, resources);
         };
 
         // Draw the level
-        editor_level.draw_bg(self.camera.pos().floor(), self.layer_bg, resources);
+        editor_level.draw_bg(camera_pos, self.layer_bg, resources);
         if !self.layer_bg { draw_fg(false) }
 
-        for s in editor_level.signs() {
-            ObjectSelector::draw_object_other(s.pos() - self.camera.pos().floor(), OtherKind::Sign, false, resources);
+        Level::render_signs(editor_level.signs(), camera_pos, resources);
+
+        // Render the doors and start position
+        Level::render_doors_debug(editor_level.doors(), camera_pos, resources);
+
+        if let Object::Other(OtherKind::Door(teleporter)) = self.selected_object {
+            if let Some(pos) = editor_level.door_start() {
+                let rect = match teleporter {
+                    false => Rect::new(240.0, 32.0, 16.0, 16.0),
+                    true  => Rect::new(240.0, 48.0, 16.0, 16.0),
+                };
+                resources.draw_rect(pos - camera_pos, rect, resources.entity_atlas());
+            }
         }
 
-        let draw_from_atlas = |pos: Vec2, rect: Rect| {
-            draw_texture_ex(resources.entity_atlas(), pos.x, pos.y, WHITE, DrawTextureParams {
-                source: Some(rect),
-                ..Default::default()
-            });
-        };
-
-        // TODO: Some way to draw doors and other debug things in the level if debug is on
-        for d in editor_level.doors() {
-            let pos  = d.pos()  - self.camera.pos().floor();
-            let dest = d.dest() - self.camera.pos().floor();
-            draw_from_atlas(pos,  Rect::new(224.0, 0.0, 16.0, 16.0));
-            draw_from_atlas(dest, Rect::new(208.0, 0.0, 16.0, 16.0));
-            draw_line(pos.x + 8.0, pos.y + 8.0, dest.x + 8.0, dest.y + 8.0, 1.0, Color::from_rgba(255, 0, 255, 128));
-        }
-        if let Some(door_start) = editor_level.door_start() {
-            draw_from_atlas(door_start - self.camera.pos().floor(), Rect::new(224.0, 0.0, 16.0, 16.0));
-        }
-
-        draw_from_atlas(editor_level.spawn()  - self.camera.pos().floor(), Rect::new(208.0, 16.0, 16.0, 16.0));
-        draw_from_atlas(editor_level.finish() - self.camera.pos().floor(), Rect::new(240.0, 16.0, 16.0, 16.0));
+        resources.draw_rect(editor_level.spawn()  - camera_pos, Rect::new(208.0, 16.0, 16.0, 16.0), resources.entity_atlas());
+        resources.draw_rect(editor_level.finish() - camera_pos, Rect::new(240.0, 16.0, 16.0, 16.0), resources.entity_atlas());
 
         // Draw the tile/entity the player is adding
         if let Some(pos) = self.cursor_pos {
             let draw_outline = |size: Vec2, color: Color| {
-                let outline_pos = pos.floor() - 1.0 - self.camera.pos().floor();
+                let outline_pos = pos.floor() - 1.0 - camera_pos;
                 draw_rectangle_lines(outline_pos.x, outline_pos.y, size.x + 2.0, size.y + 2.0, 2.0, color);
             };
 
@@ -418,10 +461,18 @@ impl LevelView {
             // tbf this is just me rambling at 3:31 in the morning after a long productive coding session.
             // god i love coding, i wish i didn't have to do the other parts of the coursework, but oh well!
 
-            if let Object::Tile(tile) = self.selected_object {
+            if let Some((pos, _)) = self.test_spawn_point {
+                let color = match resources.tile_animation_timer() % 0.2 > 0.1 {
+                    true  => WHITE,
+                    false => ORANGE,
+                };
+                draw_outline(vec2(16.0, 16.0), color);
+                resources.draw_rect(pos + 2.0 - camera_pos, Rect::new(2.0, 4.0, 12.0, 11.0), resources.player_atlas());
+            }
+            else if let Object::Tile(tile) = self.selected_object {
                 if resources.tile_data_manager().data(tile).texture().is_some() {
                     draw_outline(vec2(16.0, 16.0), WHITE);
-                    render_tile(&TileRenderData { tile, draw_kind: TileDrawKind::Single(0), pos}, self.camera.pos().floor(), TileRenderLayer::Foreground(false), resources);
+                    render_tile(&TileRenderData { tile, draw_kind: TileDrawKind::Single(0), pos}, camera_pos, TileRenderLayer::Foreground(false), resources);
                 }
             }
             else if let Object::Other(other) = self.selected_object {
@@ -430,11 +481,11 @@ impl LevelView {
                     _ => WHITE,
                 };
                 let transparent = match other {
-                    OtherKind::Door => false,
+                    OtherKind::Door(_) => false,
                     _ => true,
                 };
                 draw_outline(vec2(16.0, 16.0), outline_col);
-                ObjectSelector::draw_object_other(pos.floor() - self.camera.pos().floor(), other, transparent, resources);
+                ObjectSelector::draw_object_other(pos.floor() - camera_pos, other, transparent, resources);
             }
         }
 

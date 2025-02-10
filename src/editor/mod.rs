@@ -1,27 +1,30 @@
 // The editor that allows the user to make and save level packs
 use editor_level::EditorLevel;
+use editor_menu::EditorMenu;
 use level_view::LevelView;
 use macroquad::{color::Color, input::{is_key_pressed, KeyCode}, math::vec2};
 
 use crate::{game::scene::Scene, resources::Resources, text_renderer::{render_text, Align, Font}, ui::Ui, GameState};
 
 pub mod editor_level;
+pub mod editor_menu;
 pub mod level_view;
-pub mod editor_camera;
-pub mod sign_popup;
-pub mod object_selector;
 
 pub struct Editor {
     scene: Option<Scene>,
     editor_level: EditorLevel,
+    editor_menu: EditorMenu,
     level_view: LevelView,
 }
 
 impl Editor {
     pub fn new(resources: &Resources) -> Self {
+        let mut editor_level = EditorLevel::default();
+        editor_level.update_if_should(resources);
         Self {
             scene: None,
-            editor_level: EditorLevel::default(),
+            editor_level,
+            editor_menu: EditorMenu::default(),
             level_view: LevelView::new(resources),
         }
     }
@@ -32,19 +35,37 @@ impl Editor {
 }
 
 impl GameState for Editor {
-    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &Resources) {
-        if is_key_pressed(KeyCode::Tab) {
-            self.scene = match self.scene {
-                Some(_) => None,
-                None => Some(Scene::from_editor_level(&self.editor_level)),
-            };
+    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources) {
+        // If the test spawn point has been placed, run the scene from there
+        if let Some((pos, place)) = self.level_view.test_spawn_point() {
+            if place {
+                self.scene = Some(Scene::from_editor_level(&self.editor_level, Some(pos)));
+                resources.reset_tile_animation_timer();
+                self.level_view.clear_test_spawn_point();
+            }
         }
         if let Some(scene) = &mut self.scene {
             scene.update(deltatime, resources);
+            // If we're in the scene and tab is pressed, exit
+            if is_key_pressed(KeyCode::Tab) {
+                self.scene = None;
+            }
             return;
         }
 
-        self.level_view.update(&mut self.editor_level, deltatime, ui, resources);
+        if is_key_pressed(KeyCode::Escape) {
+            self.editor_menu.set_active(!self.editor_menu.active());
+            if self.editor_menu.active() {
+                self.level_view.close_object_selector();
+            }
+        }
+
+        if self.editor_menu.active() {
+            self.editor_menu.update(ui);
+            return;
+        }
+
+        self.level_view.update(&mut self.editor_level, &mut self.editor_menu, deltatime, ui, resources);
     }
 
     fn draw(&self, _ui: &Ui, resources: &Resources, debug: bool) {
@@ -55,6 +76,10 @@ impl GameState for Editor {
         }
 
         self.level_view.draw(&self.editor_level, resources);
+
+        if self.editor_menu.active() {
+            self.editor_menu.draw(resources);
+        }
 
         Editor::draw_editor_logo(resources);
     }

@@ -18,13 +18,19 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn from_editor_level(editor_level: &EditorLevel) -> Self {
+    pub fn from_editor_level(editor_level: &EditorLevel, player_spawn: Option<Vec2>) -> Self {
         let level = Level::from_editor_level(editor_level);
+
+        let player = match player_spawn {
+            Some(p) => Player::new(p),
+            None => Player::new(Vec2::ZERO),
+        };
+
         Scene {
             level,
             timer: 0.0,
             chips: 0,
-            entities: vec![Box::new(Player::default())],
+            entities: vec![Box::new(player)],
         }
     }
 
@@ -74,7 +80,7 @@ impl Scene {
         let camera_pos = Vec2::ZERO;
 
         self.level.render_bg(camera_pos, resources);
-        self.level.render_below(camera_pos, resources);
+        self.level.render_below(camera_pos, resources, debug);
         // Draw the entities in reverse so the player is always on top
         for (i, entity) in self.entities.iter().enumerate().rev() {
             entity.draw(resources, i, debug);

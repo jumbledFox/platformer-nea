@@ -21,10 +21,11 @@ pub enum EntityKind {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum OtherKind {
-    Door,
     Sign,
+    Door(bool), // Teleport
     Spawn,
     Finish,
+    Checkpoint,
 }
 
 pub struct ObjectSelector {
@@ -81,11 +82,17 @@ impl ObjectSelector {
         // TODO: ....
 
         // Add the others
-        let others = vec![OtherKind::Sign, OtherKind::Door, OtherKind::Spawn, OtherKind::Finish];
         let mut x = 8.0;
         let mut y = 182.0;
-        for (i, o) in others.iter().enumerate() {
-            let button = Button::new(Rect::new(x, y, 16.0, 16.0), None, Some(format!("{:?}", o)));
+        for (i, (o, n)) in [
+            (OtherKind::Sign, "Sign"),
+            (OtherKind::Door(false), "Door"),
+            (OtherKind::Door(true), "Teleporter"),
+            (OtherKind::Spawn, "Spawn"),
+            (OtherKind::Finish, "Finish"),
+            (OtherKind::Checkpoint, "Checkpoint"),
+        ].iter().enumerate() {
+            let button = Button::new(Rect::new(x, y, 16.0, 16.0), None, Some(n.to_string()));
             x += 20.0;
             if i % wrap == wrap-1 {
                 x = 8.0;
@@ -153,10 +160,12 @@ impl ObjectSelector {
             });
         };
         match other {
-            OtherKind::Door   => draw_from_atlas(Rect::new(192.0,  0.0, 16.0, 16.0)),
-            OtherKind::Sign   => draw_from_atlas(Rect::new(240.0,  0.0, 16.0, 16.0)),
-            OtherKind::Spawn  => draw_from_atlas(Rect::new(208.0, 16.0, 16.0, 16.0)),
-            OtherKind::Finish => draw_from_atlas(Rect::new(240.0, 16.0, 16.0, 16.0)),
+            OtherKind::Door(false) => draw_from_atlas(Rect::new(208.0, 32.0, 16.0, 16.0)),
+            OtherKind::Door(true)  => draw_from_atlas(Rect::new(208.0, 48.0, 16.0, 16.0)),
+            OtherKind::Sign        => draw_from_atlas(Rect::new(240.0,  0.0, 16.0, 16.0)),
+            OtherKind::Spawn       => draw_from_atlas(Rect::new(208.0, 16.0, 16.0, 16.0)),
+            OtherKind::Finish      => draw_from_atlas(Rect::new(240.0, 16.0, 16.0, 16.0)),
+            OtherKind::Checkpoint  => draw_from_atlas(Rect::new(224.0, 16.0, 16.0, 16.0)),
         }
     }
 }

@@ -111,6 +111,32 @@ impl Default for Player {
 }
 
 impl Player {
+    pub fn new(pos: Vec2) -> Self {
+        Self {
+            head_powerup: HeadPowerup::None,
+            feet_powerup: FeetPowerup::None,
+
+            pos,
+            vel: Vec2::ZERO,
+
+            state:     State::Standing,
+            facing:    Dir::Right,
+            grounded:  true,
+            run_time:  0.0,
+            step_anim: 0.0,
+
+            walk_speed:      1.0,
+            run_speed_beg:   1.3,
+            run_speed_end:   2.1,
+            run_time_max:    1.5,
+            air_speed:       0.7,
+            max_fall_speed:  5.0,
+
+            deltatime: 0.0,
+        }
+    }
+
+
     fn jump_amount(&self) -> f32 {
         match self.feet_powerup {
             FeetPowerup::MoonShoes => 4.0,

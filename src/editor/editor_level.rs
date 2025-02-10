@@ -2,7 +2,7 @@ use macroquad::math::{vec2, Vec2};
 
 use crate::{game::level::{tile::{Tile, TileRenderLayer}, Door, Level, LevelPhysics, Sign, TileRenderData}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
 
-use super::editor_camera::EditorCamera;
+use super::level_view::editor_camera::EditorCamera;
 
 pub struct EditorLevel {
     tiles: Vec<Tile>,
@@ -19,7 +19,6 @@ pub struct EditorLevel {
     spawn:  Vec2,
     finish: Vec2,
 
-
     // Rendering stuff
     tiles_below: Vec<TileRenderData>,
     tiles_above: Vec<TileRenderData>,
@@ -30,8 +29,8 @@ pub struct EditorLevel {
 const MIN_WIDTH:  usize = VIEW_WIDTH;
 const MIN_HEIGHT: usize = VIEW_HEIGHT;
 // Temporary values for now...
-const MAX_WIDTH:  usize = 256;
-const MAX_HEIGHT: usize = 256;
+const MAX_WIDTH:  usize = 255;
+const MAX_HEIGHT: usize = 255;
 
 impl Default for EditorLevel {
     fn default() -> Self {
@@ -137,8 +136,8 @@ impl EditorLevel {
     pub fn doors(&self) -> &Vec<Door> {
         &self.doors
     }
-    pub fn add_door(&mut self, pos: Vec2, dest: Vec2) {
-        self.doors.push(Door::new(pos, dest));
+    pub fn add_door(&mut self, teleporter: bool, pos: Vec2, dest: Vec2) {
+        self.doors.push(Door::new(teleporter, pos, dest));
     }
     pub fn try_remove_door(&mut self, pos: Vec2) {
         self.doors.retain(|d| d.pos() != pos);
@@ -218,7 +217,6 @@ impl EditorLevel {
         self.finish = self.finish.clamp(Vec2::ZERO, max);
     }
     
-    // TODO: Make it so when entities go off the edge of the level when moving the border, they get removed!!!! (or spawn/finish get clamped)
     pub fn move_left_border(&mut self, increase: bool) {
         if !self.can_change_width(increase) {
             return;

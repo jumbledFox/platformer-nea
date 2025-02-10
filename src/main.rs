@@ -29,7 +29,7 @@ fn window_conf()-> Conf {
 }
 
 pub trait GameState {
-    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &Resources);
+    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources);
     fn draw(&self, ui: &Ui, resources: &Resources, debug: bool);
 }
 
@@ -69,7 +69,7 @@ async fn main() {
         // Update the game state
         let deltatime = get_frame_time();
         resources.update_tile_animation_timer(deltatime);
-        game_state.update(deltatime, &mut ui, &resources);
+        game_state.update(deltatime, &mut ui, &mut resources);
 
         // Draw to the render target
         set_camera(&world_cam);

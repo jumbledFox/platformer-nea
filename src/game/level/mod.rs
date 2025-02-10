@@ -2,28 +2,32 @@
 
 use std::f32::consts::PI;
 
-use macroquad::math::{vec2, Vec2};
+use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, shapes::draw_line, texture::{draw_texture_ex, DrawTextureParams}};
 use tile::{render_tile, LockColor, Tile, TileCollision, TileHit, TileHitKind, TileRenderLayer, TileTextureConnection, TileTextureConnectionKind};
 
-use crate::{editor::editor_level::EditorLevel, resources::Resources};
+use crate::{editor::editor_level::EditorLevel, resources::Resources, text_renderer::{render_text, Align, Font}};
 
 pub mod tile;
 
 #[derive(Clone, Debug)]
 pub struct Sign {
     pos: Vec2,
-    lines: [String; 4]
+    lines: [String; 4],
+    read: bool,
 }
 
 impl Sign {
     pub fn new(pos: Vec2, lines: [String; 4]) -> Self {
-        Self { pos, lines }
+        Self { pos, lines, read: false }
     }
     pub fn pos(&self) -> Vec2 {
         self.pos
     }
     pub fn lines(&self) -> &[String; 4] {
         &self.lines
+    }
+    pub fn read(&self) -> bool {
+        self.read
     }
 
     pub fn translate(&mut self, offset: Vec2) {
@@ -36,13 +40,17 @@ impl Sign {
 
 #[derive(Clone, Copy)]
 pub struct Door {
+    teleporter: bool,
     pos: Vec2,
     dest: Vec2,
 }
 
 impl Door {
-    pub fn new(pos: Vec2, dest: Vec2) -> Self {
-        Self { pos, dest }
+    pub fn new(teleporter: bool, pos: Vec2, dest: Vec2) -> Self {
+        Self { teleporter, pos, dest }
+    }
+    pub fn teleporter(&self) -> bool {
+        self.teleporter
     }
     pub fn pos(&self) -> Vec2 {
         self.pos
@@ -246,11 +254,53 @@ impl Level {
     pub fn render_bg(&self, camera_pos: Vec2, resources: &Resources) {
         Level::render_tiles(&self.tiles_background, camera_pos, TileRenderLayer::Background, resources);
     }
-    pub fn render_below(&self, camera_pos: Vec2, resources: &Resources) {
+
+    pub fn render_below(&self, camera_pos: Vec2, resources: &Resources, debug: bool) {
         Level::render_tiles(&self.tiles_below, camera_pos, TileRenderLayer::Foreground(false), resources);
+        
+        Level::render_signs(&self.signs, camera_pos, resources);
+        if debug {
+            Level::render_doors_debug(&self.doors, camera_pos, resources);
+        }
     }
+
     pub fn render_above(&self, camera_pos: Vec2, resources: &Resources) {
         Level::render_tiles(&self.tiles_above, camera_pos, TileRenderLayer::Foreground(false), resources);
+        Level::render_sign_read_alerts(&self.signs, camera_pos, resources);
+    }
+
+    // Also used by the editor for rendering:
+
+    // Renders doors for debugging / in the editor
+    pub fn render_doors_debug(doors: &Vec<Door>, camera_pos: Vec2, resources: &Resources) {
+        for d in doors {
+            let pos  = d.pos()  - camera_pos;
+            let dest = d.dest() - camera_pos;
+
+            let (pos_tex, dest_tex, line_col) = match d.teleporter() {
+                false => (Rect::new(240.0, 32.0, 16.0, 16.0), Rect::new(224.0, 32.0, 16.0, 16.0), Color::from_rgba(255, 0, 255, 128)),
+                true  => (Rect::new(240.0, 48.0, 16.0, 16.0), Rect::new(224.0, 48.0, 16.0, 16.0), Color::from_rgba(0, 255, 255, 128)),
+            };
+
+            resources.draw_rect(pos,  pos_tex,  resources.entity_atlas());
+            resources.draw_rect(dest, dest_tex, resources.entity_atlas());
+            draw_line(pos.x + 8.0, pos.y + 8.0, dest.x + 8.0, dest.y + 8.0, 1.0, line_col);
+        }
+    }
+    // Renders all of the signs
+    pub fn render_signs(signs: &Vec<Sign>, camera_pos: Vec2, resources: &Resources) {
+        for s in signs {
+            resources.draw_rect(s.pos() - camera_pos, Rect::new(240.0, 0.0, 16.0, 16.0), resources.entity_atlas());
+        }
+    }
+    // Render the alerts above signs if they haven't been read
+    pub fn render_sign_read_alerts(signs: &Vec<Sign>, camera_pos: Vec2, resources: &Resources) {
+        let bob_amount = (resources.tile_animation_timer() * 5.0).sin() as f32 * 3.0;
+        for s in signs {
+            if !s.read() {
+                render_text("!", WHITE, s.pos() + vec2(8.0, -7.0 + bob_amount) - camera_pos, Vec2::ONE, Align::Mid, Font::Small, resources);
+            }
+        }
     }
 
     // Renders a bunch of tiles
@@ -259,8 +309,6 @@ impl Level {
             render_tile(render_data, camera_pos, render_layer, resources);
         }
     }
-
-    // Also used by the editor for rendering:
 
     // Convert a tiles index to a 2D coordinate
     pub fn tile_pos(index: usize, width: usize) -> Vec2 {

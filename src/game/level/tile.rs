@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use macroquad::{color::{Color, GRAY, WHITE}, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{Color, WHITE}, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::resources::Resources;
+use crate::{resources::Resources, VIEW_SIZE};
 
 use super::{TileDrawKind, TileRenderData};
 
@@ -11,7 +11,6 @@ pub const RAINBOW_LOCK_FRAME_DUR: f64 = 0.1;
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
 pub enum LockColor {
     Red, Green, Blue, Yellow, White, Black,
-    // TODO: Maybe make keys that have multiple colors they cycle through that can unlock multiple types, rather than a rainbow block
     Rainbow, // The rainbow one is special and cute because it has a neat animated texture :3
 }
 
@@ -284,8 +283,12 @@ pub enum TileRenderLayer {
 // Rendering a tile
 pub fn render_tile(render_data: &TileRenderData, camera_pos: Vec2, render_layer: TileRenderLayer, resources: &Resources) {
     let TileRenderData { tile, draw_kind, pos } = *render_data;
-    let pos = pos.floor();
-    // TODO: Skip rendering if offscreen
+    let screen_pos = pos.floor() - camera_pos;
+
+    // Skip rendering if offscreen
+    if screen_pos.x < -16.0 || screen_pos.x > VIEW_SIZE.x || screen_pos.y < -16.0 || screen_pos.y > VIEW_SIZE.y {
+        return;
+    }
 
     // If the tile doesn't have a texture, don't render it
     let texture = match resources.tile_data_manager().data(tile).texture() {
@@ -324,7 +327,7 @@ pub fn render_tile(render_data: &TileRenderData, camera_pos: Vec2, render_layer:
 
     // Draws a tile that's a single texture
     let draw_single = |offset: usize| {
-        draw_texture_ex(resources.tiles_atlas(), pos.x - camera_pos.x, pos.y - camera_pos.y, color, DrawTextureParams {
+        draw_texture_ex(resources.tiles_atlas(), screen_pos.x, screen_pos.y, color, DrawTextureParams {
             source: Some(tile_rect(start_texture + offset)),
             ..Default::default()
         });
@@ -338,7 +341,7 @@ pub fn render_tile(render_data: &TileRenderData, camera_pos: Vec2, render_layer:
             (br, 8.0, 8.0),
         ] {
             let texture_start = tile_rect(start_texture + offset).point();
-            draw_texture_ex(resources.tiles_atlas(), pos.x - camera_pos.x + x, pos.y - camera_pos.y + y, color, DrawTextureParams {
+            draw_texture_ex(resources.tiles_atlas(), screen_pos.x + x, screen_pos.y + y, color, DrawTextureParams {
                 source: Some(Rect::new(texture_start.x + x, texture_start.y + y, 8.0, 8.0)),
                 ..Default::default()
             });

@@ -2,9 +2,7 @@
 
 use macroquad::math::{vec2, Vec2};
 
-use crate::{VIEW_HEIGHT, VIEW_WIDTH};
-
-use super::editor_level::EditorLevel;
+use crate::{editor::editor_level::EditorLevel, VIEW_HEIGHT, VIEW_WIDTH};
 
 pub struct EditorCamera {
     pos: Vec2,

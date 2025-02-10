@@ -23,7 +23,7 @@ impl Game {
 }
 
 impl GameState for Game {
-    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &Resources) {
+    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources) {
         self.scene.update(deltatime, resources);
     }
 
