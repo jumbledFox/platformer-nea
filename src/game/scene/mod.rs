@@ -2,7 +2,7 @@
 // e.g. level, player, enemies, timer, etc
 
 use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
-use macroquad::{color::{GREEN, ORANGE, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Vec2}};
+use macroquad::{color::{GREEN, ORANGE, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}};
 
 use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, resources::Resources, text_renderer::{render_text, Align, Font}};
 
@@ -19,7 +19,7 @@ pub struct Scene {
 
 impl Scene {
     pub fn from_editor_level(editor_level: &EditorLevel, player_spawn: Option<Vec2>) -> Self {
-        let level = Level::from_editor_level(editor_level);
+        let level = editor_level.into();
 
         let player = match player_spawn {
             Some(p) => Player::new(p),
@@ -80,12 +80,12 @@ impl Scene {
         let camera_pos = Vec2::ZERO;
 
         self.level.render_bg(camera_pos, resources);
-        self.level.render_below(camera_pos, resources, debug);
+        self.level.render_below(camera_pos, resources);
         // Draw the entities in reverse so the player is always on top
         for (i, entity) in self.entities.iter().enumerate().rev() {
             entity.draw(resources, i, debug);
         }
-        self.level.render_above(camera_pos, resources);
+        self.level.render_above(camera_pos, resources, debug);
         self.level.render_bumped_tiles(camera_pos, resources);
         
         // Draw the UI
@@ -93,6 +93,7 @@ impl Scene {
         render_text("- fox -",           ORANGE, vec2( 40.0,  8.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         render_text("*",                 WHITE,  vec2( 40.0, 24.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         render_text(&format!("{lives}"), WHITE,  vec2( 60.0, 24.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+        resources.draw_rect(vec2(13.0, 16.0), Rect::new(192.0, 16.0, 16.0, 15.0), resources.entity_atlas());
         // Powerups
         render_text("BOOTS",   WHITE,  vec2(176.0, 10.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         render_text("HELMET",  WHITE,  vec2(176.0, 22.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);

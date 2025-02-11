@@ -27,9 +27,6 @@ pub enum CheckerBlockColor {
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
 pub enum Tile {
-    // Tile not intended to be part of regular levels, just for the bounds... maybe a better way to do this
-    SolidEmpty,
-    
     Empty, 
 
     Door,
@@ -46,6 +43,107 @@ pub enum Tile {
     
     Switch(bool), SwitchBlockOff(bool), SwitchBlockOn(bool),
     Lock(LockColor), LockBlock(LockColor),
+
+    WoodenPlatform,
+    MetalPlatform,
+    BrightStone,
+    Lava,
+}
+
+impl From<Tile> for u8 {
+    fn from(value: Tile) -> Self {
+        match value {
+            Tile::Empty => 0,
+            Tile::Door  => 1,
+            Tile::Grass => 2,
+            Tile::Dirt  => 3,
+            Tile::Stone => 4,
+            Tile::Cloud => 5,
+            Tile::Metal => 6,
+            Tile::Checker => 7,
+            Tile::CheckerBlock(CheckerBlockColor::Cyan)   => 8,
+            Tile::CheckerBlock(CheckerBlockColor::Orange) => 9,
+            Tile::CheckerBlock(CheckerBlockColor::Purple) => 10,
+            Tile::Bridge => 11,
+            Tile::Rope => 12,
+            Tile::Ladder => 13,
+            Tile::Vine => 14,
+            Tile::StoneBlock => 15,
+            Tile::Glass => 16,
+            Tile::Block => 17,
+            Tile::Spikes => 18,
+            Tile::Switch(_)         => 19,
+            Tile::SwitchBlockOff(_) => 20,
+            Tile::SwitchBlockOn(_)  => 21,
+            Tile::Lock(LockColor::Red) => 22,
+            Tile::LockBlock(LockColor::Red) => 23,
+            Tile::Lock(LockColor::Green) => 24,
+            Tile::LockBlock(LockColor::Green) => 25,
+            Tile::Lock(LockColor::Blue) => 26,
+            Tile::LockBlock(LockColor::Blue) => 27,
+            Tile::Lock(LockColor::Yellow) => 28,
+            Tile::LockBlock(LockColor::Yellow) => 29,
+            Tile::Lock(LockColor::White) => 30,
+            Tile::LockBlock(LockColor::White) => 31,
+            Tile::Lock(LockColor::Black) => 32,
+            Tile::LockBlock(LockColor::Black) => 33,
+            Tile::Lock(LockColor::Rainbow) => 34,
+            Tile::LockBlock(LockColor::Rainbow) => 35,
+            Tile::WoodenPlatform => 36,
+            Tile::MetalPlatform => 37,
+            Tile::BrightStone => 38,
+            Tile::Lava => 39,
+        }
+    }
+}
+
+impl TryFrom<u8> for Tile {
+    type Error = ();
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Tile::Empty),
+            1 => Ok(Tile::Door ),
+            2 => Ok(Tile::Grass),
+            3 => Ok(Tile::Dirt ),
+            4 => Ok(Tile::Stone),
+            5 => Ok(Tile::Cloud),
+            6 => Ok(Tile::Metal),
+            7 => Ok(Tile::Checker),
+            8 => Ok(Tile::CheckerBlock(CheckerBlockColor::Cyan)  ),
+            9 => Ok(Tile::CheckerBlock(CheckerBlockColor::Orange)),
+            10 => Ok(Tile::CheckerBlock(CheckerBlockColor::Purple)),
+            11 => Ok(Tile::Bridge),
+            12 => Ok(Tile::Rope),
+            13 => Ok(Tile::Ladder),
+            14 => Ok(Tile::Vine),
+            15 => Ok(Tile::StoneBlock),
+            16 => Ok(Tile::Glass),
+            17 => Ok(Tile::Block),
+            18 => Ok(Tile::Spikes),
+            19 => Ok(Tile::Switch(false)),
+            20 => Ok(Tile::SwitchBlockOff(true)),
+            21 => Ok(Tile::SwitchBlockOn(false)),
+            22 => Ok(Tile::Lock(LockColor::Red)),
+            23 => Ok(Tile::LockBlock(LockColor::Red)),
+            24 => Ok(Tile::Lock(LockColor::Green)),
+            25 => Ok(Tile::LockBlock(LockColor::Green)),
+            26 => Ok(Tile::Lock(LockColor::Blue)),
+            27 => Ok(Tile::LockBlock(LockColor::Blue)),
+            28 => Ok(Tile::Lock(LockColor::Yellow)),
+            29 => Ok(Tile::LockBlock(LockColor::Yellow)),
+            30 => Ok(Tile::Lock(LockColor::White)),
+            31 => Ok(Tile::LockBlock(LockColor::White)),
+            32 => Ok(Tile::Lock(LockColor::Black)),
+            33 => Ok(Tile::LockBlock(LockColor::Black)),
+            34 => Ok(Tile::Lock(LockColor::Rainbow)),
+            35 => Ok(Tile::LockBlock(LockColor::Rainbow)),
+            36 => Ok(Tile::WoodenPlatform),
+            37 => Ok(Tile::MetalPlatform),
+            38 => Ok(Tile::BrightStone),
+            39 => Ok(Tile::Lava),
+            _ => Err(())
+        }
+    }
 }
 
 // This struct manages the data for all of the tiles
@@ -63,19 +161,23 @@ impl Default for TileDataManager {
         let mut data = HashMap::new();
 
         data.insert(Tile::Empty,      TileData::new("Empty".to_owned(),       None, TileCollision::None));
-        data.insert(Tile::SolidEmpty, TileData::new("Solid Empty".to_owned(), None, TileCollision::solid_default(false)));
-
         data.insert(Tile::Door, TileData::new("Door".to_owned(), Some(TileTexture::fixed(140, TileTextureConnection::Vertical(TileTextureConnectionKind::None), false)), TileCollision::None));
+        data.insert(Tile::Lava, TileData::new("Lava".to_owned(), Some(TileTexture::animated(&[82, 82+16, 82+32, 82+48, 82+64, 82+80, 82+96, 82+112], 0.2, TileTextureConnection::Vertical(TileTextureConnectionKind::None), false)), TileCollision::solid(1.0, 0.0, TileHit::None, TileHit::None)));
+        data.insert(Tile::Spikes, TileData::new("Spike".to_owned(), Some(TileTexture::fixed(3, TileTextureConnection::None, false)), TileCollision::solid(1.0, 0.0, TileHit::None, TileHit::None)));
 
         data.insert(Tile::Grass,   TileData::new("Grass".to_owned(),   Some(TileTexture::fixed( 6, TileTextureConnection::Both(TileTextureConnectionKind::Only(vec![Tile::Dirt])), false)), TileCollision::solid_default(false)));
         data.insert(Tile::Dirt,    TileData::new("Dirt".to_owned(),   Some(TileTexture::fixed(118, TileTextureConnection::Both(TileTextureConnectionKind::Only(vec![Tile::Grass])), false)), TileCollision::solid_default(false)));
         data.insert(Tile::Stone,   TileData::new("Stone".to_owned(),   Some(TileTexture::fixed(22, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
+        data.insert(Tile::BrightStone, TileData::new("Bright Stone".to_owned(),   Some(TileTexture::fixed(134, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
         data.insert(Tile::Metal,   TileData::new("Metal".to_owned(),   Some(TileTexture::fixed(11, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
         data.insert(Tile::Checker, TileData::new("Checker".to_owned(), Some(TileTexture::fixed(27, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
         data.insert(Tile::Cloud,   TileData::new("Cloud".to_owned(),   Some(TileTexture::fixed(38, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
 
         data.insert(Tile::Bridge, TileData::new("Bridge".to_owned(), Some(TileTexture::fixed(92, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::platform(1.0, 0.0)));
         data.insert(Tile::Rope,   TileData::new("Rope".to_owned(),   Some(TileTexture::fixed(76, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::None));
+
+        data.insert(Tile::WoodenPlatform, TileData::new("Wooden Platform".to_owned(), Some(TileTexture::fixed(156, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::platform(1.0, 0.0)));
+        data.insert(Tile::MetalPlatform, TileData::new("Metal Platform".to_owned(), Some(TileTexture::fixed(172, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::platform(1.0, 0.0)));
 
         // Checker blocks
         for (i, color) in [CheckerBlockColor::Cyan, CheckerBlockColor::Orange, CheckerBlockColor::Purple].iter().enumerate() {

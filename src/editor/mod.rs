@@ -12,6 +12,7 @@ pub mod level_view;
 
 pub struct Editor {
     scene: Option<Scene>,
+    close_scene: bool,
     editor_level: EditorLevel,
     editor_menu: EditorMenu,
     level_view: LevelView,
@@ -23,6 +24,7 @@ impl Editor {
         editor_level.update_if_should(resources);
         Self {
             scene: None,
+            close_scene: false,
             editor_level,
             editor_menu: EditorMenu::default(),
             level_view: LevelView::new(resources),
@@ -44,11 +46,17 @@ impl GameState for Editor {
                 self.level_view.clear_test_spawn_point();
             }
         }
+        // If the scene is meant to be closed... do that!
+        if self.close_scene {
+            self.close_scene = false;
+            self.scene = None;
+        }
         if let Some(scene) = &mut self.scene {
             scene.update(deltatime, resources);
-            // If we're in the scene and tab is pressed, exit
+            // If we're in the scene and tab is pressed, exit on the next frame
+            // We do this so scene isn't None when drawing it this frame
             if is_key_pressed(KeyCode::Tab) {
-                self.scene = None;
+                self.close_scene = true;
             }
             return;
         }

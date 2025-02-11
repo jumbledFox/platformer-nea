@@ -1,15 +1,20 @@
 use macroquad::math::{vec2, Vec2};
 
-use crate::{game::level::{tile::{Tile, TileRenderLayer}, Door, Level, LevelPhysics, Sign, TileRenderData}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
+use crate::{game::level::{things::{Door, Sign}, tile::{Tile, TileRenderLayer}, Level, TileRenderData}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
 
 use super::level_view::editor_camera::EditorCamera;
 
+const MAX_CHECKPOINTS: usize = 255;
+const MAX_DOORS: usize = 255;
+const MAX_SIGNS: usize = 64;
+
 pub struct EditorLevel {
-    tiles: Vec<Tile>,
-    tiles_bg: Vec<Tile>,
+    name: String,
+
     width: usize,
     height: usize,
-    physics: LevelPhysics,
+    tiles: Vec<Tile>,
+    tiles_bg: Vec<Tile>,
 
     signs: Vec<Sign>,
     // The door start position, used for the two stages of adding a door
@@ -18,6 +23,7 @@ pub struct EditorLevel {
     doors: Vec<Door>,
     spawn:  Vec2,
     finish: Vec2,
+    checkpoints: Vec<Vec2>,
 
     // Rendering stuff
     tiles_below: Vec<TileRenderData>,
@@ -75,17 +81,19 @@ impl Default for EditorLevel {
         */
 
         Self {
-            tiles,
-            tiles_bg,
+            name: String::new(),
+            
             width,
             height,
-            physics: LevelPhysics::Air,
+            tiles,
+            tiles_bg,
 
             signs: vec![],
             door_start: None,
             doors: vec![],
             spawn:  Vec2::new( 3.0, 7.0) * 16.0,
             finish: Vec2::new(18.0, 7.0) * 16.0,
+            checkpoints: vec![],
 
             tiles_above:      vec![],
             tiles_below:      vec![],
@@ -108,14 +116,14 @@ impl EditorLevel {
     pub fn height(&self) -> usize {
         self.height
     }
-    pub fn physics(&self) -> LevelPhysics {
-        self.physics
-    }
 
     pub fn signs(&self) -> &Vec<Sign> {
         &self.signs
     }
     pub fn add_sign(&mut self, pos: Vec2, lines: [String; 4]) {
+        if self.doors.len() >= MAX_SIGNS {
+            return;
+        }
         if let Some(sign) = self.signs.iter_mut().find(|s| s.pos() == pos) {
             sign.set_lines(lines);
         } else {
@@ -137,7 +145,9 @@ impl EditorLevel {
         &self.doors
     }
     pub fn add_door(&mut self, teleporter: bool, pos: Vec2, dest: Vec2) {
-        self.doors.push(Door::new(teleporter, pos, dest));
+        if self.doors.len() < MAX_DOORS {
+            self.doors.push(Door::new(teleporter, pos, dest));
+        }
     }
     pub fn try_remove_door(&mut self, pos: Vec2) {
         self.doors.retain(|d| d.pos() != pos);
@@ -155,6 +165,18 @@ impl EditorLevel {
     }
     pub fn set_finish(&mut self, finish: Vec2) {
         self.finish = finish;
+    }
+
+    pub fn checkpoints(&self) -> &Vec<Vec2> {
+        &self.checkpoints
+    }
+    pub fn add_checkpoint(&mut self, pos: Vec2) {
+        if !self.checkpoints.contains(&pos) && self.checkpoints.len() < MAX_CHECKPOINTS {
+            self.checkpoints.push(pos);
+        }
+    }
+    pub fn try_remove_checkpoint(&mut self, pos: Vec2) {
+        self.checkpoints.retain(|c| *c != pos);
     }
 
     // This doesn't check if pos is valid and could crash if it's not,

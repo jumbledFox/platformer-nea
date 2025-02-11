@@ -231,10 +231,10 @@ impl EditorMenu {
                 "",
                 "Right click a sign to delete it.",
                 "",
-                "Hover over a sign and press 'X' to",
-                "'cut' it, the tool outline will turn",
-                "purple and the next sign you place",
-                "will 'paste' its data!"
+                "Hover over a sign and press 'C' to",
+                "'copy' it or 'X' to 'cut' it, the",
+                "tool outline will change to green",
+                "or purple, showing copy/cut status."
             ]),
             p if p == HelpKind::Doors as u8 => ("Doors", &[
                 //-----------------------------------//

@@ -1,17 +1,23 @@
 // This is the 'level view', it lets the user actually edit an editor level
 
 use editor_camera::EditorCamera;
-use macroquad::{color::{Color, ORANGE, PURPLE, WHITE}, color_u8, input::{is_key_down, is_key_pressed, is_mouse_button_down, is_mouse_button_pressed, mouse_delta_position, KeyCode, MouseButton}, math::{vec2, Rect, Vec2}, shapes::{draw_line, draw_rectangle, draw_rectangle_lines}, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{Color, ORANGE, PURPLE, WHITE}, color_u8, input::{is_key_down, is_key_pressed, is_mouse_button_down, is_mouse_button_pressed, mouse_delta_position, KeyCode, MouseButton}, math::{vec2, Rect, Vec2}, shapes::{draw_line, draw_rectangle, draw_rectangle_lines}};
 use object_selector::{Object, ObjectSelector, OtherKind};
 use sign_popup::{SignPopup, SignPopupReturn};
 
-use crate::{game::level::{tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}, resources::Resources, ui::{Button, Ui}, util::draw_rect, VIEW_HEIGHT, VIEW_SIZE};
+use crate::{game::level::{tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}, resources::Resources, ui::{Button, Ui}, VIEW_HEIGHT, VIEW_SIZE};
 
 use super::{editor_level::EditorLevel, editor_menu::{EditorMenu, HelpKind}};
 
 pub mod editor_camera;
 pub mod object_selector;
 pub mod sign_popup;
+
+pub enum SignClipboard {
+    None,
+    Copy([String; 4]),
+    Cut([String; 4]),
+}
 
 pub struct LevelView {
     selected_object: Object,
@@ -31,8 +37,8 @@ pub struct LevelView {
     object_selector: ObjectSelector,
     // The sign edit popup
     sign_popup: Option<SignPopup>,
-    // The sign being cut
-    cut_sign: Option<[String; 4]>,
+    // The data of the cut/copied sign
+    sign_clipboard: SignClipboard,
 
     // The position of the player to be spawned in when the player wants to test their level
     test_spawn_point: Option<(Vec2, bool)>,    
@@ -63,7 +69,7 @@ impl LevelView {
 
             object_selector: ObjectSelector::new(resources),
             sign_popup: None,
-            cut_sign: None,
+            sign_clipboard: SignClipboard::None,
             test_spawn_point: None,
             camera: EditorCamera::default()
         }
@@ -300,22 +306,26 @@ impl LevelView {
                 }
                 // If the object is a sign
                 else if self.selected_object == Object::Other(OtherKind::Sign) {
-                    if is_mouse_button_pressed(MouseButton::Left) {
-                        // If we clicked on an existing sign, edit that
-                        let lines = editor_level
+                    let get_sign_lines_at_cursor_pos = || -> Option<[String; 4]> {
+                        editor_level
                             .signs()
                             .iter()
                             .find(|s| s.pos() == cursor_pos)
-                            .map(|s| s.lines().clone());
+                            .map(|s| s.lines().clone())
+                    };
 
-                        match &self.cut_sign {
-                            // If we're cutting a sign and we're not editing an existing one, paste it.
-                            Some(cut_sign) if lines.is_none() => {
+                    if is_mouse_button_pressed(MouseButton::Left) {
+                        // If we clicked on an existing sign, edit that
+                        let lines = get_sign_lines_at_cursor_pos();
+
+                        match &self.sign_clipboard {
+                            // If we're copying/cutting a sign and we're not editing an existing one, paste it.
+                            SignClipboard::Copy(sign_data) | SignClipboard::Cut(sign_data) if lines.is_none() => {
                                 editor_level.try_remove_sign(cursor_pos);
-                                editor_level.add_sign(cursor_pos, cut_sign.clone());
-                                self.cut_sign = None;
+                                editor_level.add_sign(cursor_pos, sign_data.clone());
+                                self.sign_clipboard = SignClipboard::None;
                             }
-                            // Otherwise (we're not cutting a sign, or we are but we've clicked on an existing one), open the gui for a new sign
+                            // Otherwise (we're not copying/cutting a sign, or we are but we've clicked on an existing one), open the gui for a new sign
                             _ => {
                                 self.sign_popup = Some(SignPopup::new(cursor_pos, lines));
                             }
@@ -323,15 +333,17 @@ impl LevelView {
                     } else if is_mouse_button_pressed(MouseButton::Right) {
                         // If a sign exists here and we've right clicked, remove it
                         editor_level.try_remove_sign(cursor_pos);
-                    } else if is_key_pressed(KeyCode::X) {
-                        // If the x key is pressed, cut the existing sign
-                        let lines = editor_level
-                            .signs()
-                            .iter()
-                            .find(|s| s.pos() == cursor_pos)
-                            .map(|s| s.lines().clone());
-                        if let Some(lines) = lines {
-                            self.cut_sign = Some(lines);
+                    }
+                    // Copy the sign with C
+                    else if is_key_pressed(KeyCode::C) {
+                        if let Some(lines) = get_sign_lines_at_cursor_pos() {
+                            self.sign_clipboard = SignClipboard::Copy(lines);
+                        }
+                    }
+                    // Cut the sign with X
+                    else if is_key_pressed(KeyCode::X) {
+                        if let Some(lines) = get_sign_lines_at_cursor_pos() {
+                            self.sign_clipboard = SignClipboard::Cut(lines);
                             editor_level.try_remove_sign(cursor_pos);
                         }
                     }
@@ -369,6 +381,15 @@ impl LevelView {
                 } else if self.selected_object == Object::Other(OtherKind::Finish) {
                     if is_mouse_button_pressed(MouseButton::Left) {
                         editor_level.set_finish(cursor_pos);
+                    }
+                }
+                // Checkpoint
+                else if self.selected_object == Object::Other(OtherKind::Checkpoint) {
+                    if is_mouse_button_pressed(MouseButton::Left) {
+                        editor_level.add_checkpoint(cursor_pos);
+                    }
+                    if is_mouse_button_pressed(MouseButton::Right) {
+                        editor_level.try_remove_checkpoint(cursor_pos);
                     }
                 }
             }
@@ -441,8 +462,10 @@ impl LevelView {
             }
         }
 
-        resources.draw_rect(editor_level.spawn()  - camera_pos, Rect::new(208.0, 16.0, 16.0, 16.0), resources.entity_atlas());
-        resources.draw_rect(editor_level.finish() - camera_pos, Rect::new(240.0, 16.0, 16.0, 16.0), resources.entity_atlas());
+        for c in editor_level.checkpoints() {
+            resources.draw_rect(*c - camera_pos, Rect::new(224.0, 16.0, 16.0, 16.0), resources.entity_atlas());
+        }
+        Level::render_spawn_finish_debug(editor_level.spawn(), editor_level.finish(), camera_pos, resources);
 
         // Draw the tile/entity the player is adding
         if let Some(pos) = self.cursor_pos {
@@ -477,7 +500,8 @@ impl LevelView {
             }
             else if let Object::Other(other) = self.selected_object {
                 let outline_col = match other {
-                    OtherKind::Sign if self.cut_sign.is_some() => PURPLE,
+                    OtherKind::Sign if matches!(self.sign_clipboard, SignClipboard::Copy(_)) => Color::from_rgba(0, 255, 0, 255),
+                    OtherKind::Sign if matches!(self.sign_clipboard, SignClipboard::Cut(_))  => PURPLE,
                     _ => WHITE,
                 };
                 let transparent = match other {

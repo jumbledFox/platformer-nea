@@ -1,8 +1,7 @@
 use macroquad::{color::{Color, BLACK, DARKGRAY, WHITE}, color_u8, input::{clear_input_queue, get_char_pressed, is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle};
 
-use crate::{resources::Resources, text_renderer::{render_text, Align, Font}, ui::{Button, Ui}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
+use crate::{game::level::things::Sign, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{Button, Ui}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
 
-const MAX_LINE_LEN: usize = 24;
 const LINE_FLASH_DURATION: f32 = 0.2;
 
 // TODO: Put this in the ui input field when i make it
@@ -44,7 +43,7 @@ impl SignPopup {
         clear_input_queue();
         Self {
             pos,
-            lines: lines.unwrap_or_else(|| core::array::from_fn(|_| String::with_capacity(MAX_LINE_LEN))),
+            lines: lines.unwrap_or_else(|| core::array::from_fn(|_| String::with_capacity(Sign::MAX_LINE_LEN))),
             line: 0,
             line_flash_timer: 0.0,
             backspace_timer: None,
@@ -80,7 +79,7 @@ impl SignPopup {
             let c = c.to_ascii_lowercase();
             if resources.font_data_manager().font_data(Font::Small).valid_char(c) {
                 self.backspace_timer = None;
-                if self.lines[self.line].len() < MAX_LINE_LEN {
+                if self.lines[self.line].len() < Sign::MAX_LINE_LEN {
                     self.lines[self.line].push(c);
                 }
             }

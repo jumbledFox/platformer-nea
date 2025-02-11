@@ -3,72 +3,13 @@
 use std::f32::consts::PI;
 
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, shapes::draw_line, texture::{draw_texture_ex, DrawTextureParams}};
+use things::{Door, Sign};
 use tile::{render_tile, LockColor, Tile, TileCollision, TileHit, TileHitKind, TileRenderLayer, TileTextureConnection, TileTextureConnectionKind};
 
 use crate::{editor::editor_level::EditorLevel, resources::Resources, text_renderer::{render_text, Align, Font}};
 
 pub mod tile;
-
-#[derive(Clone, Debug)]
-pub struct Sign {
-    pos: Vec2,
-    lines: [String; 4],
-    read: bool,
-}
-
-impl Sign {
-    pub fn new(pos: Vec2, lines: [String; 4]) -> Self {
-        Self { pos, lines, read: false }
-    }
-    pub fn pos(&self) -> Vec2 {
-        self.pos
-    }
-    pub fn lines(&self) -> &[String; 4] {
-        &self.lines
-    }
-    pub fn read(&self) -> bool {
-        self.read
-    }
-
-    pub fn translate(&mut self, offset: Vec2) {
-        self.pos += offset;
-    }
-    pub fn set_lines(&mut self, lines: [String; 4]) {
-        self.lines = lines;
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct Door {
-    teleporter: bool,
-    pos: Vec2,
-    dest: Vec2,
-}
-
-impl Door {
-    pub fn new(teleporter: bool, pos: Vec2, dest: Vec2) -> Self {
-        Self { teleporter, pos, dest }
-    }
-    pub fn teleporter(&self) -> bool {
-        self.teleporter
-    }
-    pub fn pos(&self) -> Vec2 {
-        self.pos
-    }
-    pub fn dest(&self) -> Vec2 {
-        self.dest
-    }
-
-    pub fn translate(&mut self, offset: Vec2) {
-        self.pos  += offset;
-        self.dest += offset;
-    }
-}
-
-#[derive(Clone, Copy)]
-pub enum LevelPhysics {
-    Air, Water,
-}
+pub mod things;
 
 pub struct BumpedTile {
     tile: Tile,
@@ -83,14 +24,17 @@ pub struct Level {
     height: usize,
     bumped_tiles: Vec<BumpedTile>,
 
-    physics: LevelPhysics,
+    spawn:  Vec2,
+    finish: Vec2,
+    checkpoints: Vec<Vec2>,
+    // Which checkpoint (index) was touched last, if any.
+    // This is where the player will spawn from when they die with lives left.
+    checkpoint: Option<usize>,
     
     signs: Vec<Sign>,
     doors: Vec<Door>,
-    // player  start point
-    // checkpoints
-    // enemy   start points
-    // powerup start points
+
+    // entity start points
 
     // Rendering shenanigans
     should_update_render_data: bool,
@@ -113,16 +57,19 @@ pub enum TileDrawKind {
     Quarters(usize, usize, usize, usize),
 }
 
-impl Level {
-    pub fn from_editor_level(editor_level: &EditorLevel) -> Self {
+impl From<&EditorLevel> for Level {
+    fn from(value: &EditorLevel) -> Self {
         Self {
-            tiles:    editor_level.tiles().clone(),
-            tiles_bg: editor_level.tiles_bg().clone(),
-            width:    editor_level.width(),
-            height:   editor_level.height(),
-            physics:  editor_level.physics(),
-            signs:    editor_level.signs().clone(),
-            doors:    editor_level.doors().clone(),
+            tiles:       value.tiles().clone(),
+            tiles_bg:    value.tiles_bg().clone(),
+            width:       value.width(),
+            height:      value.height(),
+            spawn:       value.spawn(),
+            finish:      value.finish(),
+            checkpoints: value.checkpoints().clone(),
+            checkpoint:  None,
+            signs:       value.signs().clone(),
+            doors:       value.doors().clone(),
             bumped_tiles: vec![],
             should_update_render_data: true,
             tiles_below:      vec![],
@@ -130,7 +77,9 @@ impl Level {
             tiles_background: vec![],
         }
     }
+}
 
+impl Level {
     // Switch blocks - sets the state of all switch tiles in the level and the background
     fn set_switch_state(&mut self, enabled: bool) {
         for t in self.tiles.iter_mut().chain(self.tiles_bg.iter_mut()) {
@@ -231,7 +180,7 @@ impl Level {
         // If the position is out of the map horizontally, it should be solid, however if it's below/above the map, it should be passable.
         let pos = pos / 16.0;
         if pos.x < 0.0 || pos.x >= self.width as f32 {
-            return Tile::SolidEmpty;
+            return Tile::Empty;
         }
         if pos.y < 0.0 || pos.y >= self.height as f32 {
             return Tile::Empty;
@@ -255,21 +204,52 @@ impl Level {
         Level::render_tiles(&self.tiles_background, camera_pos, TileRenderLayer::Background, resources);
     }
 
-    pub fn render_below(&self, camera_pos: Vec2, resources: &Resources, debug: bool) {
+    pub fn render_below(&self, camera_pos: Vec2, resources: &Resources) {
         Level::render_tiles(&self.tiles_below, camera_pos, TileRenderLayer::Foreground(false), resources);
         
         Level::render_signs(&self.signs, camera_pos, resources);
+        Level::render_checkpoints_sign(&self.checkpoints, self.checkpoint, camera_pos, resources);
+        Level::render_finish(self.finish, camera_pos, resources);
+    }
+
+    pub fn render_above(&self, camera_pos: Vec2, resources: &Resources, debug: bool) {
+        Level::render_checkpoints_dirt(&self.checkpoints, camera_pos, resources);
+        Level::render_tiles(&self.tiles_above, camera_pos, TileRenderLayer::Foreground(false), resources);
+        Level::render_sign_read_alerts(&self.signs, camera_pos, resources);
         if debug {
             Level::render_doors_debug(&self.doors, camera_pos, resources);
+            Level::render_spawn_finish_debug(self.spawn, self.finish, camera_pos, resources);
         }
     }
 
-    pub fn render_above(&self, camera_pos: Vec2, resources: &Resources) {
-        Level::render_tiles(&self.tiles_above, camera_pos, TileRenderLayer::Foreground(false), resources);
-        Level::render_sign_read_alerts(&self.signs, camera_pos, resources);
+    // Also used by the editor for rendering:
+
+    // Render spawn, finish, and checkpoints for debugging / in the editor
+    pub fn render_finish(finish: Vec2, camera_pos: Vec2, resources: &Resources) {
+        resources.draw_rect(finish - camera_pos, Rect::new(224.0, 0.0, 16.0, 16.0), resources.entity_atlas());
+    }
+    pub fn render_spawn_finish_debug(spawn: Vec2, finish: Vec2, camera_pos: Vec2, resources: &Resources) {
+        resources.draw_rect(spawn  - camera_pos, Rect::new(208.0, 16.0, 16.0, 16.0), resources.entity_atlas());
+        resources.draw_rect(finish - camera_pos, Rect::new(240.0, 16.0, 16.0, 16.0), resources.entity_atlas());
     }
 
-    // Also used by the editor for rendering:
+    pub fn render_checkpoints_sign(checkpoints: &Vec<Vec2>, checkpoint: Option<usize>, camera_pos: Vec2, resources: &Resources) {
+        let bob_amount = (resources.tile_animation_timer() * 3.0).sin() as f32;
+        for (i, c) in checkpoints.iter().enumerate() {
+            // If this is the active checkpoint, draw the other sprite (with the fox face on :3)
+            let rect_x = match checkpoint == Some(i) {
+                true  => 176.0,
+                false => 192.0,
+            };
+            resources.draw_rect(*c + vec2(0.0, bob_amount - 1.0) - camera_pos, Rect::new(rect_x, 0.0, 16.0, 16.0), resources.entity_atlas());
+        }
+    }
+
+    pub fn render_checkpoints_dirt(checkpoints: &Vec<Vec2>, camera_pos: Vec2, resources: &Resources) {
+        for c in checkpoints {
+            resources.draw_rect(*c + vec2(0.0, 11.0) - camera_pos, Rect::new(208.0, 0.0, 16.0, 6.0), resources.entity_atlas());
+        }
+    }
 
     // Renders doors for debugging / in the editor
     pub fn render_doors_debug(doors: &Vec<Door>, camera_pos: Vec2, resources: &Resources) {

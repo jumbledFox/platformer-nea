@@ -41,12 +41,15 @@ impl ObjectSelector {
             Tile::Grass,
             Tile::Dirt,
             Tile::Stone,
+            Tile::BrightStone,
             Tile::Cloud,
             Tile::Metal,
             Tile::Checker,
             Tile::CheckerBlock(CheckerBlockColor::Cyan),
             Tile::CheckerBlock(CheckerBlockColor::Orange),
             Tile::CheckerBlock(CheckerBlockColor::Purple),
+            Tile::WoodenPlatform,
+            Tile::MetalPlatform,
             Tile::Bridge,
             Tile::Rope,
             Tile::Door,
@@ -57,6 +60,7 @@ impl ObjectSelector {
             Tile::Block,
             Tile::Spikes,
             Tile::Switch(false), Tile::SwitchBlockOff(true), Tile::SwitchBlockOn(false),
+            Tile::Lava,
         ];
         for col in LockColor::colors().iter() {
             tiles.push(Tile::Lock(*col));

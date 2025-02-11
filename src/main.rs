@@ -10,6 +10,8 @@ pub mod util;
 pub mod resources;
 pub mod text_renderer;
 pub mod ui;
+
+pub mod level_pack_data;
 pub mod game;
 pub mod editor;
 
