@@ -226,11 +226,11 @@ impl Level {
 
     // Render spawn, finish, and checkpoints for debugging / in the editor
     pub fn render_finish(finish: Vec2, camera_pos: Vec2, resources: &Resources) {
-        resources.draw_rect(finish - camera_pos, Rect::new(224.0, 0.0, 16.0, 16.0), resources.entity_atlas());
+        resources.draw_rect(finish - camera_pos, Rect::new(224.0, 0.0, 16.0, 16.0), WHITE, resources.entity_atlas());
     }
     pub fn render_spawn_finish_debug(spawn: Vec2, finish: Vec2, camera_pos: Vec2, resources: &Resources) {
-        resources.draw_rect(spawn  - camera_pos, Rect::new(208.0, 16.0, 16.0, 16.0), resources.entity_atlas());
-        resources.draw_rect(finish - camera_pos, Rect::new(240.0, 16.0, 16.0, 16.0), resources.entity_atlas());
+        resources.draw_rect(spawn  - camera_pos, Rect::new(208.0, 16.0, 16.0, 16.0), WHITE, resources.entity_atlas());
+        resources.draw_rect(finish - camera_pos, Rect::new(240.0, 16.0, 16.0, 16.0), WHITE, resources.entity_atlas());
     }
 
     pub fn render_checkpoints_sign(checkpoints: &Vec<Vec2>, checkpoint: Option<usize>, camera_pos: Vec2, resources: &Resources) {
@@ -241,13 +241,13 @@ impl Level {
                 true  => 176.0,
                 false => 192.0,
             };
-            resources.draw_rect(*c + vec2(0.0, bob_amount - 1.0) - camera_pos, Rect::new(rect_x, 0.0, 16.0, 16.0), resources.entity_atlas());
+            resources.draw_rect(*c + vec2(0.0, bob_amount - 1.0) - camera_pos, Rect::new(rect_x, 0.0, 16.0, 16.0), WHITE, resources.entity_atlas());
         }
     }
 
     pub fn render_checkpoints_dirt(checkpoints: &Vec<Vec2>, camera_pos: Vec2, resources: &Resources) {
         for c in checkpoints {
-            resources.draw_rect(*c + vec2(0.0, 11.0) - camera_pos, Rect::new(208.0, 0.0, 16.0, 6.0), resources.entity_atlas());
+            resources.draw_rect(*c + vec2(0.0, 11.0) - camera_pos, Rect::new(208.0, 0.0, 16.0, 6.0), WHITE, resources.entity_atlas());
         }
     }
 
@@ -262,15 +262,15 @@ impl Level {
                 true  => (Rect::new(240.0, 48.0, 16.0, 16.0), Rect::new(224.0, 48.0, 16.0, 16.0), Color::from_rgba(0, 255, 255, 128)),
             };
 
-            resources.draw_rect(pos,  pos_tex,  resources.entity_atlas());
-            resources.draw_rect(dest, dest_tex, resources.entity_atlas());
+            resources.draw_rect(pos,  pos_tex,  WHITE, resources.entity_atlas());
+            resources.draw_rect(dest, dest_tex, WHITE, resources.entity_atlas());
             draw_line(pos.x + 8.0, pos.y + 8.0, dest.x + 8.0, dest.y + 8.0, 1.0, line_col);
         }
     }
     // Renders all of the signs
     pub fn render_signs(signs: &Vec<Sign>, camera_pos: Vec2, resources: &Resources) {
         for s in signs {
-            resources.draw_rect(s.pos() - camera_pos, Rect::new(240.0, 0.0, 16.0, 16.0), resources.entity_atlas());
+            resources.draw_rect(s.pos() - camera_pos, Rect::new(240.0, 0.0, 16.0, 16.0), WHITE, resources.entity_atlas());
         }
     }
     // Render the alerts above signs if they haven't been read

@@ -1,15 +1,27 @@
-use macroquad::math::{vec2, Vec2};
+use macroquad::{color::Color, math::{vec2, Vec2}};
 
 use crate::{game::level::{things::{Door, Sign}, tile::{Tile, TileRenderLayer}, Level, TileRenderData}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
 
 use super::level_view::editor_camera::EditorCamera;
 
+const MIN_WIDTH:  usize = VIEW_WIDTH;
+const MIN_HEIGHT: usize = VIEW_HEIGHT;
+// 255 so they fit in a single byte
+// yes it'd be more efficient to store width/height as u8s...
+// but then they're used so much for indexing it'd be annoying to put 'as usize' after everything!!!
+const MAX_WIDTH:  usize = 255;
+const MAX_HEIGHT: usize = 255;
+
 const MAX_CHECKPOINTS: usize = 255;
 const MAX_DOORS: usize = 255;
 const MAX_SIGNS: usize = 64;
 
+pub const BG_SKY: (u8, u8, u8) = (109, 202, 255);
+
 pub struct EditorLevel {
     name: String,
+    // TODO: Actually make this work
+    bg_col: (u8, u8, u8),
 
     width: usize,
     height: usize,
@@ -31,12 +43,6 @@ pub struct EditorLevel {
     tiles_background: Vec<TileRenderData>,
     should_update_render_data: bool,
 }
-
-const MIN_WIDTH:  usize = VIEW_WIDTH;
-const MIN_HEIGHT: usize = VIEW_HEIGHT;
-// Temporary values for now...
-const MAX_WIDTH:  usize = 255;
-const MAX_HEIGHT: usize = 255;
 
 impl Default for EditorLevel {
     fn default() -> Self {
@@ -82,7 +88,8 @@ impl Default for EditorLevel {
 
         Self {
             name: String::new(),
-            
+            bg_col: BG_SKY,
+
             width,
             height,
             tiles,

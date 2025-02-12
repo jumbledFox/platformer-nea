@@ -1,4 +1,4 @@
-use macroquad::{color::WHITE, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
+use macroquad::{color::{Color, WHITE}, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
 
 use crate::{game::level::tile::TileDataManager, text_renderer::FontDataManager};
 
@@ -56,8 +56,8 @@ impl Resources {
         self.tile_animation_timer = 0.0;
     }
 
-    pub fn draw_rect(&self, pos: Vec2, rect: Rect, atlas: &Texture2D) {
-        draw_texture_ex(atlas, pos.x, pos.y, WHITE, DrawTextureParams {
+    pub fn draw_rect(&self, pos: Vec2, rect: Rect, color: Color, atlas: &Texture2D) {
+        draw_texture_ex(atlas, pos.x, pos.y, color, DrawTextureParams {
             source: Some(rect),
             ..Default::default()
         });

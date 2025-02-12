@@ -2,7 +2,7 @@
 
 use macroquad::math::{vec2, Vec2};
 
-use crate::{editor::editor_level::EditorLevel, game::level::{tile::Tile, Level}};
+use crate::{editor::editor_level::EditorLevel, game::{entity::EntityKind, level::{tile::Tile, Level}}};
 
 // Pack names and authors, level names
 pub const MAX_FIELD_LEN: usize = 24;
@@ -31,7 +31,7 @@ type LevelPosition = (u8, u8);
 
 pub struct LevelData {
     name: String,
-
+    bg_col: (u8, u8, u8),
     width: u8,
     height: u8,
     tiles: Vec<Tile>,
@@ -42,6 +42,7 @@ pub struct LevelData {
     checkpoints: Vec<LevelPosition>,
     doors: Vec<(bool, LevelPosition, LevelPosition)>,
     signs: Vec<(LevelPosition, [String; 4])>,
+    entities: Vec<(LevelPosition, EntityKind)>
     // entity spawns
 }
 
@@ -61,6 +62,7 @@ impl From<&EditorLevel> for LevelData {
     fn from(value: &EditorLevel) -> Self {
         Self {
             name: String::new(),
+            bg_col: (255, 0, 0),
             width:  value.width() .clamp(0, 255) as u8,
             height: value.height().clamp(0, 255) as u8,
             tiles:    value.tiles().clone(),
@@ -79,6 +81,7 @@ impl From<&EditorLevel> for LevelData {
                 .iter()
                 .map(|s| (pos_to_level_pos(s.pos()), s.lines().clone()))
                 .collect(),
+            entities: vec![]
         }
     }
 }
@@ -101,6 +104,7 @@ author: string
 length (4 bytes for how many bytes this level data is, used to break up levels to decode individually)
 
 name: string
+bg_col (byte, byte, byte)
 
 width  (byte)
 height (byte)

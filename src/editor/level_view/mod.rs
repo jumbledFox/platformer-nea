@@ -2,10 +2,10 @@
 
 use editor_camera::EditorCamera;
 use macroquad::{color::{Color, ORANGE, PURPLE, WHITE}, color_u8, input::{is_key_down, is_key_pressed, is_mouse_button_down, is_mouse_button_pressed, mouse_delta_position, KeyCode, MouseButton}, math::{vec2, Rect, Vec2}, shapes::{draw_line, draw_rectangle, draw_rectangle_lines}};
-use object_selector::{Object, ObjectSelector, OtherKind};
+use object_selector::{Object, ObjectSelector, ObjectOtherKind};
 use sign_popup::{SignPopup, SignPopupReturn};
 
-use crate::{game::level::{tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}, resources::Resources, ui::{Button, Ui}, VIEW_HEIGHT, VIEW_SIZE};
+use crate::{game::{entity::{frog::Frog, EntityKind}, level::{tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}}, resources::Resources, ui::{Button, Ui}, VIEW_HEIGHT, VIEW_SIZE};
 
 use super::{editor_level::EditorLevel, editor_menu::{EditorMenu, HelpKind}};
 
@@ -59,7 +59,7 @@ impl LevelView {
 
         Self {
             // selected_object: Object::Tile(Tile::Grass),
-            selected_object: Object::Other(OtherKind::Door(true)),
+            selected_object: Object::Other(ObjectOtherKind::Door(true)),
             cursor_pos: None,
             began_drawing_in_area: false,
 
@@ -250,12 +250,12 @@ impl LevelView {
             let help_kind = match self.selected_object {
                 Object::Tile(_)   => HelpKind::Tiles,
                 Object::Entity(_) => HelpKind::Entities,
-                Object::Other(OtherKind::Sign) => HelpKind::Signs,
-                Object::Other(OtherKind::Door(false)) => HelpKind::Doors,
-                Object::Other(OtherKind::Door(true))  => HelpKind::Teles,
-                Object::Other(OtherKind::Spawn) |
-                Object::Other(OtherKind::Finish) => HelpKind::SpawnFinish,
-                Object::Other(OtherKind::Checkpoint) => HelpKind::Checkpoints,
+                Object::Other(ObjectOtherKind::Sign) => HelpKind::Signs,
+                Object::Other(ObjectOtherKind::Door(false)) => HelpKind::Doors,
+                Object::Other(ObjectOtherKind::Door(true))  => HelpKind::Teles,
+                Object::Other(ObjectOtherKind::Spawn) |
+                Object::Other(ObjectOtherKind::Finish) => HelpKind::SpawnFinish,
+                Object::Other(ObjectOtherKind::Checkpoint) => HelpKind::Checkpoints,
             };
             editor_menu.open_help_menu(help_kind);
         }
@@ -305,7 +305,7 @@ impl LevelView {
                     }
                 }
                 // If the object is a sign
-                else if self.selected_object == Object::Other(OtherKind::Sign) {
+                else if self.selected_object == Object::Other(ObjectOtherKind::Sign) {
                     let get_sign_lines_at_cursor_pos = || -> Option<[String; 4]> {
                         editor_level
                             .signs()
@@ -349,7 +349,7 @@ impl LevelView {
                     }
                 }
                 // If the object is a door
-                else if let Object::Other(OtherKind::Door(teleport)) = self.selected_object {
+                else if let Object::Other(ObjectOtherKind::Door(teleport)) = self.selected_object {
                     // If we press right click and we're adding a door, stop
                     // If we're not adding a door though, try to remove a door if ONLY it's pos is here, not it's dest
                     if is_mouse_button_pressed(MouseButton::Right) {
@@ -374,17 +374,17 @@ impl LevelView {
                     }
                 }
                 // Spawn point / finish point
-                else if self.selected_object == Object::Other(OtherKind::Spawn) {
+                else if self.selected_object == Object::Other(ObjectOtherKind::Spawn) {
                     if is_mouse_button_pressed(MouseButton::Left) {
                         editor_level.set_spawn(cursor_pos);
                     }
-                } else if self.selected_object == Object::Other(OtherKind::Finish) {
+                } else if self.selected_object == Object::Other(ObjectOtherKind::Finish) {
                     if is_mouse_button_pressed(MouseButton::Left) {
                         editor_level.set_finish(cursor_pos);
                     }
                 }
                 // Checkpoint
-                else if self.selected_object == Object::Other(OtherKind::Checkpoint) {
+                else if self.selected_object == Object::Other(ObjectOtherKind::Checkpoint) {
                     if is_mouse_button_pressed(MouseButton::Left) {
                         editor_level.add_checkpoint(cursor_pos);
                     }
@@ -452,18 +452,18 @@ impl LevelView {
         // Render the doors and start position
         Level::render_doors_debug(editor_level.doors(), camera_pos, resources);
 
-        if let Object::Other(OtherKind::Door(teleporter)) = self.selected_object {
+        if let Object::Other(ObjectOtherKind::Door(teleporter)) = self.selected_object {
             if let Some(pos) = editor_level.door_start() {
                 let rect = match teleporter {
                     false => Rect::new(240.0, 32.0, 16.0, 16.0),
                     true  => Rect::new(240.0, 48.0, 16.0, 16.0),
                 };
-                resources.draw_rect(pos - camera_pos, rect, resources.entity_atlas());
+                resources.draw_rect(pos - camera_pos, rect, WHITE, resources.entity_atlas());
             }
         }
 
         for c in editor_level.checkpoints() {
-            resources.draw_rect(*c - camera_pos, Rect::new(224.0, 16.0, 16.0, 16.0), resources.entity_atlas());
+            resources.draw_rect(*c - camera_pos, Rect::new(224.0, 16.0, 16.0, 16.0), WHITE, resources.entity_atlas());
         }
         Level::render_spawn_finish_debug(editor_level.spawn(), editor_level.finish(), camera_pos, resources);
 
@@ -490,7 +490,7 @@ impl LevelView {
                     false => ORANGE,
                 };
                 draw_outline(vec2(16.0, 16.0), color);
-                resources.draw_rect(pos + 2.0 - camera_pos, Rect::new(2.0, 4.0, 12.0, 11.0), resources.player_atlas());
+                resources.draw_rect(pos + 2.0 - camera_pos, Rect::new(2.0, 4.0, 12.0, 11.0), WHITE, resources.player_atlas());
             }
             else if let Object::Tile(tile) = self.selected_object {
                 if resources.tile_data_manager().data(tile).texture().is_some() {
@@ -500,12 +500,12 @@ impl LevelView {
             }
             else if let Object::Other(other) = self.selected_object {
                 let outline_col = match other {
-                    OtherKind::Sign if matches!(self.sign_clipboard, SignClipboard::Copy(_)) => Color::from_rgba(0, 255, 0, 255),
-                    OtherKind::Sign if matches!(self.sign_clipboard, SignClipboard::Cut(_))  => PURPLE,
+                    ObjectOtherKind::Sign if matches!(self.sign_clipboard, SignClipboard::Copy(_)) => Color::from_rgba(0, 255, 0, 255),
+                    ObjectOtherKind::Sign if matches!(self.sign_clipboard, SignClipboard::Cut(_))  => PURPLE,
                     _ => WHITE,
                 };
                 let transparent = match other {
-                    OtherKind::Door(_) => false,
+                    ObjectOtherKind::Door(_) => false,
                     _ => true,
                 };
                 draw_outline(vec2(16.0, 16.0), outline_col);

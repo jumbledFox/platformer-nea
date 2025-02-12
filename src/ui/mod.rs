@@ -55,10 +55,10 @@ impl Ui {
             let mut rect = Rect::new(Self::mouse_pos().x, Self::mouse_pos().y, size.x, size.y);
 
             // Ensure the tooltip doesn't go off the edge
-            if rect.x + rect.w > VIEW_SIZE.x {
+            if rect.x + rect.w > VIEW_SIZE.x + 1.0 {
                 rect.x -= rect.w - 1.0;
             }
-            if rect.y + rect.h > VIEW_SIZE.y {
+            if rect.y + rect.h > VIEW_SIZE.y + 1.0 {
                 rect.y -= rect.h - 1.0;
             }
 
