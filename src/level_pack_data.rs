@@ -36,14 +36,13 @@ pub struct LevelData {
     height: u8,
     tiles: Vec<Tile>,
     tiles_bg: Vec<Tile>,
-
+    
     spawn: LevelPosition,
     finish: LevelPosition,
     checkpoints: Vec<LevelPosition>,
     doors: Vec<(bool, LevelPosition, LevelPosition)>,
     signs: Vec<(LevelPosition, [String; 4])>,
     entities: Vec<(LevelPosition, EntityKind)>
-    // entity spawns
 }
 
 fn pos_to_level_pos(pos: Vec2) -> LevelPosition {

@@ -111,7 +111,7 @@ impl ObjectSelector {
         let y_centers = [20.0, 40.0];
 
         for (e, n) in entities {
-            let size = e.object_hitbox_size();
+            let size = e.object_selector_size();
             // Line wrapping
             if x + size.x >= VIEW_SIZE.x - 8.0 {
                 x = 8.0;
@@ -178,7 +178,7 @@ impl ObjectSelector {
                     TileRenderLayer::Foreground(false),
                     resources,
                 ),
-                Object::Entity(e) => e.draw_editor(pos, vec2(0.0, 0.0), resources),
+                Object::Entity(e) => e.draw_editor(false, pos, vec2(0.0, 0.0), resources),
                 Object::Other(o) => ObjectSelector::draw_object_other(pos, *o, false, resources),
             }
         }

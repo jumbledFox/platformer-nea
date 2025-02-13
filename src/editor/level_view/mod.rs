@@ -187,7 +187,7 @@ impl LevelView {
                 SignPopupReturn::Cancel => self.sign_popup = None,
                 SignPopupReturn::Done => {
                     let (pos, lines) = self.sign_popup.take().unwrap().data();
-                    editor_level.add_sign(pos, lines);
+                    editor_level.try_add_sign(pos, lines);
                 }
             }
         }
@@ -304,6 +304,12 @@ impl LevelView {
                         editor_level.set_tile_at_pos(Tile::Empty, cursor_pos, self.layer_bg);
                     }
                 }
+                // If the object is an entity
+                else if let Object::Entity(kind) = self.selected_object {
+                    if is_mouse_button_pressed(MouseButton::Left) {
+                        editor_level.try_add_entity(cursor_pos, kind);
+                    }
+                }
                 // If the object is a sign
                 else if self.selected_object == Object::Other(ObjectOtherKind::Sign) {
                     let get_sign_lines_at_cursor_pos = || -> Option<[String; 4]> {
@@ -322,7 +328,7 @@ impl LevelView {
                             // If we're copying/cutting a sign and we're not editing an existing one, paste it.
                             SignClipboard::Copy(sign_data) | SignClipboard::Cut(sign_data) if lines.is_none() => {
                                 editor_level.try_remove_sign(cursor_pos);
-                                editor_level.add_sign(cursor_pos, sign_data.clone());
+                                editor_level.try_add_sign(cursor_pos, sign_data.clone());
                                 self.sign_clipboard = SignClipboard::None;
                             }
                             // Otherwise (we're not copying/cutting a sign, or we are but we've clicked on an existing one), open the gui for a new sign
@@ -364,7 +370,7 @@ impl LevelView {
                     // If we've not put a start position down, do that (unless it's on a door.. in that case do nothing idk)
                     if is_mouse_button_pressed(MouseButton::Left) {
                         if let Some(door_start) = editor_level.door_start() {
-                            editor_level.add_door(teleport, door_start, cursor_pos);
+                            editor_level.try_add_door(teleport, door_start, cursor_pos);
                             editor_level.set_door_start(None);
                         } else {
                             if !editor_level.doors().iter().any(|d| d.pos() == cursor_pos) {
@@ -386,7 +392,7 @@ impl LevelView {
                 // Checkpoint
                 else if self.selected_object == Object::Other(ObjectOtherKind::Checkpoint) {
                     if is_mouse_button_pressed(MouseButton::Left) {
-                        editor_level.add_checkpoint(cursor_pos);
+                        editor_level.try_add_checkpoint(cursor_pos);
                     }
                     if is_mouse_button_pressed(MouseButton::Right) {
                         editor_level.try_remove_checkpoint(cursor_pos);
@@ -447,11 +453,14 @@ impl LevelView {
         editor_level.draw_bg(camera_pos, self.layer_bg, resources);
         if !self.layer_bg { draw_fg(false) }
 
+        // Render the signs
         Level::render_signs(editor_level.signs(), camera_pos, resources);
-
-        // Render the doors and start position
+        // Render the entities
+        for (pos, kind) in editor_level.entities() {
+            kind.draw_editor(true, *pos, camera_pos, resources);
+        }
+        // Render the doors and door start position
         Level::render_doors_debug(editor_level.doors(), camera_pos, resources);
-
         if let Object::Other(ObjectOtherKind::Door(teleporter)) = self.selected_object {
             if let Some(pos) = editor_level.door_start() {
                 let rect = match teleporter {
@@ -461,7 +470,7 @@ impl LevelView {
                 resources.draw_rect(pos - camera_pos, rect, WHITE, resources.entity_atlas());
             }
         }
-
+        // Render checkpoints and spawn/finish
         for c in editor_level.checkpoints() {
             resources.draw_rect(*c - camera_pos, Rect::new(224.0, 16.0, 16.0, 16.0), WHITE, resources.entity_atlas());
         }
@@ -497,6 +506,10 @@ impl LevelView {
                     draw_outline(vec2(16.0, 16.0), WHITE);
                     render_tile(&TileRenderData { tile, draw_kind: TileDrawKind::Single(0), pos}, camera_pos, TileRenderLayer::Foreground(false), resources);
                 }
+            }
+            else if let Object::Entity(entity_kind) = self.selected_object {
+                draw_outline(vec2(16.0, 16.0), WHITE);
+                entity_kind.draw_editor(true, pos, camera_pos, resources);
             }
             else if let Object::Other(other) = self.selected_object {
                 let outline_col = match other {

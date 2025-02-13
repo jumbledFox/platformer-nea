@@ -16,17 +16,18 @@ pub struct Frog {
 }
 
 impl Frog {
-    pub fn draw_editor(pos: Vec2, camera_pos: Vec2, color: Color, resources: &Resources) {
-        // TODO: maybe an offset rather than - vec(0.0, 6.0)
-        Self::draw(&State::Waiting(SHAKE_TIME + 1.0), pos - vec2(0.0, 6.0), camera_pos, color, resources);
-    }
-
     pub fn hitbox() -> Rect {
-        Rect::new(4.0, 6.0, 11.0, 8.0)
+        Rect::new(4.0, 7.0, 11.0, 8.0)
     }
-
-    pub fn object_hitbox_size() -> Vec2 {
-        vec2(19.0, 11.0)
+    pub fn tile_offset() -> Vec2 {
+        vec2(-1.0, -1.0)
+    }
+    
+    pub fn draw_editor(pos: Vec2, camera_pos: Vec2, color: Color, resources: &Resources) {
+        Self::draw(&State::Waiting(SHAKE_TIME + 1.0), pos, camera_pos, color, resources);
+    }
+    pub fn object_selector_rect() -> Rect {
+        Rect::new(0.0, -6.0, 19.0, 11.0)
     }
 
     fn draw(state: &State, pos: Vec2, camera_pos: Vec2, color: Color, resources: &Resources) {

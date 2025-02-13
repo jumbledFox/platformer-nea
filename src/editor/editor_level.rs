@@ -1,6 +1,6 @@
 use macroquad::{color::Color, math::{vec2, Vec2}};
 
-use crate::{game::level::{things::{Door, Sign}, tile::{Tile, TileRenderLayer}, Level, TileRenderData}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
+use crate::{game::{entity::EntityKind, level::{things::{Door, Sign}, tile::{Tile, TileRenderLayer}, Level, TileRenderData}}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
 
 use super::level_view::editor_camera::EditorCamera;
 
@@ -28,6 +28,7 @@ pub struct EditorLevel {
     tiles: Vec<Tile>,
     tiles_bg: Vec<Tile>,
 
+
     signs: Vec<Sign>,
     // The door start position, used for the two stages of adding a door
     door_start: Option<Vec2>,
@@ -36,6 +37,7 @@ pub struct EditorLevel {
     spawn:  Vec2,
     finish: Vec2,
     checkpoints: Vec<Vec2>,
+    entities: Vec<(Vec2, EntityKind)>,
 
     // Rendering stuff
     tiles_below: Vec<TileRenderData>,
@@ -101,6 +103,7 @@ impl Default for EditorLevel {
             spawn:  Vec2::new( 3.0, 7.0) * 16.0,
             finish: Vec2::new(18.0, 7.0) * 16.0,
             checkpoints: vec![],
+            entities: vec![],
 
             tiles_above:      vec![],
             tiles_below:      vec![],
@@ -127,8 +130,8 @@ impl EditorLevel {
     pub fn signs(&self) -> &Vec<Sign> {
         &self.signs
     }
-    pub fn add_sign(&mut self, pos: Vec2, lines: [String; 4]) {
-        if self.doors.len() >= MAX_SIGNS {
+    pub fn try_add_sign(&mut self, pos: Vec2, lines: [String; 4]) {
+        if self.signs.len() >= MAX_SIGNS {
             return;
         }
         if let Some(sign) = self.signs.iter_mut().find(|s| s.pos() == pos) {
@@ -151,7 +154,7 @@ impl EditorLevel {
     pub fn doors(&self) -> &Vec<Door> {
         &self.doors
     }
-    pub fn add_door(&mut self, teleporter: bool, pos: Vec2, dest: Vec2) {
+    pub fn try_add_door(&mut self, teleporter: bool, pos: Vec2, dest: Vec2) {
         if self.doors.len() < MAX_DOORS {
             self.doors.push(Door::new(teleporter, pos, dest));
         }
@@ -177,13 +180,24 @@ impl EditorLevel {
     pub fn checkpoints(&self) -> &Vec<Vec2> {
         &self.checkpoints
     }
-    pub fn add_checkpoint(&mut self, pos: Vec2) {
+    pub fn try_add_checkpoint(&mut self, pos: Vec2) {
         if !self.checkpoints.contains(&pos) && self.checkpoints.len() < MAX_CHECKPOINTS {
             self.checkpoints.push(pos);
         }
     }
     pub fn try_remove_checkpoint(&mut self, pos: Vec2) {
         self.checkpoints.retain(|c| *c != pos);
+    }
+
+    pub fn entities(&self) -> &Vec<(Vec2, EntityKind)> {
+        &self.entities
+    }
+    pub fn try_add_entity(&mut self, pos: Vec2, kind: EntityKind) {
+        // TODO: See if it overlaps any others...
+        self.entities.push((pos, kind));
+    }
+    pub fn try_remove_entity(&mut self, pos: Vec2) {
+        // TODO: See if the pos overlaps any entities 
     }
 
     // This doesn't check if pos is valid and could crash if it's not,
