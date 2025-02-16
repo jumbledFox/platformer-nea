@@ -70,6 +70,7 @@ impl ObjectSelector {
             (EntityKind::Frog, "Frog".to_string()),
             (EntityKind::FrogCrate(false), "Single-frog crate".to_string()),
             (EntityKind::FrogCrate(true), "Multi-frog crate".to_string()),
+            (EntityKind::Goat, "Aerosol Kid".to_string()),
         ];
 
         for col in LockColor::colors().iter() {
@@ -178,7 +179,7 @@ impl ObjectSelector {
                     TileRenderLayer::Foreground(false),
                     resources,
                 ),
-                Object::Entity(e) => e.draw_editor(false, pos, vec2(0.0, 0.0), resources),
+                Object::Entity(e) => e.draw_editor(false, false, pos, vec2(0.0, 0.0), resources),
                 Object::Other(o) => ObjectSelector::draw_object_other(pos, *o, false, resources),
             }
         }

@@ -5,7 +5,7 @@ use macroquad::{color::{Color, ORANGE, PURPLE, WHITE}, color_u8, input::{is_key_
 use object_selector::{Object, ObjectSelector, ObjectOtherKind};
 use sign_popup::{SignPopup, SignPopupReturn};
 
-use crate::{game::{entity::{frog::Frog, EntityKind}, level::{tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}}, resources::Resources, ui::{Button, Ui}, VIEW_HEIGHT, VIEW_SIZE};
+use crate::{game::level::{tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}, resources::Resources, ui::{Button, Ui}, util::draw_rect, VIEW_HEIGHT, VIEW_SIZE};
 
 use super::{editor_level::EditorLevel, editor_menu::{EditorMenu, HelpKind}};
 
@@ -279,6 +279,9 @@ impl LevelView {
                 self.began_drawing_in_area = false;
             }
 
+            let copy_pressed = is_key_pressed(KeyCode::C);
+            let cut_pressed = is_key_pressed(KeyCode::X);
+
             if let Some(cursor_pos) = self.cursor_pos {
                 // If the user presses tab, let them place the test spawn point
                 if is_key_pressed(KeyCode::Tab) {
@@ -297,17 +300,38 @@ impl LevelView {
                 }
                 // If the object is a tile
                 else if let Object::Tile(tile) = self.selected_object {
-                    // If the user tries to draw a tile and the cursor pos is valid, add the tile to the map!
+                    // Drawing
                     if is_mouse_button_down(MouseButton::Left) && self.began_drawing_in_area {
                         editor_level.set_tile_at_pos(tile, cursor_pos, self.layer_bg);
-                    } else if is_mouse_button_down(MouseButton::Right) && self.began_drawing_in_area {
+                    }
+                    // Erasing
+                    else if is_mouse_button_down(MouseButton::Right) && self.began_drawing_in_area {
                         editor_level.set_tile_at_pos(Tile::Empty, cursor_pos, self.layer_bg);
                     }
                 }
                 // If the object is an entity
                 else if let Object::Entity(kind) = self.selected_object {
+                    // Placing
                     if is_mouse_button_pressed(MouseButton::Left) {
                         editor_level.try_add_entity(cursor_pos, kind);
+                    }
+                    // Removing
+                    else if is_mouse_button_pressed(MouseButton::Right) {
+                        editor_level.try_remove_entity(cursor_pos);
+                    }
+                    // Copying / Cutting
+                    else if copy_pressed || cut_pressed {
+                        if let Some(kind) = editor_level.entities()
+                            .iter()
+                            .find(|e| e.0 == cursor_pos)
+                            .map(|e| e.1)
+                        {
+                            self.selected_object = Object::Entity(kind);
+                            // Cutting
+                            if cut_pressed {
+                                editor_level.try_remove_entity(cursor_pos);
+                            }
+                        }
                     }
                 }
                 // If the object is a sign
@@ -340,17 +364,17 @@ impl LevelView {
                         // If a sign exists here and we've right clicked, remove it
                         editor_level.try_remove_sign(cursor_pos);
                     }
-                    // Copy the sign with C
-                    else if is_key_pressed(KeyCode::C) {
+                    // Copying / Cutting
+                    else if copy_pressed || cut_pressed {
                         if let Some(lines) = get_sign_lines_at_cursor_pos() {
-                            self.sign_clipboard = SignClipboard::Copy(lines);
-                        }
-                    }
-                    // Cut the sign with X
-                    else if is_key_pressed(KeyCode::X) {
-                        if let Some(lines) = get_sign_lines_at_cursor_pos() {
-                            self.sign_clipboard = SignClipboard::Cut(lines);
-                            editor_level.try_remove_sign(cursor_pos);
+                            self.sign_clipboard = match cut_pressed {
+                                false => SignClipboard::Copy(lines),
+                                true  => SignClipboard::Cut(lines),
+                            };
+                            // Cutting
+                            if cut_pressed {
+                                editor_level.try_remove_sign(cursor_pos);
+                            }
                         }
                     }
                 }
@@ -406,6 +430,9 @@ impl LevelView {
 
 
     pub fn draw(&self, editor_level: &EditorLevel, resources: &Resources) {
+        // Draw the bg
+        draw_rect(Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y), editor_level.bg_col_as_color());
+
         // Draw the bounding box of the level
         let level_size = vec2(editor_level.width() as f32, editor_level.height() as f32) * 16.0;
         let camera_pos = self.camera.pos().floor();
@@ -457,7 +484,7 @@ impl LevelView {
         Level::render_signs(editor_level.signs(), camera_pos, resources);
         // Render the entities
         for (pos, kind) in editor_level.entities() {
-            kind.draw_editor(true, *pos, camera_pos, resources);
+            kind.draw_editor(false, true, *pos, camera_pos, resources);
         }
         // Render the doors and door start position
         Level::render_doors_debug(editor_level.doors(), camera_pos, resources);
@@ -509,7 +536,7 @@ impl LevelView {
             }
             else if let Object::Entity(entity_kind) = self.selected_object {
                 draw_outline(vec2(16.0, 16.0), WHITE);
-                entity_kind.draw_editor(true, pos, camera_pos, resources);
+                entity_kind.draw_editor(true, true, pos, camera_pos, resources);
             }
             else if let Object::Other(other) = self.selected_object {
                 let outline_col = match other {

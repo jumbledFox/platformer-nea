@@ -1,6 +1,7 @@
 use chip::Chip;
 use crate_entity::Crate;
 use frog::Frog;
+use goat::Goat;
 use key::Key;
 use macroquad::{color::{Color, BLUE, WHITE}, math::{vec2, Rect, Vec2}};
 
@@ -12,6 +13,7 @@ pub mod crate_entity;
 pub mod chip;
 pub mod key;
 pub mod frog;
+pub mod goat;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum EntityKind {
@@ -24,44 +26,10 @@ pub enum EntityKind {
 
     Frog,
     FrogCrate(bool), // one or a few
-    Kid,
+    Goat,
 }
 
 impl EntityKind {
-    // This stuff is for the editor
-
-    pub fn hitbox(&self) -> Rect {
-        match self {
-            Self::Key(_) => Key::hitbox(),
-            Self::Chip | Self::Life => Chip::hitbox(),
-            Self::Frog => Frog::hitbox(),
-
-            // Crates
-            Self::KeyCrate(_)  |
-            Self::ChipCrate(_) |
-            Self::LifeCrate    |
-            Self::FrogCrate(_) => Crate::hitbox(),
-
-            _ => Rect::new(0.0, 0.0, 16.0, 16.0),
-        }
-    }
-    // The hitbox in the object selector
-    pub fn object_selector_size(&self) -> Vec2 {
-        match self {
-            Self::Key(_) => Key::hitbox().size(),
-            Self::Chip | Self::Life => Chip::object_selector_size(),
-            Self::Frog => Frog::object_selector_rect().size(),
-
-            // Crates
-            Self::KeyCrate(_)  |
-            Self::ChipCrate(_) |
-            Self::LifeCrate    |
-            Self::FrogCrate(_) => Crate::hitbox().size(),
-
-            _ => Vec2::ONE * 16.0,
-        }
-    }
-
     fn uncrated(&self) -> EntityKind {
         match self {
             EntityKind::KeyCrate(col) => EntityKind::Key(*col),
@@ -72,50 +40,21 @@ impl EntityKind {
         }
     }
 
-    // Draw the entity kind, for use in the editor
-    pub fn draw_editor(&self, in_view: bool, pos: Vec2, camera_pos: Vec2, resources: &Resources) {
-        let draw_crate = matches!(self, Self::KeyCrate(_) | Self::ChipCrate(_) | Self::LifeCrate | Self::FrogCrate(_));
-
-        let start_pos = pos;
-
-        let (pos, color) = match draw_crate {
-            true  => {
-                // Draw the crate and position the entity in the middle of the crate
-                Crate::draw(pos, camera_pos, resources);
-                (
-                    pos + ((16.0 - self.uncrated().object_selector_size()) / 2.0).floor(),
-                    Color::from_rgba(255, 255, 255, 200),
-                )
-            },
-            false => (pos, WHITE),
-        };
-
-        let pos = match (self.uncrated() == *self, in_view) {
-            // If the item is in a crate, draw it in the middle of the crate        
-            (false, _) => pos + self.uncrated().object_selector_offset(),
-            // If the item isn't in a crate, draw it based on the offset
-            (_, true)  => pos + self.tile_offset(),
-            (_, false) => pos + self.object_selector_offset(),
-        };
-
+    // The hitbox of the entity
+    pub fn hitbox(&self) -> Rect {
         match self {
-            Self::Key(col) | Self::KeyCrate(col) => Key::draw_editor(*col, pos, camera_pos, color, resources),
-            Self::Chip | Self::ChipCrate(false) => Chip::draw_editor(false, pos, camera_pos, color, resources),
-            Self::ChipCrate(true) => { Chip::draw_editor(false, pos - 1.0, camera_pos, color, resources); Chip::draw_editor(false, pos + 1.0, camera_pos, color, resources); }
-            Self::Life | Self::LifeCrate => Chip::draw_editor(true, pos, camera_pos, color, resources),
-            Self::Frog | Self::FrogCrate(false) => Frog::draw_editor(pos, camera_pos, color, resources),
-            Self::FrogCrate(true) => {
-                Frog::draw_editor(pos - vec2(0.0, 2.0), camera_pos, color, resources);
-                Frog::draw_editor(pos + vec2(0.0, 2.0), camera_pos, color, resources);
-            }
-            Self::Kid => {},
-        };
+            Self::Key(_) => Key::hitbox(),
+            Self::Chip | Self::Life => Chip::hitbox(),
+            Self::Frog => Frog::hitbox(),
+            Self::Goat => Goat::hitbox(),
 
-        if in_view {
-            draw_rect_lines(self.hitbox().offset(start_pos + self.tile_offset() - camera_pos), BLUE);
+            // Crates
+            Self::KeyCrate(_)  |
+            Self::ChipCrate(_) |
+            Self::LifeCrate    |
+            Self::FrogCrate(_) => Crate::hitbox(),
         }
     }
-
     // The offset of this entity when it's being spawned into the level and displayed in the view 
     pub fn tile_offset(&self) -> Vec2 {
         match self {
@@ -126,7 +65,7 @@ impl EntityKind {
             Self::Key(_) => Key::tile_offset(),
             Self::Chip | Self::Life => Chip::tile_offset(),
             Self::Frog => Frog::tile_offset(),
-            Self::Kid => Vec2::ZERO,
+            Self::Goat => Goat::tile_offset(),
         }
     }
 
@@ -141,7 +80,69 @@ impl EntityKind {
             Self::Chip | Self::Life => Vec2::ZERO,
             
             Self::Frog => Frog::object_selector_rect().point(),
-            Self::Kid => Vec2::ZERO,
+            Self::Goat => Goat::object_selector_rect().point(),
+        }
+    }
+    // The hitbox in the object selector
+    pub fn object_selector_size(&self) -> Vec2 {
+        match self {
+            Self::Key(_) => Key::hitbox().size(),
+            Self::Chip | Self::Life => Chip::object_selector_size(),
+            Self::Frog => Frog::object_selector_rect().size(),
+            Self::Goat => Goat::object_selector_rect().size(),
+
+            // Crates
+            Self::KeyCrate(_)  |
+            Self::ChipCrate(_) |
+            Self::LifeCrate    |
+            Self::FrogCrate(_) => Crate::hitbox().size(),
+        }
+    }
+
+    // Draw the entity kind, for use in the editor
+    pub fn draw_editor(&self, transparent: bool, in_view: bool, entity_pos: Vec2, camera_pos: Vec2, resources: &Resources) {
+        let crated = *self != self.uncrated();
+
+        // If the entity is transparent (used for when placing it but not placed yet), draw partially transparent
+        // If the entity is in a crate, we want to draw it partially transparent
+        let color = match (transparent, crated) {
+            (true, true)   => Color::from_rgba(255, 255, 255, 100),
+            (true, false)  => Color::from_rgba(255, 255, 255, 150),
+            (false, true)  => Color::from_rgba(255, 255, 255, 200),
+            (false, false) => WHITE,
+        };
+        // If the entity is in a crate, draw the crate (duh)
+        if crated {
+            let color = match transparent {
+                true => Color::from_rgba(255, 255, 255, 128),
+                false => WHITE,
+            };
+            Crate::draw(entity_pos, camera_pos, color, resources);
+        }
+        // Work out the position of the entity 
+        let pos = match (crated, in_view) {
+            // If it's in a crate, position it in the middle of the crate
+            (true, _)  => entity_pos + ((16.0 - self.uncrated().object_selector_size()) / 2.0).floor() + self.uncrated().object_selector_offset(),
+            // If it's NOT in a crate, position it based on the offset
+            (_, true)  => entity_pos + self.tile_offset(),
+            (_, false) => entity_pos + self.object_selector_offset(),
+        };
+        // Draw the entity
+        match self {
+            Self::Key(col) | Self::KeyCrate(col) => Key::draw_editor(*col, pos, camera_pos, color, resources),
+            Self::Chip | Self::ChipCrate(false) => Chip::draw_editor(false, pos, camera_pos, color, resources),
+            Self::ChipCrate(true) => { Chip::draw_editor(false, pos - 1.0, camera_pos, color, resources); Chip::draw_editor(false, pos + 1.0, camera_pos, color, resources); }
+            Self::Life | Self::LifeCrate => Chip::draw_editor(true, pos, camera_pos, color, resources),
+            Self::Frog | Self::FrogCrate(false) => Frog::draw_editor(pos, camera_pos, color, resources),
+            Self::FrogCrate(true) => {
+                Frog::draw_editor(pos - vec2(0.0, 2.0), camera_pos, color, resources);
+                Frog::draw_editor(pos + vec2(0.0, 2.0), camera_pos, color, resources);
+            }
+            Self::Goat => Goat::draw_editor(pos, camera_pos, color, resources),
+        };
+        // Draw the hitbox
+        if in_view {
+            // draw_rect_lines(self.hitbox().offset(entity_pos + self.tile_offset() - camera_pos), BLUE);
         }
     }
 }
@@ -172,7 +173,7 @@ impl From<EntityKind> for u8 {
             EntityKind::Frog             => 19,
             EntityKind::FrogCrate(false) => 20,
             EntityKind::FrogCrate(true)  => 21,
-            EntityKind::Kid  => 22,
+            EntityKind::Goat => 22,
         }
     }
 }
@@ -203,7 +204,7 @@ impl TryFrom<u8> for EntityKind {
             19 => Ok(EntityKind::Frog),
             20 => Ok(EntityKind::FrogCrate(false)),
             21 => Ok(EntityKind::FrogCrate(true)),
-            22 => Ok(EntityKind::Kid),
+            22 => Ok(EntityKind::Goat),
             _ => Err(())
         }
     }

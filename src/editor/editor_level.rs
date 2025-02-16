@@ -17,6 +17,7 @@ const MAX_DOORS: usize = 255;
 const MAX_SIGNS: usize = 64;
 
 pub const BG_SKY: (u8, u8, u8) = (109, 202, 255);
+// pub const BG_SKY: (u8, u8, u8) = (255, 0, 0);
 
 pub struct EditorLevel {
     name: String,
@@ -114,6 +115,26 @@ impl Default for EditorLevel {
 }
 
 impl EditorLevel {
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    pub fn name_mut(&mut self) -> &mut String {
+        &mut self.name
+    }
+
+    pub fn bg_col_as_color(&self) -> Color {
+        Color::from_rgba(self.bg_col.0, self.bg_col.1, self.bg_col.2, 255)
+    }
+    pub fn bg_col_r(&mut self) -> &mut u8 {
+        &mut self.bg_col.0
+    }
+    pub fn bg_col_g(&mut self) -> &mut u8 {
+        &mut self.bg_col.1
+    }
+    pub fn bg_col_b(&mut self) -> &mut u8 {
+        &mut self.bg_col.2
+    }
+
     pub fn tiles(&self) -> &Vec<Tile> {
         &self.tiles
     }
@@ -193,11 +214,14 @@ impl EditorLevel {
         &self.entities
     }
     pub fn try_add_entity(&mut self, pos: Vec2, kind: EntityKind) {
-        // TODO: See if it overlaps any others...
-        self.entities.push((pos, kind));
+        // If an entity doesn't exist at this position, add it
+        if !self.entities.iter().any(|(p, _)| *p == pos) {
+            self.entities.push((pos, kind));
+        }
     }
     pub fn try_remove_entity(&mut self, pos: Vec2) {
-        // TODO: See if the pos overlaps any entities 
+        // Remove all entities at this position
+        self.entities.retain(|(p, _)| *p != pos);
     }
 
     // This doesn't check if pos is valid and could crash if it's not,

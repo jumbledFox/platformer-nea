@@ -67,7 +67,7 @@ impl From<&EditorLevel> for Level {
             spawn:       value.spawn(),
             finish:      value.finish(),
             checkpoints: value.checkpoints().clone(),
-            checkpoint:  None,
+            checkpoint:  Some(0),
             signs:       value.signs().clone(),
             doors:       value.doors().clone(),
             bumped_tiles: vec![],
