@@ -75,7 +75,7 @@ async fn main() {
 
         // Draw to the render target
         set_camera(&world_cam);
-        clear_background(Color::from_hex(0x6dcaff));
+        // clear_background(Color::from_hex(0x6dcaff));
 
         game_state.draw(&ui, &resources, debug);
         ui.draw(&resources);

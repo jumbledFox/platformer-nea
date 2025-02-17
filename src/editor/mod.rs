@@ -69,7 +69,7 @@ impl GameState for Editor {
         }
 
         if self.editor_menu.active() {
-            self.editor_menu.update(ui);
+            self.editor_menu.update(&mut self.editor_level, ui);
             return;
         }
 
@@ -86,7 +86,7 @@ impl GameState for Editor {
         self.level_view.draw(&self.editor_level, resources);
 
         if self.editor_menu.active() {
-            self.editor_menu.draw(resources);
+            self.editor_menu.draw(&self.editor_level, resources);
         }
 
         Editor::draw_editor_logo(resources);

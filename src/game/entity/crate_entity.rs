@@ -1,6 +1,6 @@
 // I had to name the file 'crate_entity' because crate is a reserved keyword in rust lololol :3
 
-use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}};
+use macroquad::{color::Color, math::{Rect, Vec2}};
 
 use crate::resources::Resources;
 

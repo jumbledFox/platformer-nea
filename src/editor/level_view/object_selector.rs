@@ -41,6 +41,7 @@ impl ObjectSelector {
             Tile::Dirt,
             Tile::Stone,
             Tile::BrightStone,
+            Tile::Sand,
             Tile::Cloud,
             Tile::Metal,
             Tile::Checker,
@@ -51,6 +52,10 @@ impl ObjectSelector {
             Tile::MetalPlatform,
             Tile::Bridge,
             Tile::Rope,
+            Tile::ShortGrass,
+            Tile::TallGrass,
+            Tile::DeadShortGrass,
+            Tile::DeadTallGrass,
             Tile::Door,
             Tile::Ladder,
             Tile::Vine,
@@ -155,7 +160,6 @@ impl ObjectSelector {
                 return Some(*o);
             }
         }
-        
         None
     }
 

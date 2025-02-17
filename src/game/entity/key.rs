@@ -1,4 +1,4 @@
-use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
 
 use crate::{game::level::tile::{LockColor, RAINBOW_LOCK_FRAME_DUR}, resources::Resources};
 

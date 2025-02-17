@@ -48,6 +48,11 @@ pub enum Tile {
     MetalPlatform,
     BrightStone,
     Lava,
+    Sand,
+    ShortGrass,
+    TallGrass,
+    DeadShortGrass,
+    DeadTallGrass,
 }
 
 impl From<Tile> for u8 {
@@ -93,6 +98,11 @@ impl From<Tile> for u8 {
             Tile::MetalPlatform => 37,
             Tile::BrightStone => 38,
             Tile::Lava => 39,
+            Tile::Sand => 40,
+            Tile::ShortGrass => 41,
+            Tile::TallGrass => 42,
+            Tile::DeadShortGrass => 43,
+            Tile::DeadTallGrass => 44,
         }
     }
 }
@@ -141,6 +151,11 @@ impl TryFrom<u8> for Tile {
             37 => Ok(Tile::MetalPlatform),
             38 => Ok(Tile::BrightStone),
             39 => Ok(Tile::Lava),
+            40 => Ok(Tile::Sand),
+            41 => Ok(Tile::ShortGrass),
+            42 => Ok(Tile::TallGrass),
+            43 => Ok(Tile::DeadShortGrass),
+            44 => Ok(Tile::DeadTallGrass),
             _ => Err(())
         }
     }
@@ -172,9 +187,14 @@ impl Default for TileDataManager {
         data.insert(Tile::Metal,   TileData::new("Metal".to_owned(),   Some(TileTexture::fixed(11, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
         data.insert(Tile::Checker, TileData::new("Checker".to_owned(), Some(TileTexture::fixed(27, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
         data.insert(Tile::Cloud,   TileData::new("Cloud".to_owned(),   Some(TileTexture::fixed(38, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
+        data.insert(Tile::Sand,   TileData::new("Sand".to_owned(),   Some(TileTexture::fixed(150, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
 
         data.insert(Tile::Bridge, TileData::new("Bridge".to_owned(), Some(TileTexture::fixed(92, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::platform(1.0, 0.0)));
         data.insert(Tile::Rope,   TileData::new("Rope".to_owned(),   Some(TileTexture::fixed(76, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::None));
+        data.insert(Tile::ShortGrass, TileData::new("Short Grass".to_owned(), Some(TileTexture::fixed(80, TileTextureConnection::None, true)), TileCollision::None));
+        data.insert(Tile::TallGrass, TileData::new("Tall Grass".to_owned(), Some(TileTexture::fixed(81, TileTextureConnection::None, true)), TileCollision::None));
+        data.insert(Tile::DeadShortGrass, TileData::new("Dead Short Grass".to_owned(), Some(TileTexture::fixed(96, TileTextureConnection::None, true)), TileCollision::None));
+        data.insert(Tile::DeadTallGrass, TileData::new("Dead Tall Grass".to_owned(), Some(TileTexture::fixed(97, TileTextureConnection::None, true)), TileCollision::None));
 
         data.insert(Tile::WoodenPlatform, TileData::new("Wooden Platform".to_owned(), Some(TileTexture::fixed(156, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::platform(1.0, 0.0)));
         data.insert(Tile::MetalPlatform, TileData::new("Metal Platform".to_owned(), Some(TileTexture::fixed(172, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::platform(1.0, 0.0)));

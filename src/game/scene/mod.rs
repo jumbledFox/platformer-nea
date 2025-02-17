@@ -4,7 +4,7 @@
 // use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
 use macroquad::{color::{GREEN, ORANGE, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}};
 
-use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, resources::Resources, text_renderer::{render_text, Align, Font}};
+use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, resources::Resources, text_renderer::{render_text, Align, Font}, util::draw_rect, VIEW_SIZE};
 
 // pub mod collision;
 // pub mod entity;
@@ -71,6 +71,7 @@ impl Scene {
         // Temporary
         let camera_pos = Vec2::ZERO;
 
+        draw_rect(Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y), self.level.bg_col());
         self.level.render_bg(camera_pos, resources);
         self.level.render_below(camera_pos, resources);
         // Draw the entities in reverse so the player is always on top

@@ -140,9 +140,9 @@ impl EntityKind {
             }
             Self::Goat => Goat::draw_editor(pos, camera_pos, color, resources),
         };
-        // Draw the hitbox
+        // Draw the hitbox (might remove this)
         if in_view {
-            // draw_rect_lines(self.hitbox().offset(entity_pos + self.tile_offset() - camera_pos), BLUE);
+            draw_rect_lines(self.hitbox().offset(entity_pos + self.tile_offset() - camera_pos), BLUE);
         }
     }
 }

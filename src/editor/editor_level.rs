@@ -17,7 +17,9 @@ const MAX_DOORS: usize = 255;
 const MAX_SIGNS: usize = 64;
 
 pub const BG_SKY: (u8, u8, u8) = (109, 202, 255);
-// pub const BG_SKY: (u8, u8, u8) = (255, 0, 0);
+pub const BG_SUNSET: (u8, u8, u8) = (217, 177, 129);
+pub const BG_DESERT: (u8, u8, u8) = (235, 204, 162);
+pub const BG_NIGHT: (u8, u8, u8) = (32, 45, 70);
 
 pub struct EditorLevel {
     name: String,
@@ -125,14 +127,14 @@ impl EditorLevel {
     pub fn bg_col_as_color(&self) -> Color {
         Color::from_rgba(self.bg_col.0, self.bg_col.1, self.bg_col.2, 255)
     }
-    pub fn bg_col_r(&mut self) -> &mut u8 {
-        &mut self.bg_col.0
+    pub fn bg_col(&self) -> (u8, u8, u8) {
+        self.bg_col
     }
-    pub fn bg_col_g(&mut self) -> &mut u8 {
-        &mut self.bg_col.1
+    pub fn bg_col_mut(&mut self) -> (&mut u8, &mut u8, &mut u8) {
+        (&mut self.bg_col.0, &mut self.bg_col.1, &mut self.bg_col.2)
     }
-    pub fn bg_col_b(&mut self) -> &mut u8 {
-        &mut self.bg_col.2
+    pub fn set_bg_col(&mut self, bg_col: (u8, u8, u8)) {
+        self.bg_col = bg_col;
     }
 
     pub fn tiles(&self) -> &Vec<Tile> {

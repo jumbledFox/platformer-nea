@@ -1,9 +1,12 @@
 // The menu for info about the current level, changing the level, and help
 
-use macroquad::{color::{Color, WHITE}, color_u8, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle};
+use macroquad::{color::{Color, BLACK, WHITE}, color_u8, input::{clear_input_queue, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle};
 
-use crate::{resources::Resources, text_renderer::{render_text, Align, Font}, ui::{Button, Ui}, VIEW_SIZE};
+use crate::{resources::Resources, text_renderer::{render_text, Align, Font}, ui::{Button, SliderU8, Ui}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
 
+use super::editor_level::{EditorLevel, BG_DESERT, BG_NIGHT, BG_SKY, BG_SUNSET};
+
+const BG_COL_POS: Vec2 = vec2(17.0, 60.0);
 const BG_COL: Color = color_u8!(255, 255, 255, 100);
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -38,9 +41,14 @@ enum HelpScreen {
 pub struct EditorMenu {
     active: bool,
 
+    // The bg color sliders
+    slider_r: SliderU8,
+    slider_b: SliderU8,
+    slider_g: SliderU8,
+    // The bg color presets
+    bg_col_presets: Vec<((u8, u8, u8), Button)>,
     // The button to open the help screen
     help_button: Button,
-
     // The help screen
     help_page:   u8,
     help_screen: HelpScreen,
@@ -51,11 +59,21 @@ pub struct EditorMenu {
 
 impl Default for EditorMenu {
     fn default() -> Self {
+        let mut x = BG_COL_POS.x;
+        let mut bg_col_preset = |col: (u8, u8, u8), name: &str| -> ((u8, u8, u8), Button) {
+            let button = Button::new(Rect::new(x, BG_COL_POS.y + 52.0, 60.0, 12.0), Some(name.to_string()), None);
+            x += button.rect().w + 5.0;
+            (col, button)
+        };
         Self {
             active: true,
 
-            help_button: Button::new(Rect::new(5.0, 5.0, 54.0, 12.0), Some(String::from("Help!")), None),
+            slider_r: SliderU8::new(0, 255, Rect::new(BG_COL_POS.x + 33.0, BG_COL_POS.y + 5.0, 255.0, 10.0)),
+            slider_g: SliderU8::new(0, 255, Rect::new(BG_COL_POS.x + 33.0, BG_COL_POS.y + 20.0, 255.0, 10.0)),
+            slider_b: SliderU8::new(0, 255, Rect::new(BG_COL_POS.x + 33.0, BG_COL_POS.y + 35.0, 255.0, 10.0)),
+            bg_col_presets: vec![bg_col_preset(BG_SKY, "Sky"), bg_col_preset(BG_SUNSET, "Sunset"), bg_col_preset(BG_DESERT, "Desert"), bg_col_preset(BG_NIGHT, "Night")],
 
+            help_button: Button::new(Rect::new(5.0, 5.0, 54.0, 12.0), Some(String::from("Help!")), None),
             help_page: 0,
             help_screen: HelpScreen::OpenFromKeybind,
             help_button_prev:  Button::new(Rect::new(VIEW_SIZE.x / 2.0 - 40.0 - 12.0, 190.0, 12.0, 12.0), Some(String::from("🮤")), None),
@@ -73,7 +91,8 @@ impl EditorMenu {
         if active {
             self.help_screen = HelpScreen::Closed;
         }
-        self.active = active
+        self.active = active;
+        clear_input_queue();
     }
 
     pub fn open_help_menu(&mut self, help_kind: HelpKind) {
@@ -110,7 +129,7 @@ impl EditorMenu {
         }
     }
 
-    pub fn update(&mut self, ui: &mut Ui) {
+    pub fn update(&mut self, editor_level: &mut EditorLevel, ui: &mut Ui) {
         // Update the help screen, and don't update anything else if it's still open
         if self.help_screen != HelpScreen::Closed {
             self.update_help_screen(ui);
@@ -125,6 +144,18 @@ impl EditorMenu {
             return;
         }
 
+        // Update the bg color things
+        for (c, b) in &mut self.bg_col_presets {
+            b.update(ui);
+            if b.released() {
+                editor_level.set_bg_col(*c);
+            }
+        }
+        self.slider_r.update(editor_level.bg_col_mut().0, ui);
+        self.slider_g.update(editor_level.bg_col_mut().1, ui);
+        self.slider_b.update(editor_level.bg_col_mut().2, ui);
+
+        // Update other buttons
         self.help_button.update(ui);
 
         if self.help_button.released() {
@@ -288,13 +319,25 @@ impl EditorMenu {
         }
     }
 
-    pub fn draw(&self, resources: &Resources) {
+    pub fn draw(&self, editor_level: &EditorLevel, resources: &Resources) {
         draw_rectangle(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y, BG_COL);
 
         if self.help_screen != HelpScreen::Closed {
             self.draw_help_screen(resources);
             return;
         }
+
+        // Draw the bg col sliders and the color below them
+        for (_, b) in &self.bg_col_presets {
+            b.draw(resources);
+        }
+        let col_rect = Rect::new(BG_COL_POS.x, BG_COL_POS.y, 295.0, 50.0);
+        draw_rect(col_rect, editor_level.bg_col_as_color());
+        draw_rect_lines(col_rect, BLACK);
+        self.slider_r.draw(editor_level.bg_col().0, resources);
+        self.slider_g.draw(editor_level.bg_col().1, resources);
+        self.slider_b.draw(editor_level.bg_col().2, resources);
+
         self.help_button.draw(resources);
     }
 }

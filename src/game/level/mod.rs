@@ -2,7 +2,7 @@
 
 use std::f32::consts::PI;
 
-use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, shapes::draw_line, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, shapes::draw_line};
 use things::{Door, Sign};
 use tile::{render_tile, LockColor, Tile, TileCollision, TileHit, TileHitKind, TileRenderLayer, TileTextureConnection, TileTextureConnectionKind};
 
@@ -18,6 +18,8 @@ pub struct BumpedTile {
 }
 
 pub struct Level {
+    bg_col: Color,
+
     tiles: Vec<Tile>,
     tiles_bg: Vec<Tile>,
     width: usize,
@@ -57,9 +59,11 @@ pub enum TileDrawKind {
     Quarters(usize, usize, usize, usize),
 }
 
+// TODO: Maybe just do editorlevel -> level_data -> level
 impl From<&EditorLevel> for Level {
     fn from(value: &EditorLevel) -> Self {
         Self {
+            bg_col:      value.bg_col_as_color(),
             tiles:       value.tiles().clone(),
             tiles_bg:    value.tiles_bg().clone(),
             width:       value.width(),
@@ -67,7 +71,7 @@ impl From<&EditorLevel> for Level {
             spawn:       value.spawn(),
             finish:      value.finish(),
             checkpoints: value.checkpoints().clone(),
-            checkpoint:  Some(0),
+            checkpoint:  None,
             signs:       value.signs().clone(),
             doors:       value.doors().clone(),
             bumped_tiles: vec![],
@@ -80,6 +84,10 @@ impl From<&EditorLevel> for Level {
 }
 
 impl Level {
+    pub fn bg_col(&self) -> Color {
+        self.bg_col
+    }
+
     // Switch blocks - sets the state of all switch tiles in the level and the background
     fn set_switch_state(&mut self, enabled: bool) {
         for t in self.tiles.iter_mut().chain(self.tiles_bg.iter_mut()) {
