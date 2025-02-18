@@ -82,20 +82,21 @@ impl EditorLevelPack {
     pub fn add_level(&mut self, resources: &Resources) {
         if self.can_add() {
             self.current += 1;
-            let mut level = EditorLevel::default();
-            level.update_if_should(resources);
-            self.levels.insert(self.current, level);
+            self.levels.insert(self.current, EditorLevel::default());
+            self.editor_level_mut().update_if_should(resources);
         }
     }
 
-    pub fn next(&mut self) {
+    pub fn next(&mut self, resources: &Resources) {
         if self.can_next() {
             self.current += 1;
+            self.editor_level_mut().update_if_should(resources);
         }
     }
-    pub fn prev(&mut self) {
+    pub fn prev(&mut self, resources: &Resources) {
         if self.can_prev() {
             self.current -= 1;
+            self.editor_level_mut().update_if_should(resources);
         }
     }
 
@@ -114,13 +115,14 @@ impl EditorLevelPack {
 
     pub fn delete_level(&mut self, resources: &Resources) {
         if self.levels.len() == 1 {
+            self.current = 0;
             self.levels.clear();
-            let mut level = EditorLevel::default();
-            level.update_if_should(resources);
-            self.levels.push(level);
+            self.levels.push(EditorLevel::default());
+            self.editor_level_mut().update_if_should(resources);
             return;
         }
         self.levels.remove(self.current);
         self.current = self.current.clamp(0, self.levels.len() - 1);
+        self.editor_level_mut().update_if_should(resources);
     }
 }

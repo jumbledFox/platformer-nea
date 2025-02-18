@@ -264,11 +264,11 @@ impl EditorMenu {
             self.popup = PopupKind::DeleteLevel;
         }
         if self.pack_prev.released() {
-            editor_level_pack.prev();
+            editor_level_pack.prev(resources);
             level_view.reset_camera();
         }
         if self.pack_next.released() {
-            editor_level_pack.next();
+            editor_level_pack.next(resources);
             level_view.reset_camera();
         }
         if self.pack_shift_prev.released() {

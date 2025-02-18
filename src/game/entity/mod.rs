@@ -15,7 +15,7 @@ pub mod key;
 pub mod frog;
 pub mod goat;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EntityKind {
     Key(LockColor),
     KeyCrate(LockColor),
