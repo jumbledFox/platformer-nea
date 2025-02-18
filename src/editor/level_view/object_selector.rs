@@ -2,7 +2,7 @@
 
 use macroquad::{color::{Color, WHITE}, color_u8, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{game::{entity::EntityKind, level::{tile::{render_tile, CheckerBlockColor, LockColor, Tile, TileRenderLayer}, TileDrawKind, TileRenderData}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{Button, ButtonState, Ui}, VIEW_SIZE};
+use crate::{game::{entity::EntityKind, level::{tile::{render_tile, CheckerBlockColor, LockColor, Tile, TileRenderLayer}, TileDrawKind, TileRenderData}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
 
 const BG_COL: Color = color_u8!(255, 255, 255, 100);
 

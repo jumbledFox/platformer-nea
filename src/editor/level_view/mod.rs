@@ -5,7 +5,7 @@ use macroquad::{color::{Color, ORANGE, PURPLE, WHITE}, color_u8, input::{is_key_
 use object_selector::{Object, ObjectSelector, ObjectOtherKind};
 use sign_popup::{SignPopup, SignPopupReturn};
 
-use crate::{game::level::{tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}, resources::Resources, ui::{Button, Ui}, util::draw_rect, VIEW_HEIGHT, VIEW_SIZE};
+use crate::{game::level::{tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}, resources::Resources, ui::{button::Button, Ui}, util::draw_rect, VIEW_HEIGHT, VIEW_SIZE};
 
 use super::{editor_level::EditorLevel, editor_menu::{EditorMenu, HelpKind}};
 
@@ -84,10 +84,23 @@ impl LevelView {
 
     pub fn reset_camera(&mut self) {
         self.camera.reset_pos();
+        self.clear_cursor();
+    }
+    pub fn clear_cursor(&mut self) {
+        self.cursor_pos = None;
     }
 
+    pub fn object_selector_open(&self) -> bool {
+        self.object_selector.active()
+    }
+    pub fn sign_popup_open(&self) -> bool {
+        self.sign_popup.is_some()
+    }
     pub fn close_object_selector(&mut self) {
         self.object_selector.set_active(false);
+    }
+    pub fn close_sign_popup(&mut self) {
+        self.sign_popup = None;
     }
 
     fn update_resize_buttons(&mut self, editor_level: &mut EditorLevel, ui: &mut Ui) {

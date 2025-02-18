@@ -12,14 +12,16 @@ const MIN_HEIGHT: usize = VIEW_HEIGHT;
 const MAX_WIDTH:  usize = 255;
 const MAX_HEIGHT: usize = 255;
 
-const MAX_CHECKPOINTS: usize = 255;
-const MAX_DOORS: usize = 255;
 const MAX_SIGNS: usize = 64;
+const MAX_DOORS: usize = 255;
+const MAX_CHECKPOINTS: usize = 255;
+const MAX_ENTITIES: usize = 255;
 
 pub const BG_SKY: (u8, u8, u8) = (109, 202, 255);
 pub const BG_SUNSET: (u8, u8, u8) = (217, 177, 129);
 pub const BG_DESERT: (u8, u8, u8) = (235, 204, 162);
 pub const BG_NIGHT: (u8, u8, u8) = (32, 45, 70);
+pub const BG_CLOUD: (u8, u8, u8) = (197, 218, 230);
 
 pub struct EditorLevel {
     name: String,
@@ -60,37 +62,6 @@ impl Default for EditorLevel {
             tiles[width*8+x] = Tile::Grass;
         }
 
-        /*
-        // Silly little start level
-        // Ground
-        for y in 10..=13 {
-            for x in [0, 1, 2, 3, 8, 9, 10] {
-                tiles[y*width+x] = Tile::Grass;
-            }
-        }
-        // Bridge
-        for x in 3..=8 {
-            tiles[9*width+x] = Tile::Rope;
-            if x != 3 && x != 8 {
-                tiles[10*width+x] = Tile::Bridge;
-            }
-        }
-        // Vine
-        for y in 0..=7 {
-            tiles[y*width+1] = Tile::Vine;
-        }
-        // Cloud
-        for x in 2..=8 {
-            tiles[3*width+x] = Tile::Cloud;
-            if x >= 4 && x <= 6 {
-                tiles[2*width+x] = Tile::Cloud;
-            }
-            if x >= 3 && x <= 5 {
-                tiles[4*width+x] = Tile::Cloud;
-            }
-        }
-        */
-
         Self {
             name: String::new(),
             bg_col: BG_SKY,
@@ -117,6 +88,30 @@ impl Default for EditorLevel {
 }
 
 impl EditorLevel {
+    pub fn new(
+        name: String,
+        bg_col: (u8, u8, u8),
+        width: usize,
+        height: usize,
+        tiles: Vec<Tile>,
+        tiles_bg: Vec<Tile>,
+        signs: Vec<Sign>,
+        doors: Vec<Door>,
+        spawn: Vec2,
+        finish: Vec2,
+        checkpoints: Vec<Vec2>,
+        entities: Vec<(Vec2, EntityKind)>,
+    ) -> Self {
+        Self {
+            name, bg_col, width, height, tiles, tiles_bg, signs, doors, spawn, finish, checkpoints, entities,
+            door_start: None,
+            tiles_above:      vec![],
+            tiles_below:      vec![],
+            tiles_background: vec![],
+            should_update_render_data: true,
+        }
+    }
+
     pub fn name(&self) -> &String {
         &self.name
     }
@@ -217,7 +212,7 @@ impl EditorLevel {
     }
     pub fn try_add_entity(&mut self, pos: Vec2, kind: EntityKind) {
         // If an entity doesn't exist at this position, add it
-        if !self.entities.iter().any(|(p, _)| *p == pos) {
+        if !self.entities.iter().any(|(p, _)| *p == pos) && self.entities.len() < MAX_ENTITIES {
             self.entities.push((pos, kind));
         }
     }

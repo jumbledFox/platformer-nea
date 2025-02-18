@@ -13,7 +13,11 @@ pub struct FontData {
 
 impl FontData {
     pub fn valid_char(&self, c: char) -> bool {
-        self.atlas_chars.contains(c)
+        self.atlas_chars.contains(c.to_ascii_lowercase())
+    }
+    // ONLY ascii characters should be typed and saved to files!!
+    pub fn typable_char(&self, c: char) -> bool {
+        self.valid_char(c) && c.is_ascii()
     }
 }
 
@@ -42,8 +46,7 @@ impl Default for FontDataManager {
                 char_height: 9.0,
                 char_spacing: -1.0,
                 atlas_width: 13,
-                // Find a nice way for the arrows and others to be typed
-                atlas_chars: String::from(" 0123456789:;abcdefghijklmnopqrstuvwxyz()[]<>!?.,\"'|\\/+-=*_'@£&🮤🮥🮧🮦"),
+                atlas_chars: String::from(" 0123456789:;abcdefghijklmnopqrstuvwxyz()[]<>!?.,\"'|\\/+-=*_'@£&🮤🮥🮧🮦↞↠▪"),
                 atlas: Texture2D::from_file_with_format(include_bytes!("../res/font_small.png"), None),
             },
         }

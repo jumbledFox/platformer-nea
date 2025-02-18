@@ -8,8 +8,6 @@ pub struct Sign {
 }
 
 impl Sign {
-    pub const MAX_LINE_LEN: usize = 24;
-
     pub fn new(pos: Vec2, lines: [String; 4]) -> Self {
         Self { pos, lines, read: false }
     }

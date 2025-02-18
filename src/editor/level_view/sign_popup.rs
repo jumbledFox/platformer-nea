@@ -1,12 +1,6 @@
 use macroquad::{color::{Color, BLACK, DARKGRAY, WHITE}, color_u8, input::{clear_input_queue, get_char_pressed, is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle};
 
-use crate::{game::level::things::Sign, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{Button, Ui}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
-
-const LINE_FLASH_DURATION: f32 = 0.2;
-
-// TODO: Put this in the ui input field when i make it
-const BACKSPACE_TIMER_FIRST: f32 = 0.5;
-const BACKSPACE_TIMER_OTHER: f32 = 0.035;
+use crate::{game::level::things::Sign, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::Button, text_input::{BACKSPACE_TIMER_FIRST, BACKSPACE_TIMER_OTHER, LINE_FLASH_DURATION, MAX_USER_STRING_LEN}, Ui}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
 
 const BG_COL: Color = color_u8!(255, 255, 255, 100);
 
@@ -43,7 +37,7 @@ impl SignPopup {
         clear_input_queue();
         Self {
             pos,
-            lines: lines.unwrap_or_else(|| core::array::from_fn(|_| String::with_capacity(Sign::MAX_LINE_LEN))),
+            lines: lines.unwrap_or_else(|| core::array::from_fn(|_| String::with_capacity(MAX_USER_STRING_LEN))),
             line: 0,
             line_flash_timer: 0.0,
             backspace_timer: None,
@@ -77,9 +71,9 @@ impl SignPopup {
         // ((yes!! life is grand!!))
         if let Some(c) = get_char_pressed() {
             let c = c.to_ascii_lowercase();
-            if resources.font_data_manager().font_data(Font::Small).valid_char(c) {
+            if resources.font_data_manager().font_data(Font::Small).typable_char(c) {
                 self.backspace_timer = None;
-                if self.lines[self.line].len() < Sign::MAX_LINE_LEN {
+                if self.lines[self.line].len() < MAX_USER_STRING_LEN {
                     self.lines[self.line].push(c);
                 }
             }

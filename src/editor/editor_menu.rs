@@ -1,12 +1,15 @@
 // The menu for info about the current level, changing the level, and help
 
-use macroquad::{color::{Color, BLACK, WHITE}, color_u8, input::{clear_input_queue, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle};
+use std::io::Write;
 
-use crate::{resources::Resources, text_renderer::{render_text, Align, Font}, ui::{Button, SliderU8, Ui}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
+use macroquad::{color::{Color, BLACK, GRAY, WHITE}, color_u8, input::{clear_input_queue, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle};
 
-use super::editor_level::{EditorLevel, BG_DESERT, BG_NIGHT, BG_SKY, BG_SUNSET};
+use crate::{level_pack_data::LevelPackData, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::Button, slider_u8::SliderU8, text_input::{TextInput, TEXT_INPUT_RECT}, Ui}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
 
-const BG_COL_POS: Vec2 = vec2(17.0, 60.0);
+use super::{editor_level::{BG_CLOUD, BG_DESERT, BG_NIGHT, BG_SKY, BG_SUNSET}, editor_level_pack::EditorLevelPack, level_view::LevelView};
+
+const PACK_EDIT_POS: Vec2 = vec2(5.0, 30.0);
+const BG_COL_POS: Vec2 = vec2(5.0, 100.0);
 const BG_COL: Color = color_u8!(255, 255, 255, 100);
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -38,8 +41,38 @@ enum HelpScreen {
     OpenFromKeybind,
 }
 
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum PopupKind {
+    None, Save, DeleteLevel,
+}
+
 pub struct EditorMenu {
     active: bool,
+
+    // The button to open the help screen
+    help_button: Button,
+    save_button: Button,
+
+    // Manipulating the level pack
+    pack_level_name_input: TextInput,
+    pack_add: Button,
+    pack_del: Button,
+    pack_prev: Button,
+    pack_next: Button,
+    pack_shift_prev: Button,
+    pack_shift_next: Button,
+
+    // Popup shenanigans
+    // Could be done with structs n allat but this works juuuust fine :3
+    popup: PopupKind,
+    // Only shown on the save popup
+    pack_popup_name_input: TextInput,
+    pack_popup_author_input: TextInput,
+    pack_popup_cancel: Button,
+    pack_popup_save: Button,
+    // Shown on delete popup
+    delete_popup_cancel: Button,
+    delete_popup_delete: Button,
 
     // The bg color sliders
     slider_r: SliderU8,
@@ -47,8 +80,6 @@ pub struct EditorMenu {
     slider_g: SliderU8,
     // The bg color presets
     bg_col_presets: Vec<((u8, u8, u8), Button)>,
-    // The button to open the help screen
-    help_button: Button,
     // The help screen
     help_page:   u8,
     help_screen: HelpScreen,
@@ -68,12 +99,30 @@ impl Default for EditorMenu {
         Self {
             active: true,
 
-            slider_r: SliderU8::new(0, 255, Rect::new(BG_COL_POS.x + 33.0, BG_COL_POS.y + 5.0, 255.0, 10.0)),
-            slider_g: SliderU8::new(0, 255, Rect::new(BG_COL_POS.x + 33.0, BG_COL_POS.y + 20.0, 255.0, 10.0)),
-            slider_b: SliderU8::new(0, 255, Rect::new(BG_COL_POS.x + 33.0, BG_COL_POS.y + 35.0, 255.0, 10.0)),
-            bg_col_presets: vec![bg_col_preset(BG_SKY, "Sky"), bg_col_preset(BG_SUNSET, "Sunset"), bg_col_preset(BG_DESERT, "Desert"), bg_col_preset(BG_NIGHT, "Night")],
-
             help_button: Button::new(Rect::new(5.0, 5.0, 54.0, 12.0), Some(String::from("Help!")), None),
+            save_button: Button::new(Rect::new(64.0, 5.0, 54.0, 12.0), Some(String::from("Save")), None),
+
+            pack_level_name_input: TextInput::new(PACK_EDIT_POS + vec2(43.0, 12.0)),
+            pack_add: Button::new(Rect::new(PACK_EDIT_POS.x, PACK_EDIT_POS.y + 28.0, 12.0, 12.0), Some(String::from("+")), Some(String::from("Insert new level"))),
+            pack_del: Button::new(Rect::new(PACK_EDIT_POS.x + 100.0, PACK_EDIT_POS.y + 28.0, 53.0, 12.0), Some(String::from("Delete")), Some(String::from("Delete current level"))),
+            pack_prev:       Button::new(Rect::new(PACK_EDIT_POS.x + 25.0, PACK_EDIT_POS.y + 28.0, 12.0, 12.0), Some(String::from("🮤")), Some(String::from("Previous level"))),
+            pack_next:       Button::new(Rect::new(PACK_EDIT_POS.x + 39.0, PACK_EDIT_POS.y + 28.0, 12.0, 12.0), Some(String::from("🮥")), Some(String::from("Next level"))),
+            pack_shift_prev: Button::new(Rect::new(PACK_EDIT_POS.x + 60.0, PACK_EDIT_POS.y + 28.0, 12.0, 12.0), Some(String::from("↞")), Some(String::from("Shift level back"))),
+            pack_shift_next: Button::new(Rect::new(PACK_EDIT_POS.x + 74.0, PACK_EDIT_POS.y + 28.0, 12.0, 12.0), Some(String::from("↠")), Some(String::from("Shift level forward"))),
+
+            popup: PopupKind::None,
+            pack_popup_name_input:   TextInput::new(vec2((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0,  90.0)),
+            pack_popup_author_input: TextInput::new(vec2((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0, 105.0)),
+            pack_popup_cancel:   Button::new(Rect::new(VIEW_SIZE.x / 2.0 - 60.0, 120.0, 55.0, 12.0), Some(String::from("Cancel")), None),
+            pack_popup_save:     Button::new(Rect::new(VIEW_SIZE.x / 2.0 +  5.0, 120.0, 55.0, 12.0), Some(String::from("Save")), Some(String::from("Save pack to file"))),
+            delete_popup_cancel: Button::new(Rect::new(VIEW_SIZE.x / 2.0 - 60.0, 120.0, 55.0, 12.0), Some(String::from("Cancel")), None),
+            delete_popup_delete: Button::new(Rect::new(VIEW_SIZE.x / 2.0 +  5.0, 120.0, 55.0, 12.0), Some(String::from("Delete")), Some(String::from("No going back!"))),
+
+            slider_r: SliderU8::new(0, 255, Rect::new(BG_COL_POS.x + 33.0, BG_COL_POS.y + 5.0, 256.0, 10.0)),
+            slider_g: SliderU8::new(0, 255, Rect::new(BG_COL_POS.x + 33.0, BG_COL_POS.y + 20.0, 256.0, 10.0)),
+            slider_b: SliderU8::new(0, 255, Rect::new(BG_COL_POS.x + 33.0, BG_COL_POS.y + 35.0, 256.0, 10.0)),
+            bg_col_presets: vec![bg_col_preset(BG_SKY, "Sky"), bg_col_preset(BG_SUNSET, "Sunset"), bg_col_preset(BG_DESERT, "Desert"), bg_col_preset(BG_NIGHT, "Night"), bg_col_preset(BG_CLOUD, "Clouds")],
+
             help_page: 0,
             help_screen: HelpScreen::OpenFromKeybind,
             help_button_prev:  Button::new(Rect::new(VIEW_SIZE.x / 2.0 - 40.0 - 12.0, 190.0, 12.0, 12.0), Some(String::from("🮤")), None),
@@ -91,11 +140,13 @@ impl EditorMenu {
         if active {
             self.help_screen = HelpScreen::Closed;
         }
+        self.pack_level_name_input.deactivate();
         self.active = active;
         clear_input_queue();
     }
 
     pub fn open_help_menu(&mut self, help_kind: HelpKind) {
+        self.pack_level_name_input.deactivate();
         self.active = true;
         self.help_page = help_kind as u8;
         self.help_screen = HelpScreen::OpenFromKeybind;
@@ -129,37 +180,124 @@ impl EditorMenu {
         }
     }
 
-    pub fn update(&mut self, editor_level: &mut EditorLevel, ui: &mut Ui) {
+    fn update_popup(&mut self, editor_level_pack: &mut EditorLevelPack, level_view: &mut LevelView, deltatime: f32, ui: &mut Ui, resources: &Resources) {
+        if self.popup == PopupKind::Save {
+            self.pack_popup_name_input.update(editor_level_pack.name_mut(), deltatime, ui, resources);
+            self.pack_popup_author_input.update(editor_level_pack.author_mut(), deltatime, ui, resources);
+            self.pack_popup_cancel.update(ui);
+            self.pack_popup_save.update(ui);
+
+            if self.pack_popup_cancel.released() {
+                self.popup = PopupKind::None;
+            }
+            if self.pack_popup_save.released() {
+                self.popup = PopupKind::None;
+
+                let pack_data: LevelPackData = (&*editor_level_pack).into();
+                let bytes = pack_data.to_bytes(resources);
+                let mut file = std::fs::OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .open(format!("{}.fox", editor_level_pack.name()))
+                    .unwrap();
+                file.write_all(&bytes).unwrap();
+
+                println!("saved to file...");
+            }
+        } else if self.popup == PopupKind::DeleteLevel {
+            self.delete_popup_cancel.update(ui);
+            self.delete_popup_delete.update(ui);
+            if self.delete_popup_cancel.released() {
+                self.popup = PopupKind::None;
+            }
+            if self.delete_popup_delete.released() {
+                self.popup = PopupKind::None;
+                editor_level_pack.delete_level(resources);
+                level_view.reset_camera();
+            }
+        }
+    }
+
+    pub fn update(&mut self, editor_level_pack: &mut EditorLevelPack, level_view: &mut LevelView, deltatime: f32, ui: &mut Ui, resources: &Resources) {
         // Update the help screen, and don't update anything else if it's still open
         if self.help_screen != HelpScreen::Closed {
             self.update_help_screen(ui);
-
             if self.help_screen != HelpScreen::Closed {
                 return;
             }
         }
+
+        // Update the popup, and don't update anything else if it's still open
+        if self.popup != PopupKind::None {
+            self.update_popup(editor_level_pack, level_view, deltatime, ui, resources);
+            if self.popup != PopupKind::None {
+                return;
+            }
+        }
+
         // If we're no-longer active, don't update anything
         // IDK man this could cause a frame delay because of closing the help menu blllaaaahhhrhrhghhh
         if !self.active {
             return;
         }
 
+        self.pack_level_name_input.update(editor_level_pack.editor_level_mut().name_mut(), deltatime, ui, resources);
+        self.pack_add.set_disabled(!editor_level_pack.can_add());
+        self.pack_prev.set_disabled(!editor_level_pack.can_prev());
+        self.pack_next.set_disabled(!editor_level_pack.can_next());
+        self.pack_shift_prev.set_disabled(!editor_level_pack.can_shift_prev());
+        self.pack_shift_next.set_disabled(!editor_level_pack.can_shift_next());
+
+        // Update the pack edit ui thingies
+        self.pack_add.update(ui);
+        self.pack_del.update(ui);
+        self.pack_prev.update(ui);
+        self.pack_next.update(ui);
+        self.pack_shift_prev.update(ui);
+        self.pack_shift_next.update(ui);
+
+        if self.pack_add.released() {
+            editor_level_pack.add_level(resources);
+            level_view.reset_camera();
+        }
+        if self.pack_del.released() {
+            self.popup = PopupKind::DeleteLevel;
+        }
+        if self.pack_prev.released() {
+            editor_level_pack.prev();
+            level_view.reset_camera();
+        }
+        if self.pack_next.released() {
+            editor_level_pack.next();
+            level_view.reset_camera();
+        }
+        if self.pack_shift_prev.released() {
+            editor_level_pack.shift_prev();
+        }
+        if self.pack_shift_next.released() {
+            editor_level_pack.shift_next();
+        }
+
         // Update the bg color things
         for (c, b) in &mut self.bg_col_presets {
             b.update(ui);
             if b.released() {
-                editor_level.set_bg_col(*c);
+                editor_level_pack.editor_level_mut().set_bg_col(*c);
             }
         }
-        self.slider_r.update(editor_level.bg_col_mut().0, ui);
-        self.slider_g.update(editor_level.bg_col_mut().1, ui);
-        self.slider_b.update(editor_level.bg_col_mut().2, ui);
+        self.slider_r.update(editor_level_pack.editor_level_mut().bg_col_mut().0, ui);
+        self.slider_g.update(editor_level_pack.editor_level_mut().bg_col_mut().1, ui);
+        self.slider_b.update(editor_level_pack.editor_level_mut().bg_col_mut().2, ui);
 
         // Update other buttons
         self.help_button.update(ui);
+        self.save_button.update(ui);
 
         if self.help_button.released() {
             self.help_screen = HelpScreen::OpenFromMenu;
+        }
+        if self.save_button.released() {
+            self.popup = PopupKind::Save;
         }
     }
 
@@ -319,7 +457,28 @@ impl EditorMenu {
         }
     }
 
-    pub fn draw(&self, editor_level: &EditorLevel, resources: &Resources) {
+    fn draw_popup(&self, editor_level_pack: &EditorLevelPack, resources: &Resources) {
+        draw_rect(Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y), BG_COL);
+        if self.popup == PopupKind::Save {
+            let rect = Rect::new((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0 - 4.0, 77.0, TEXT_INPUT_RECT.w + 8.0, 58.0);
+            draw_rect(rect, GRAY);
+            draw_rect_lines(rect, BLACK);
+            render_text("Save level pack", WHITE, rect.point() + vec2(4.0, 3.0), Vec2::ONE, Align::End, Font::Small, resources);
+            self.pack_popup_name_input.draw(editor_level_pack.name(),   "Pack name", resources);
+            self.pack_popup_author_input.draw(editor_level_pack.author(), "Pack author", resources);
+            self.pack_popup_save.draw(resources);
+            self.pack_popup_cancel.draw(resources);
+        } else if self.popup == PopupKind::DeleteLevel {
+            let rect = Rect::new((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0 - 4.0, 97.0, TEXT_INPUT_RECT.w + 8.0, 38.0);
+            draw_rect(rect, GRAY);
+            draw_rect_lines(rect, BLACK);
+            render_text("delete level? (no undo!)", WHITE, rect.point() + vec2(4.0, 3.0), Vec2::ONE, Align::End, Font::Small, resources);
+            self.delete_popup_cancel.draw(resources);
+            self.delete_popup_delete.draw(resources);
+        }
+    }
+
+    pub fn draw(&self, editor_level_pack: &EditorLevelPack, resources: &Resources) {
         draw_rectangle(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y, BG_COL);
 
         if self.help_screen != HelpScreen::Closed {
@@ -327,17 +486,35 @@ impl EditorMenu {
             return;
         }
 
+        // Draw the pack edit ui thingies
+        self.pack_level_name_input.draw(editor_level_pack.editor_level().name(), "Level name", resources);
+        self.pack_add.draw(resources);
+        self.pack_del.draw(resources);
+        self.pack_prev.draw(resources);
+        self.pack_next.draw(resources);
+        self.pack_shift_prev.draw(resources);
+        self.pack_shift_next.draw(resources);
+        render_text(&format!("Level {:0>2}/{:0>2}", editor_level_pack.current() + 1, editor_level_pack.level_count()), WHITE, PACK_EDIT_POS, Vec2::ONE, Align::End, Font::Small, resources);
+        render_text(&"Name: ", WHITE, PACK_EDIT_POS + vec2(0.0, 14.0), Vec2::ONE, Align::End, Font::Small, resources);
+
+        render_text("Level background color", WHITE, BG_COL_POS - vec2(0.0, 10.0), Vec2::ONE, Align::End, Font::Small, resources);
         // Draw the bg col sliders and the color below them
         for (_, b) in &self.bg_col_presets {
             b.draw(resources);
         }
         let col_rect = Rect::new(BG_COL_POS.x, BG_COL_POS.y, 295.0, 50.0);
-        draw_rect(col_rect, editor_level.bg_col_as_color());
+        draw_rect(col_rect, editor_level_pack.editor_level().bg_col_as_color());
         draw_rect_lines(col_rect, BLACK);
-        self.slider_r.draw(editor_level.bg_col().0, resources);
-        self.slider_g.draw(editor_level.bg_col().1, resources);
-        self.slider_b.draw(editor_level.bg_col().2, resources);
+        self.slider_r.draw(editor_level_pack.editor_level().bg_col().0, resources);
+        self.slider_g.draw(editor_level_pack.editor_level().bg_col().1, resources);
+        self.slider_b.draw(editor_level_pack.editor_level().bg_col().2, resources);
 
         self.help_button.draw(resources);
+        self.save_button.draw(resources);
+
+        // Draw the popup in front if it's active
+        if self.popup != PopupKind::None {
+            self.draw_popup(editor_level_pack, resources);
+        }
     }
 }

@@ -1,5 +1,6 @@
 // The editor that allows the user to make and save level packs
 use editor_level::EditorLevel;
+use editor_level_pack::EditorLevelPack;
 use editor_menu::EditorMenu;
 use level_view::LevelView;
 use macroquad::{color::Color, input::{is_key_pressed, KeyCode}, math::vec2};
@@ -7,25 +8,29 @@ use macroquad::{color::Color, input::{is_key_pressed, KeyCode}, math::vec2};
 use crate::{game::scene::Scene, resources::Resources, text_renderer::{render_text, Align, Font}, ui::Ui, GameState};
 
 pub mod editor_level;
+pub mod editor_level_pack;
 pub mod editor_menu;
 pub mod level_view;
 
 pub struct Editor {
     scene: Option<Scene>,
     close_scene: bool,
-    editor_level: EditorLevel,
+    editor_level_pack: EditorLevelPack,
     editor_menu: EditorMenu,
     level_view: LevelView,
 }
 
 impl Editor {
     pub fn new(resources: &Resources) -> Self {
-        let mut editor_level = EditorLevel::default();
-        editor_level.update_if_should(resources);
+        let bytes = include_bytes!("../../first proper pack.fox");
+        let level_pack_data = crate::level_pack_data::LevelPackData::from_bytes(bytes, resources).unwrap();
+
+        let mut editor_level_pack: EditorLevelPack = (&level_pack_data).into();
+        editor_level_pack.editor_level_mut().update_if_should(resources);
         Self {
             scene: None,
             close_scene: false,
-            editor_level,
+            editor_level_pack,
             editor_menu: EditorMenu::default(),
             level_view: LevelView::new(resources),
         }
@@ -41,7 +46,7 @@ impl GameState for Editor {
         // If the test spawn point has been placed, run the scene from there
         if let Some((pos, place)) = self.level_view.test_spawn_point() {
             if place {
-                self.scene = Some(Scene::from_editor_level(&self.editor_level, Some(pos)));
+                self.scene = Some(Scene::from_editor_level(&self.editor_level_pack.editor_level(), Some(pos)));
                 resources.reset_tile_animation_timer();
                 self.level_view.clear_test_spawn_point();
             }
@@ -62,18 +67,22 @@ impl GameState for Editor {
         }
 
         if is_key_pressed(KeyCode::Escape) {
-            self.editor_menu.set_active(!self.editor_menu.active());
-            if self.editor_menu.active() {
+            if self.level_view.object_selector_open() {
                 self.level_view.close_object_selector();
+            } else if self.level_view.sign_popup_open() {
+                self.level_view.close_sign_popup();
+            } else {
+                self.editor_menu.set_active(!self.editor_menu.active());
+                self.level_view.clear_cursor();
             }
         }
 
         if self.editor_menu.active() {
-            self.editor_menu.update(&mut self.editor_level, ui);
+            self.editor_menu.update(&mut self.editor_level_pack, &mut self.level_view, deltatime, ui, &resources);
             return;
         }
 
-        self.level_view.update(&mut self.editor_level, &mut self.editor_menu, deltatime, ui, resources);
+        self.level_view.update(self.editor_level_pack.editor_level_mut(), &mut self.editor_menu, deltatime, ui, resources);
     }
 
     fn draw(&self, _ui: &Ui, resources: &Resources, debug: bool) {
@@ -83,10 +92,10 @@ impl GameState for Editor {
             return;
         }
 
-        self.level_view.draw(&self.editor_level, resources);
+        self.level_view.draw(self.editor_level_pack.editor_level(), resources);
 
         if self.editor_menu.active() {
-            self.editor_menu.draw(&self.editor_level, resources);
+            self.editor_menu.draw(&self.editor_level_pack, resources);
         }
 
         Editor::draw_editor_logo(resources);
