@@ -306,6 +306,10 @@ impl Level {
         )
     }
 
+    // TODO: Make a version of this for a &[usize] of indexes that only updates those tiles and all of their neighbours
+    // Could make that an option and if it's none it just gets all of the indices
+    // Also make all rendering only happen on screen to stop lag
+
     // Prepare tiles for rendering
     pub fn update_tile_render_data(
         tiles_below:      &mut Vec<TileRenderData>,

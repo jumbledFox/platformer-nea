@@ -22,10 +22,12 @@ pub struct Editor {
 
 impl Editor {
     pub fn new(resources: &Resources) -> Self {
-        let bytes = include_bytes!("../../first proper pack.fox");
+        let bytes = include_bytes!("../../levelpacktest.fox");
         let level_pack_data = crate::level_pack_data::LevelPackData::from_bytes(bytes, resources).unwrap();
-
         let mut editor_level_pack: EditorLevelPack = (&level_pack_data).into();
+
+        // let mut editor_level_pack = EditorLevelPack::default();
+
         editor_level_pack.editor_level_mut().update_if_should(resources);
         Self {
             scene: None,

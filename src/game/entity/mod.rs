@@ -142,7 +142,7 @@ impl EntityKind {
         };
         // Draw the hitbox (might remove this)
         if in_view {
-            draw_rect_lines(self.hitbox().offset(entity_pos + self.tile_offset() - camera_pos), BLUE);
+            // draw_rect_lines(self.hitbox().offset(entity_pos + self.tile_offset() - camera_pos), BLUE);
         }
     }
 }

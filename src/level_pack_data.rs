@@ -248,115 +248,105 @@ impl LevelData {
         bytes
     }
 
-    pub fn from_bytes(bytes: &[u8], begin: usize, resources: &Resources) -> Option<Self> {
-        println!("beginning next level");
-        
+    pub fn from_bytes(bytes: &[u8], cursor: &mut usize, resources: &Resources) -> Option<Self> {
         // Don't want to have to write *bytes.get(index)? each time... this closure makes it easier!
         // If only I could add the ? to the closure........ :c
         let get_byte = |index: usize| -> Option<u8> {
             bytes.get(index).map(|&b| b)
         };
 
-        let mut cursor = begin;
-
         // Get the name and move the cursor
-        let name = bytes_to_string(cursor, &bytes, resources)?;
-        cursor += MAX_FIELD_LEN;
+        let name = bytes_to_string(*cursor, &bytes, resources)?;
+        *cursor += MAX_FIELD_LEN;
 
         // Get the background color, width, and height
         let bg_col = (
-            get_byte(cursor)?,
-            get_byte(cursor+1)?,
-            get_byte(cursor+2)?,
+            get_byte(*cursor)?,
+            get_byte(*cursor+1)?,
+            get_byte(*cursor+2)?,
         );
         let (width, height) = (
-            get_byte(cursor+3)?,
-            get_byte(cursor+4)?,
+            get_byte(*cursor+3)?,
+            get_byte(*cursor+4)?,
         );
-        cursor += 5;
+        *cursor += 5;
 
         // Get all of the tiles
         let mut tiles: Vec<Tile> = Vec::new();
         for _ in 0..(width as usize * height as usize) {
-            let byte = get_byte(cursor)?;
+            let byte = get_byte(*cursor)?;
             tiles.push(byte.try_into().ok()?);
-            cursor += 1;
+            *cursor += 1;
         }
 
         // Get all of the background tiles
         let mut tiles_bg: Vec<Tile> = Vec::new();
         for _ in 0..(width as usize * height as usize) {
-            let byte = get_byte(cursor)?;
+            let byte = get_byte(*cursor)?;
             tiles_bg.push(byte.try_into().ok()?);
-            cursor += 1;
+            *cursor += 1;
         }
         
         // Get the spawn and finish
-        let spawn  = (get_byte(cursor)?,   get_byte(cursor+1)?);
-        let finish = (get_byte(cursor+2)?, get_byte(cursor+3)?);
-        cursor += 4;
+        let spawn  = (get_byte(*cursor)?,   get_byte(*cursor+1)?);
+        let finish = (get_byte(*cursor+2)?, get_byte(*cursor+3)?);
+        *cursor += 4;
 
         // Get the checkpoints
         let mut checkpoints: Vec<LevelPosition> = Vec::new();
-        let checkpoints_len = get_byte(cursor)?;
-        cursor += 1;
+        let checkpoints_len = get_byte(*cursor)?;
+        *cursor += 1;
         for _ in 0..checkpoints_len {
-            let x = get_byte(cursor)?;
-            let y = get_byte(cursor+1)?;
+            let x = get_byte(*cursor)?;
+            let y = get_byte(*cursor+1)?;
             checkpoints.push((x, y));
-            cursor += 2;
+            *cursor += 2;
         }
 
         // Get the signs
         let mut signs: Vec<(LevelPosition, [String; 4])> = Vec::new();
-        let signs_len = get_byte(cursor)?;
-        cursor += 1;
+        let signs_len = get_byte(*cursor)?;
+        *cursor += 1;
         for _ in 0..signs_len {
             let mut lines = Vec::with_capacity(4);
             for _ in 0..4 {
-                lines.push(bytes_to_string(cursor, &bytes, resources)?);
-                cursor += MAX_FIELD_LEN;
+                lines.push(bytes_to_string(*cursor, &bytes, resources)?);
+                *cursor += MAX_FIELD_LEN;
             }
-            let x = get_byte(cursor)?;
-            let y = get_byte(cursor+1)?;
+            let x = get_byte(*cursor)?;
+            let y = get_byte(*cursor+1)?;
             signs.push(((x, y), lines.try_into().ok()?));
-            cursor += 2;
+            *cursor += 2;
         }
 
 
         // Get the doors
         let mut doors: Vec<(bool, LevelPosition, LevelPosition)> = Vec::new();
-        let doors_len = get_byte(cursor)?;
-        cursor += 1;
+        let doors_len = get_byte(*cursor)?;
+        *cursor += 1;
         for _ in 0..doors_len {
-            let teleporter = get_byte(cursor)? != 0;
-            println!("{:?}", get_byte(cursor)?);
-            let pos_x  = get_byte(cursor+1)?;
-            let pos_y  = get_byte(cursor+2)?;
-            let dest_x = get_byte(cursor+3)?;
-            let dest_y = get_byte(cursor+4)?;
+            let teleporter = get_byte(*cursor)? != 0;
+            let pos_x  = get_byte(*cursor+1)?;
+            let pos_y  = get_byte(*cursor+2)?;
+            let dest_x = get_byte(*cursor+3)?;
+            let dest_y = get_byte(*cursor+4)?;
             doors.push((teleporter, (pos_x, pos_y), (dest_x, dest_y)));
-            cursor += 5;
+            *cursor += 5;
         }
 
         // Get the entities
         let mut entities: Vec<(LevelPosition, EntityKind)> = Vec::new();
-        let entities_len = get_byte(cursor)?;
-        cursor += 1;
-
-        println!("{:?}", entities_len);
+        let entities_len = get_byte(*cursor)?;
+        *cursor += 1;
 
         for _ in 0..entities_len {
-            let kind = get_byte(cursor)?;
-            let x = get_byte(cursor+1)?;
-            let y = get_byte(cursor+2)?;
-            let p: Option<EntityKind> = kind.try_into().ok();
-            println!("kind: {:?}", p);
+            let kind = get_byte(*cursor)?;
+            let x = get_byte(*cursor+1)?;
+            let y = get_byte(*cursor+2)?;
             entities.push(((x, y), kind.try_into().ok()?));
-            cursor += 3;
+            *cursor += 3;
         }
 
-        println!("{:?} ok!! with len {:?}", name, cursor);
         Some(Self { name, bg_col, width, height, tiles, tiles_bg, spawn, finish, checkpoints, signs, doors, entities })
     }
 }
@@ -376,10 +366,6 @@ impl LevelPackData {
         // Add each level
         for l in &self.levels {
             let level_bytes = l.to_bytes(resources);
-            // Add the length (as 8 little endian bytes)
-            let len = (level_bytes.len() as u32).to_le_bytes();
-            bytes.extend_from_slice(&len);
-            // Add the actual level
             bytes.extend_from_slice(&level_bytes);
         }
 
@@ -405,31 +391,14 @@ impl LevelPackData {
         let author = bytes_to_string(cursor, bytes, resources)?;
         cursor += MAX_FIELD_LEN;
 
-        let get_u32 = |begin: usize| -> Option<u32> {
-            // If there aren't enough bytes... return NONE!!!
-            if begin + 4 > bytes.len() {
-                return None;
-            }
-            let byte_slice = &bytes[begin..begin+4];
-            let value = u32::from_le_bytes(byte_slice.try_into().ok()?);
-            Some(value)
-        };
-
         // Get each level
         let mut levels: Vec<LevelData> = Vec::new();
         // Repeat until the cursor is out of the bounds of the file
-        while cursor <= bytes.len() {
-            println!("{:?} - {:?}", cursor, bytes.len());
-            // The level length is a u32, so get that
-            let level_len = get_u32(cursor)?;
-            cursor += 4;
-            let level_data = LevelData::from_bytes(bytes, cursor, resources)?;
-            println!("blah");
+        while cursor <= bytes.len() - 1 {
+            let level_data = LevelData::from_bytes(bytes, &mut cursor, resources)?;
             levels.push(level_data);
-            cursor += level_len as usize;
         }
 
-        println!("hello!! {:?}", levels.len());
         if levels.len() == 0 || levels.len() > MAX_LEVELS {
             return None;
         }
@@ -445,15 +414,13 @@ position (byte, byte) for LevelPosition
 
 --- pack header:
 
-"checksum" to immediately discard invalid files and make the packs look AWESOME
+"checksum" to immediately discard invalid files and make the packs look neat in a hex editor
 6A 75 6D 62 6C 65 64 46 6F 78 20 72 75 6C 65 73 21
 
 name: string
 author: string
 
 --- level data: (repeated for each level)
-
-length (4 bytes for how many bytes this level data is, used to break up levels to decode individually)
 
 name: string
 bg_col (byte, byte, byte)

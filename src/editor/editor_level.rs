@@ -9,6 +9,9 @@ const MIN_HEIGHT: usize = VIEW_HEIGHT;
 // 255 so they fit in a single byte
 // yes it'd be more efficient to store width/height as u8s...
 // but then they're used so much for indexing it'd be annoying to put 'as usize' after everything!!!
+
+
+// TODO: Mabye use 256 ??
 const MAX_WIDTH:  usize = 255;
 const MAX_HEIGHT: usize = 255;
 
