@@ -1,8 +1,8 @@
 use macroquad::{color::Color, math::{vec2, Vec2}};
 
-use crate::{game::{entity::EntityKind, level::{things::{Door, Sign}, tile::{Tile, TileRenderLayer}, Level, TileRenderData}}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
+use crate::{game::{entity::EntityKind, level::{tile::{Tile, TileRenderLayer}, Level, TileRenderData}}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
 
-use super::level_view::editor_camera::EditorCamera;
+use super::{level_view::editor_camera::EditorCamera, toast::ToastManager};
 
 const MIN_WIDTH:  usize = VIEW_WIDTH;
 const MIN_HEIGHT: usize = VIEW_HEIGHT;
@@ -10,16 +10,14 @@ const MIN_HEIGHT: usize = VIEW_HEIGHT;
 // yes it'd be more efficient to store width/height as u8s...
 // but then they're used so much for indexing it'd be annoying to put 'as usize' after everything!!!
 
-
-// TODO: Mabye use 256 ??
 const MAX_WIDTH:  usize = 255;
 const MAX_HEIGHT: usize = 255;
 
-const MAX_SIGNS: usize = 64;
-const MAX_DOORS: usize = 255;
-const MAX_CHECKPOINTS: usize = 255;
-const MAX_ENTITIES: usize = 255;
-
+pub const MAX_SIGNS: usize = 64;
+pub const MAX_DOORS: usize = 255;
+pub const MAX_CHECKPOINTS: usize = 255;
+pub const MAX_ENTITIES: usize = 255;
+ 
 pub const BG_SKY: (u8, u8, u8) = (109, 202, 255);
 pub const BG_SUNSET: (u8, u8, u8) = (217, 177, 129);
 pub const BG_DESERT: (u8, u8, u8) = (235, 204, 162);
@@ -28,7 +26,6 @@ pub const BG_CLOUD: (u8, u8, u8) = (197, 218, 230);
 
 pub struct EditorLevel {
     name: String,
-    // TODO: Actually make this work
     bg_col: (u8, u8, u8),
 
     width: usize,
@@ -36,12 +33,11 @@ pub struct EditorLevel {
     tiles: Vec<Tile>,
     tiles_bg: Vec<Tile>,
 
-
-    signs: Vec<Sign>,
+    signs: Vec<(Vec2, [String; 4])>,
     // The door start position, used for the two stages of adding a door
     door_start: Option<Vec2>,
     // Jim Morrison called...
-    doors: Vec<Door>,
+    doors: Vec<(bool, Vec2, Vec2)>,
     spawn:  Vec2,
     finish: Vec2,
     checkpoints: Vec<Vec2>,
@@ -98,8 +94,8 @@ impl EditorLevel {
         height: usize,
         tiles: Vec<Tile>,
         tiles_bg: Vec<Tile>,
-        signs: Vec<Sign>,
-        doors: Vec<Door>,
+        signs: Vec<(Vec2, [String; 4])>,
+        doors: Vec<(bool, Vec2, Vec2)>,
         spawn: Vec2,
         finish: Vec2,
         checkpoints: Vec<Vec2>,
@@ -148,21 +144,26 @@ impl EditorLevel {
         self.height
     }
 
-    pub fn signs(&self) -> &Vec<Sign> {
+    pub fn signs(&self) -> &Vec<(Vec2, [String; 4])> {
         &self.signs
     }
-    pub fn try_add_sign(&mut self, pos: Vec2, lines: [String; 4]) {
-        if self.signs.len() >= MAX_SIGNS {
+    pub fn can_add_sign(&self) -> bool {
+        self.signs.len() < MAX_SIGNS
+    }
+    pub fn try_add_sign(&mut self, pos: Vec2, lines: [String; 4], toast_manager: &mut ToastManager) {
+        if !self.can_add_sign() {
+            toast_manager.add_sign_limit_toast();
             return;
         }
-        if let Some(sign) = self.signs.iter_mut().find(|s| s.pos() == pos) {
-            sign.set_lines(lines);
+        // Set the lines if the sign exists
+        if let Some(sign) = self.signs.iter_mut().find(|s| s.0 == pos) {
+            sign.1 = lines;
         } else {
-            self.signs.push(Sign::new(pos, lines));
+            self.signs.push((pos, lines));
         }
     }
     pub fn try_remove_sign(&mut self, pos: Vec2) {
-        self.signs.retain(|s| s.pos() != pos);
+        self.signs.retain(|s| s.0 != pos);
     }
 
     pub fn door_start(&self) -> Option<Vec2> {
@@ -172,16 +173,21 @@ impl EditorLevel {
         self.door_start = door_start;
     }
 
-    pub fn doors(&self) -> &Vec<Door> {
+    pub fn doors(&self) -> &Vec<(bool, Vec2, Vec2)> {
         &self.doors
     }
-    pub fn try_add_door(&mut self, teleporter: bool, pos: Vec2, dest: Vec2) {
-        if self.doors.len() < MAX_DOORS {
-            self.doors.push(Door::new(teleporter, pos, dest));
+    pub fn can_add_door(&self) -> bool {
+        self.doors.len() < MAX_DOORS
+    }
+    pub fn try_add_door(&mut self, teleporter: bool, pos: Vec2, dest: Vec2, toast_manager: &mut ToastManager) {
+        if self.can_add_door() {
+            self.doors.push((teleporter, pos, dest));
+        } else {
+            toast_manager.add_door_limit_toast();
         }
     }
     pub fn try_remove_door(&mut self, pos: Vec2) {
-        self.doors.retain(|d| d.pos() != pos);
+        self.doors.retain(|d| d.1 != pos);
     }
 
     pub fn spawn(&self) -> Vec2 {
@@ -201,9 +207,14 @@ impl EditorLevel {
     pub fn checkpoints(&self) -> &Vec<Vec2> {
         &self.checkpoints
     }
-    pub fn try_add_checkpoint(&mut self, pos: Vec2) {
-        if !self.checkpoints.contains(&pos) && self.checkpoints.len() < MAX_CHECKPOINTS {
+    pub fn try_add_checkpoint(&mut self, pos: Vec2, toast_manager: &mut ToastManager) {
+        if self.checkpoints.contains(&pos) {
+            return;
+        }
+        if self.checkpoints.len() < MAX_CHECKPOINTS {
             self.checkpoints.push(pos);
+        } else {
+            toast_manager.add_checkpoint_limit_toast();
         }
     }
     pub fn try_remove_checkpoint(&mut self, pos: Vec2) {
@@ -213,10 +224,15 @@ impl EditorLevel {
     pub fn entities(&self) -> &Vec<(Vec2, EntityKind)> {
         &self.entities
     }
-    pub fn try_add_entity(&mut self, pos: Vec2, kind: EntityKind) {
+    pub fn try_add_entity(&mut self, pos: Vec2, kind: EntityKind, toast_manager: &mut ToastManager) {
         // If an entity doesn't exist at this position, add it
-        if !self.entities.iter().any(|(p, _)| *p == pos) && self.entities.len() < MAX_ENTITIES {
+        if self.entities.iter().any(|(p, _)| *p == pos) {
+            return;
+        }
+        if self.entities.len() < MAX_ENTITIES {
             self.entities.push((pos, kind));
+        } else {
+            toast_manager.add_entitiy_limit_toast();
         }
     }
     pub fn try_remove_entity(&mut self, pos: Vec2) {
@@ -248,38 +264,55 @@ impl EditorLevel {
         || !increase && self.height > MIN_HEIGHT
     }
 
-    fn translate_all_entities(&mut self, offset: Vec2) {
-        // Translate the signs and doors
+    fn translate_all_placables(&mut self, offset: Vec2) {
+        // Translate everything
         for s in &mut self.signs {
-            s.translate(offset);
+            s.0 += offset;
         }
         for d in &mut self.doors {
-            d.translate(offset);
+            d.1 += offset;
+            d.2 += offset;
+        }
+        for c in &mut self.checkpoints {
+            *c += offset;
+        }
+        for (p, _) in &mut self.entities {
+            *p += offset;
         }
         self.spawn += offset;
         self.finish += offset;
         self.door_start = self.door_start.map(|p| p + offset);
     }
 
-    fn handle_out_of_bounds_entities(&mut self) {
+    fn handle_out_of_bounds_placables(&mut self) {
         let max = (vec2(self.width as f32, self.height as f32) - 1.0) * 16.0;
         let should_remove = |pos: Vec2| -> bool {
             pos.x < 0.0 || pos.x > max.x || pos.y < 0.0 || pos.y > max.y
         };
 
-        // Remove all out-of-bounds signs, doors, door start, checkpoints
+        // Remove all out-of-bounds signs, doors, door start, checkpoints, etc
         for i in (0..self.signs.len()).rev() {
-            if should_remove(self.signs[i].pos()) {
+            if should_remove(self.signs[i].0) {
                 self.signs.remove(i);
             }
         }
         for i in (0..self.doors.len()).rev() {
-            if should_remove(self.doors[i].pos()) || should_remove(self.doors[i].dest()) {
+            if should_remove(self.doors[i].1) || should_remove(self.doors[i].2) {
                 self.doors.remove(i);
             }
         }
         if self.door_start.is_some_and(|p| should_remove(p)) {
             self.door_start = None;
+        }
+        for i in (0..self.checkpoints.len()).rev() {
+            if should_remove(self.checkpoints[i]) {
+                self.checkpoints.remove(i);
+            }
+        }
+        for i in (0..self.entities.len()).rev() {
+            if should_remove(self.entities[i].0) {
+                self.entities.remove(i);
+            }
         }
         
         // Clamp the spawn and finish since they can never be destroyed because im laaaaazy :3
@@ -301,7 +334,7 @@ impl EditorLevel {
             // Increase the width
             self.width += 1;
             // Move all the entities
-            self.translate_all_entities(vec2(16.0, 0.0));
+            self.translate_all_placables(vec2(16.0, 0.0));
         } else {
             // Delete the tiles along the left edge
             for h in (0..self.height()).rev() {
@@ -311,8 +344,8 @@ impl EditorLevel {
             // Decrease the width
             self.width -= 1;
             // Move all the entities
-            self.translate_all_entities(vec2(-16.0, 0.0));
-            self.handle_out_of_bounds_entities();
+            self.translate_all_placables(vec2(-16.0, 0.0));
+            self.handle_out_of_bounds_placables();
         }
         self.should_update_render_data = true;
     }
@@ -342,7 +375,7 @@ impl EditorLevel {
             // Move the camera and decrease the width
             self.width -= 1;
             camera.set_pos(camera.pos() - vec2(16.0, 0.0), self);
-            self.handle_out_of_bounds_entities();
+            self.handle_out_of_bounds_placables();
         }
         self.should_update_render_data = true;
     }
@@ -361,7 +394,7 @@ impl EditorLevel {
             // Increase the height
             self.height += 1;
             // Move all the entities
-            self.translate_all_entities(vec2(0.0, 16.0));
+            self.translate_all_placables(vec2(0.0, 16.0));
         } else {
             // Delete the tiles along the top edge
             self.tiles.drain(0..self.width());
@@ -369,8 +402,8 @@ impl EditorLevel {
             // Decrease the height
             self.height -= 1;
             // Move all the entities
-            self.translate_all_entities(vec2(0.0, -16.0));
-            self.handle_out_of_bounds_entities();
+            self.translate_all_placables(vec2(0.0, -16.0));
+            self.handle_out_of_bounds_placables();
         }
         self.should_update_render_data = true;
     }
@@ -396,7 +429,7 @@ impl EditorLevel {
             // Move the camera and decrease the height
             self.height -= 1;
             camera.set_pos(camera.pos() - vec2(0.0, 16.0), self);
-            self.handle_out_of_bounds_entities();
+            self.handle_out_of_bounds_placables();
         }
         self.should_update_render_data = true;
     }

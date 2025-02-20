@@ -1,9 +1,9 @@
 // The editor that allows the user to make and save level packs
-use editor_level::EditorLevel;
 use editor_level_pack::EditorLevelPack;
 use editor_menu::EditorMenu;
 use level_view::LevelView;
 use macroquad::{color::Color, input::{is_key_pressed, KeyCode}, math::vec2};
+use toast::ToastManager;
 
 use crate::{game::scene::Scene, resources::Resources, text_renderer::{render_text, Align, Font}, ui::Ui, GameState};
 
@@ -11,6 +11,7 @@ pub mod editor_level;
 pub mod editor_level_pack;
 pub mod editor_menu;
 pub mod level_view;
+pub mod toast;
 
 pub struct Editor {
     scene: Option<Scene>,
@@ -18,13 +19,16 @@ pub struct Editor {
     editor_level_pack: EditorLevelPack,
     editor_menu: EditorMenu,
     level_view: LevelView,
+    toast_manager: ToastManager,
+
+    instarun: bool,
 }
 
 impl Editor {
     pub fn new(resources: &Resources) -> Self {
-        let bytes = include_bytes!("../../levelpacktest.fox");
+        let bytes = include_bytes!("../../test.fox");
         let level_pack_data = crate::level_pack_data::LevelPackData::from_bytes(bytes, resources).unwrap();
-        let mut editor_level_pack: EditorLevelPack = (&level_pack_data).into();
+        let mut editor_level_pack = level_pack_data.to_editor_level_pack();
 
         // let mut editor_level_pack = EditorLevelPack::default();
 
@@ -35,6 +39,9 @@ impl Editor {
             editor_level_pack,
             editor_menu: EditorMenu::default(),
             level_view: LevelView::new(resources),
+            toast_manager: ToastManager::default(),
+
+            instarun: true,
         }
     }
 
@@ -45,6 +52,13 @@ impl Editor {
 
 impl GameState for Editor {
     fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources) {
+        // for testing
+        if self.instarun {
+            self.instarun = false;
+            self.scene = Some(Scene::from_editor_level(&self.editor_level_pack.editor_level(), None));
+            resources.reset_tile_animation_timer();
+        }
+
         // If the test spawn point has been placed, run the scene from there
         if let Some((pos, place)) = self.level_view.test_spawn_point() {
             if place {
@@ -79,12 +93,16 @@ impl GameState for Editor {
             }
         }
 
+        // Update the toasts
+        self.toast_manager.update(deltatime);
+        
+        // If the menu is open, update that and don't update the view
         if self.editor_menu.active() {
             self.editor_menu.update(&mut self.editor_level_pack, &mut self.level_view, deltatime, ui, &resources);
             return;
         }
 
-        self.level_view.update(self.editor_level_pack.editor_level_mut(), &mut self.editor_menu, deltatime, ui, resources);
+        self.level_view.update(self.editor_level_pack.editor_level_mut(), &mut self.editor_menu, &mut self.toast_manager, deltatime, ui, resources);
     }
 
     fn draw(&self, _ui: &Ui, resources: &Resources, debug: bool) {
@@ -99,6 +117,8 @@ impl GameState for Editor {
         if self.editor_menu.active() {
             self.editor_menu.draw(&self.editor_level_pack, resources);
         }
+
+        self.toast_manager.draw(resources);
 
         Editor::draw_editor_logo(resources);
     }

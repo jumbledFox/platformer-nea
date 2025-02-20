@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, BLACK, DARKGRAY, WHITE}, color_u8, input::{clear_input_queue, get_char_pressed, is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle};
 
-use crate::{game::level::things::Sign, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::Button, text_input::{BACKSPACE_TIMER_FIRST, BACKSPACE_TIMER_OTHER, LINE_FLASH_DURATION, MAX_USER_STRING_LEN}, Ui}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
+use crate::{resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::Button, text_input::{BACKSPACE_TIMER_FIRST, BACKSPACE_TIMER_OTHER, LINE_FLASH_DURATION, MAX_USER_STRING_LEN}, Ui}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
 
 const BG_COL: Color = color_u8!(255, 255, 255, 100);
 

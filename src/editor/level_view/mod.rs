@@ -7,7 +7,7 @@ use sign_popup::{SignPopup, SignPopupReturn};
 
 use crate::{game::level::{tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}, resources::Resources, ui::{button::Button, Ui}, util::draw_rect, VIEW_HEIGHT, VIEW_SIZE};
 
-use super::{editor_level::EditorLevel, editor_menu::{EditorMenu, HelpKind}};
+use super::{editor_level::EditorLevel, editor_menu::{EditorMenu, HelpKind}, toast::ToastManager};
 
 pub mod editor_camera;
 pub mod object_selector;
@@ -71,7 +71,7 @@ impl LevelView {
             sign_popup: None,
             sign_clipboard: SignClipboard::None,
             test_spawn_point: None,
-            camera: EditorCamera::default()
+            camera: EditorCamera::default(),
         }
     }
 
@@ -191,7 +191,7 @@ impl LevelView {
         }
     }
 
-    pub fn update(&mut self, editor_level: &mut EditorLevel, editor_menu: &mut EditorMenu, deltatime: f32, ui: &mut Ui, resources: &Resources) {
+    pub fn update(&mut self, editor_level: &mut EditorLevel, editor_menu: &mut EditorMenu, toast_manager: &mut ToastManager, deltatime: f32, ui: &mut Ui, resources: &Resources) {
         // Update the sign popup
         if let Some(s) = &mut self.sign_popup {
             let sign_popup_return = s.update(deltatime, ui, resources);
@@ -200,7 +200,7 @@ impl LevelView {
                 SignPopupReturn::Cancel => self.sign_popup = None,
                 SignPopupReturn::Done => {
                     let (pos, lines) = self.sign_popup.take().unwrap().data();
-                    editor_level.try_add_sign(pos, lines);
+                    editor_level.try_add_sign(pos, lines, toast_manager);
                 }
             }
         }
@@ -326,7 +326,7 @@ impl LevelView {
                 else if let Object::Entity(kind) = self.selected_object {
                     // Placing
                     if is_mouse_button_pressed(MouseButton::Left) {
-                        editor_level.try_add_entity(cursor_pos, kind);
+                        editor_level.try_add_entity(cursor_pos, kind, toast_manager);
                     }
                     // Removing
                     else if is_mouse_button_pressed(MouseButton::Right) {
@@ -353,8 +353,8 @@ impl LevelView {
                         editor_level
                             .signs()
                             .iter()
-                            .find(|s| s.pos() == cursor_pos)
-                            .map(|s| s.lines().clone())
+                            .find(|s| s.0 == cursor_pos)
+                            .map(|s| s.1.clone())
                     };
 
                     if is_mouse_button_pressed(MouseButton::Left) {
@@ -365,12 +365,16 @@ impl LevelView {
                             // If we're copying/cutting a sign and we're not editing an existing one, paste it.
                             SignClipboard::Copy(sign_data) | SignClipboard::Cut(sign_data) if lines.is_none() => {
                                 editor_level.try_remove_sign(cursor_pos);
-                                editor_level.try_add_sign(cursor_pos, sign_data.clone());
+                                editor_level.try_add_sign(cursor_pos, sign_data.clone(), toast_manager);
                                 self.sign_clipboard = SignClipboard::None;
                             }
-                            // Otherwise (we're not copying/cutting a sign, or we are but we've clicked on an existing one), open the gui for a new sign
+                            // Otherwise (we're not copying/cutting a sign, or we are but we've clicked on an existing one), open the gui for a new sign (unless there are too many)
                             _ => {
-                                self.sign_popup = Some(SignPopup::new(cursor_pos, lines));
+                                if editor_level.can_add_sign() {
+                                    self.sign_popup = Some(SignPopup::new(cursor_pos, lines));
+                                } else {
+                                    toast_manager.add_sign_limit_toast();
+                                }
                             }
                         }
                     } else if is_mouse_button_pressed(MouseButton::Right) {
@@ -407,11 +411,15 @@ impl LevelView {
                     // If we've not put a start position down, do that (unless it's on a door.. in that case do nothing idk)
                     if is_mouse_button_pressed(MouseButton::Left) {
                         if let Some(door_start) = editor_level.door_start() {
-                            editor_level.try_add_door(teleport, door_start, cursor_pos);
+                            editor_level.try_add_door(teleport, door_start, cursor_pos, toast_manager);
                             editor_level.set_door_start(None);
                         } else {
-                            if !editor_level.doors().iter().any(|d| d.pos() == cursor_pos) {
-                                editor_level.set_door_start(Some(cursor_pos));
+                            if editor_level.can_add_door() {
+                                if !editor_level.doors().iter().any(|d| d.1 == cursor_pos) {
+                                    editor_level.set_door_start(Some(cursor_pos));
+                                }
+                            } else {
+                                toast_manager.add_door_limit_toast();
                             }
                         }
                     }
@@ -429,7 +437,7 @@ impl LevelView {
                 // Checkpoint
                 else if self.selected_object == Object::Other(ObjectOtherKind::Checkpoint) {
                     if is_mouse_button_pressed(MouseButton::Left) {
-                        editor_level.try_add_checkpoint(cursor_pos);
+                        editor_level.try_add_checkpoint(cursor_pos, toast_manager);
                     }
                     if is_mouse_button_pressed(MouseButton::Right) {
                         editor_level.try_remove_checkpoint(cursor_pos);
@@ -494,13 +502,17 @@ impl LevelView {
         if !self.layer_bg { draw_fg(false) }
 
         // Render the signs
-        Level::render_signs(editor_level.signs(), camera_pos, resources);
+        for (p, _) in editor_level.signs() {
+            Level::render_sign(*p, camera_pos, resources);
+        }
         // Render the entities
         for (pos, kind) in editor_level.entities() {
             kind.draw_editor(false, true, *pos, camera_pos, resources);
         }
         // Render the doors and door start position
-        Level::render_doors_debug(editor_level.doors(), camera_pos, resources);
+        for (teleporter, pos, dest) in editor_level.doors() {
+            Level::render_door_debug(*teleporter, *pos, *dest, camera_pos, resources);
+        }
         if let Object::Other(ObjectOtherKind::Door(teleporter)) = self.selected_object {
             if let Some(pos) = editor_level.door_start() {
                 let rect = match teleporter {

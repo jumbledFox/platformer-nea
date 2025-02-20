@@ -6,7 +6,7 @@ use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, shapes::draw_li
 use things::{Door, Sign};
 use tile::{render_tile, LockColor, Tile, TileCollision, TileHit, TileHitKind, TileRenderLayer, TileTextureConnection, TileTextureConnectionKind};
 
-use crate::{editor::editor_level::EditorLevel, resources::Resources, text_renderer::{render_text, Align, Font}};
+use crate::{resources::Resources, text_renderer::{render_text, Align, Font}};
 
 pub mod tile;
 pub mod things;
@@ -20,10 +20,10 @@ pub struct BumpedTile {
 pub struct Level {
     bg_col: Color,
 
-    tiles: Vec<Tile>,
-    tiles_bg: Vec<Tile>,
     width: usize,
     height: usize,
+    tiles: Vec<Tile>,
+    tiles_bg: Vec<Tile>,
     bumped_tiles: Vec<BumpedTile>,
 
     spawn:  Vec2,
@@ -59,31 +59,23 @@ pub enum TileDrawKind {
     Quarters(usize, usize, usize, usize),
 }
 
-// TODO: Maybe just do editorlevel -> level_data -> level
-impl From<&EditorLevel> for Level {
-    fn from(value: &EditorLevel) -> Self {
+impl Level {
+    pub fn new(bg_col: Color, width: usize, height: usize, tiles: Vec<Tile>, tiles_bg: Vec<Tile>, spawn: Vec2, finish: Vec2, checkpoints: Vec<Vec2>, signs: Vec<Sign>, doors: Vec<Door>) -> Self {
         Self {
-            bg_col:      value.bg_col_as_color(),
-            tiles:       value.tiles().clone(),
-            tiles_bg:    value.tiles_bg().clone(),
-            width:       value.width(),
-            height:      value.height(),
-            spawn:       value.spawn(),
-            finish:      value.finish(),
-            checkpoints: value.checkpoints().clone(),
-            checkpoint:  None,
-            signs:       value.signs().clone(),
-            doors:       value.doors().clone(),
+            bg_col,
+            width, height,
+            tiles, tiles_bg,
+            spawn, finish,
+            checkpoints, signs, doors,
             bumped_tiles: vec![],
+            checkpoint: None,
             should_update_render_data: true,
-            tiles_below:      vec![],
-            tiles_above:      vec![],
-            tiles_background: vec![],
+            tiles_below:      Vec::with_capacity(width*height),
+            tiles_above:      Vec::with_capacity(width*height),
+            tiles_background: Vec::with_capacity(width*height),
         }
     }
-}
 
-impl Level {
     pub fn bg_col(&self) -> Color {
         self.bg_col
     }
@@ -215,17 +207,21 @@ impl Level {
     pub fn render_below(&self, camera_pos: Vec2, resources: &Resources) {
         Level::render_tiles(&self.tiles_below, camera_pos, TileRenderLayer::Foreground(false), resources);
         
-        Level::render_signs(&self.signs, camera_pos, resources);
+        for s in &self.signs {
+            Level::render_sign(s.pos(), camera_pos, resources);
+        }
         Level::render_checkpoints_sign(&self.checkpoints, self.checkpoint, camera_pos, resources);
-        Level::render_finish(self.finish, camera_pos, resources);
     }
 
     pub fn render_above(&self, camera_pos: Vec2, resources: &Resources, debug: bool) {
+        Level::render_finish(self.finish, camera_pos, resources);
         Level::render_checkpoints_dirt(&self.checkpoints, camera_pos, resources);
         Level::render_tiles(&self.tiles_above, camera_pos, TileRenderLayer::Foreground(false), resources);
         Level::render_sign_read_alerts(&self.signs, camera_pos, resources);
         if debug {
-            Level::render_doors_debug(&self.doors, camera_pos, resources);
+            for door in &self.doors {
+                Level::render_door_debug(door.teleporter(), door.pos(), door.dest(), camera_pos, resources);
+            }
             Level::render_spawn_finish_debug(self.spawn, self.finish, camera_pos, resources);
         }
     }
@@ -260,28 +256,24 @@ impl Level {
     }
 
     // Renders doors for debugging / in the editor
-    pub fn render_doors_debug(doors: &Vec<Door>, camera_pos: Vec2, resources: &Resources) {
-        for d in doors {
-            let pos  = d.pos()  - camera_pos;
-            let dest = d.dest() - camera_pos;
+    pub fn render_door_debug(teleporter: bool, pos: Vec2, dest: Vec2, camera_pos: Vec2, resources: &Resources) {
+        let pos  = pos  - camera_pos;
+        let dest = dest - camera_pos;
 
-            let (pos_tex, dest_tex, line_col) = match d.teleporter() {
-                false => (Rect::new(240.0, 32.0, 16.0, 16.0), Rect::new(224.0, 32.0, 16.0, 16.0), Color::from_rgba(255, 0, 255, 128)),
-                true  => (Rect::new(240.0, 48.0, 16.0, 16.0), Rect::new(224.0, 48.0, 16.0, 16.0), Color::from_rgba(0, 255, 255, 128)),
-            };
+        let (pos_tex, dest_tex, line_col) = match teleporter {
+            false => (Rect::new(240.0, 32.0, 16.0, 16.0), Rect::new(224.0, 32.0, 16.0, 16.0), Color::from_rgba(255, 0, 255, 128)),
+            true  => (Rect::new(240.0, 48.0, 16.0, 16.0), Rect::new(224.0, 48.0, 16.0, 16.0), Color::from_rgba(0, 255, 255, 128)),
+        };
 
-            resources.draw_rect(pos,  pos_tex,  WHITE, resources.entity_atlas());
-            resources.draw_rect(dest, dest_tex, WHITE, resources.entity_atlas());
-            draw_line(pos.x + 8.0, pos.y + 8.0, dest.x + 8.0, dest.y + 8.0, 1.0, line_col);
-        }
+        resources.draw_rect(pos,  pos_tex,  WHITE, resources.entity_atlas());
+        resources.draw_rect(dest, dest_tex, WHITE, resources.entity_atlas());
+        draw_line(pos.x + 8.0, pos.y + 8.0, dest.x + 8.0, dest.y + 8.0, 1.0, line_col);
     }
-    // Renders all of the signs
-    pub fn render_signs(signs: &Vec<Sign>, camera_pos: Vec2, resources: &Resources) {
-        for s in signs {
-            resources.draw_rect(s.pos() - camera_pos, Rect::new(240.0, 0.0, 16.0, 16.0), WHITE, resources.entity_atlas());
-        }
+    // Renders a sign
+    pub fn render_sign(pos: Vec2, camera_pos: Vec2, resources: &Resources) {
+        resources.draw_rect(pos - camera_pos, Rect::new(240.0, 0.0, 16.0, 16.0), WHITE, resources.entity_atlas());
     }
-    // Render the alerts above signs if they haven't been read
+    // Renders the alerts above signs if they haven't been read
     pub fn render_sign_read_alerts(signs: &Vec<Sign>, camera_pos: Vec2, resources: &Resources) {
         let bob_amount = (resources.tile_animation_timer() * 5.0).sin() as f32 * 3.0;
         for s in signs {

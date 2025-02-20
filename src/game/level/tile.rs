@@ -201,7 +201,7 @@ impl Default for TileDataManager {
 
         // Checker blocks
         for (i, color) in [CheckerBlockColor::Cyan, CheckerBlockColor::Orange, CheckerBlockColor::Purple].iter().enumerate() {
-            data.insert(Tile::CheckerBlock(*color), TileData::new(format!("{:?} Checker Block", color),   Some(TileTexture::fixed((i+4)*16+6, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::None));
+            data.insert(Tile::CheckerBlock(*color), TileData::new(format!("{:?} Checker Block", color),   Some(TileTexture::fixed((i+4)*16+6, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
         }
 
         // Switch blocks
@@ -347,6 +347,7 @@ pub enum TileHit {
     },
 }
 
+#[derive(Clone, Copy)]
 pub enum TileCollision {
     None,
     Platform {

@@ -20,13 +20,6 @@ impl Sign {
     pub fn read(&self) -> bool {
         self.read
     }
-
-    pub fn translate(&mut self, offset: Vec2) {
-        self.pos += offset;
-    }
-    pub fn set_lines(&mut self, lines: [String; 4]) {
-        self.lines = lines;
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -48,10 +41,5 @@ impl Door {
     }
     pub fn dest(&self) -> Vec2 {
         self.dest
-    }
-
-    pub fn translate(&mut self, offset: Vec2) {
-        self.pos  += offset;
-        self.dest += offset;
     }
 }

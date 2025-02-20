@@ -7,7 +7,9 @@ use crate::{resources::Resources, ui::Ui, GameState};
 
 pub mod level;
 pub mod scene;
+pub mod collision;
 pub mod entity;
+pub mod player;
 
 pub struct Game {
     // levels

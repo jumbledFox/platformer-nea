@@ -1,8 +1,8 @@
 // The data that's saved to a file
 
-use macroquad::math::{vec2, Vec2};
+use macroquad::{color::Color, math::{vec2, Vec2}};
 
-use crate::{editor::{editor_level::EditorLevel, editor_level_pack::{EditorLevelPack, MAX_LEVELS}}, game::{entity::EntityKind, level::{things::{Door, Sign}, tile::Tile}}, resources::Resources, text_renderer::Font};
+use crate::{editor::{editor_level::{EditorLevel, MAX_SIGNS}, editor_level_pack::{EditorLevelPack, MAX_LEVELS}}, game::{entity::EntityKind, level::{things::{Door, Sign}, tile::Tile, Level}}, resources::Resources, text_renderer::Font};
 
 // Pack names and authors, level names
 pub const MAX_FIELD_LEN: usize = 24;
@@ -57,91 +57,110 @@ fn level_pos_to_pos(level_pos: LevelPosition) -> Vec2 {
 }
 
 
-// Turning level data to an editor level
-impl From<&LevelData> for EditorLevel {
-    fn from(value: &LevelData) -> Self {
-        EditorLevel::new(
-            value.name.clone(),
-            value.bg_col,
-            value.width as usize,
-            value.height as usize,
-            value.tiles.clone(),
-            value.tiles_bg.clone(),
-            value.signs
-                .iter()
-                .map(|(p, lines)| Sign::new(level_pos_to_pos(*p), lines.clone()))
-                .collect(),
-            value.doors.
-                iter()
-                .map(|(teleporter, pos, dest)| Door::new(*teleporter, level_pos_to_pos(*pos), level_pos_to_pos(*dest)))
-                .collect(),
-            level_pos_to_pos(value.spawn),
-            level_pos_to_pos(value.finish),
-            value.checkpoints
-                .iter()
-                .map(|p| level_pos_to_pos(*p))
-                .collect(),
-            value.entities
-                .iter()
-                .map(|(p, kind)| (level_pos_to_pos(*p), *kind))
-                .collect(),
-        )
-    }
-}
-
-impl From<&LevelPackData> for EditorLevelPack {
-    fn from(value: &LevelPackData) -> Self {
-        EditorLevelPack::new(
-            value.name.clone(),
-            value.author.clone(),
-            value.levels
-                .iter()
-                .map(|l| l.into())
-                .collect(),
-        )
-    }
-}
-
-// Turning an editor level into LevelData
-impl From<&EditorLevel> for LevelData {
-    fn from(value: &EditorLevel) -> Self {
+impl LevelData {
+    // Turning an editor level into LevelData
+    pub fn from_editor_level(editor_level: &EditorLevel) -> Self {
         Self {
-            name: value.name().clone(),
-            bg_col: value.bg_col(),
-            width:  value.width() .clamp(0, 255) as u8,
-            height: value.height().clamp(0, 255) as u8,
-            tiles:    value.tiles().clone(),
-            tiles_bg: value.tiles_bg().clone(),
-            spawn:  pos_to_level_pos(value.spawn()),
-            finish: pos_to_level_pos(value.finish()),
-            checkpoints: value.checkpoints()
+            name: editor_level.name().clone(),
+            bg_col: editor_level.bg_col(),
+            width:  editor_level.width() .clamp(0, 255) as u8,
+            height: editor_level.height().clamp(0, 255) as u8,
+            tiles:    editor_level.tiles().clone(),
+            tiles_bg: editor_level.tiles_bg().clone(),
+            spawn:  pos_to_level_pos(editor_level.spawn()),
+            finish: pos_to_level_pos(editor_level.finish()),
+            checkpoints: editor_level.checkpoints()
                 .iter()
                 .map(|p| pos_to_level_pos(*p))
                 .collect(),
-            signs: value.signs()
+            signs: editor_level.signs()
                 .iter()
-                .map(|s| (pos_to_level_pos(s.pos()), s.lines().clone()))
+                .map(|s| (pos_to_level_pos(s.0), s.1.clone()))
                 .collect(),
-            doors: value.doors()
+            doors: editor_level.doors()
                 .iter()
-                .map(|d| (d.teleporter(), pos_to_level_pos(d.pos()), pos_to_level_pos(d.dest())))
+                .map(|d| (d.0, pos_to_level_pos(d.1), pos_to_level_pos(d.2)))
                 .collect(),
-            entities: value.entities()
+            entities: editor_level.entities()
                 .iter()
                 .map(|(p, e)| (pos_to_level_pos(*p), *e))
                 .collect(),
         }
     }
+
+    // Turning level data to an editor level
+    pub fn to_editor_level(&self) -> EditorLevel {
+        EditorLevel::new(
+            self.name.clone(),
+            self.bg_col,
+            self.width as usize,
+            self.height as usize,
+            self.tiles.clone(),
+            self.tiles_bg.clone(),
+            self.signs
+                .iter()
+                .map(|(p, lines)| (level_pos_to_pos(*p), lines.clone()))
+                .collect(),
+            self.doors.
+                iter()
+                .map(|(teleporter, pos, dest)| (*teleporter, level_pos_to_pos(*pos), level_pos_to_pos(*dest)))
+                .collect(),
+            level_pos_to_pos(self.spawn),
+            level_pos_to_pos(self.finish),
+            self.checkpoints
+                .iter()
+                .map(|p| level_pos_to_pos(*p))
+                .collect(),
+                self.entities
+                .iter()
+                .map(|(p, kind)| (level_pos_to_pos(*p), *kind))
+                .collect(),
+        )
+    }
+
+    // Turning level data to a level
+    pub fn to_level(&self) -> Level {
+        Level::new(
+            Color::from_rgba(self.bg_col.0, self.bg_col.1, self.bg_col.2, 255),
+            self.width as usize,
+            self.height as usize,
+            self.tiles.clone(),
+            self.tiles_bg.clone(),
+            level_pos_to_pos(self.spawn),
+            level_pos_to_pos(self.finish),
+            self.checkpoints
+                .iter()
+                .map(|p| level_pos_to_pos(*p))
+                .collect(),
+            self.signs
+                .iter()
+                .map(|(p, lines)| Sign::new(level_pos_to_pos(*p), lines.clone()))
+                .collect(),
+            self.doors
+                .iter()
+                .map(|(t, p, d)| Door::new(*t, level_pos_to_pos(*p), level_pos_to_pos(*d)))
+                .collect(),
+        )
+    }
 }
 
-// Turning an editor level pack into a LevelPackData
-impl From<&EditorLevelPack> for LevelPackData {
-    fn from(value: &EditorLevelPack) -> Self {
+impl LevelPackData {
+    pub fn from_editor_level_pack(value: &EditorLevelPack) -> Self {
         Self {
-            name: value.name().clone(),
+            name:   value.name().clone(),
             author: value.author().clone(),
-            levels: value.levels().iter().map(|l| l.into()).collect()
+            levels: value.levels()
+                .iter()
+                .map(|l| LevelData::from_editor_level(l))
+                .collect(),
         }
+    }
+
+    pub fn to_editor_level_pack(&self) -> EditorLevelPack {
+        let levels = self.levels.iter()
+            .map(|l| l.to_editor_level())
+            .collect();
+        EditorLevelPack::new(self.name.clone(), self.author.clone(), levels)
     }
 }
 
@@ -307,6 +326,11 @@ impl LevelData {
         let mut signs: Vec<(LevelPosition, [String; 4])> = Vec::new();
         let signs_len = get_byte(*cursor)?;
         *cursor += 1;
+
+        if signs_len > MAX_SIGNS as u8 {
+            return None;
+        }
+
         for _ in 0..signs_len {
             let mut lines = Vec::with_capacity(4);
             for _ in 0..4 {

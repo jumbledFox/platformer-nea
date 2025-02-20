@@ -193,7 +193,7 @@ impl EditorMenu {
             if self.pack_popup_save.released() {
                 self.popup = PopupKind::None;
 
-                let pack_data: LevelPackData = (&*editor_level_pack).into();
+                let pack_data = LevelPackData::from_editor_level_pack(editor_level_pack);
                 let bytes = pack_data.to_bytes(resources);
                 let mut file = std::fs::OpenOptions::new()
                     .create(true)

@@ -4,48 +4,56 @@
 // use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
 use macroquad::{color::{GREEN, ORANGE, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}};
 
-use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, resources::Resources, text_renderer::{render_text, Align, Font}, util::draw_rect, VIEW_SIZE};
+use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::LevelData, resources::Resources, text_renderer::{render_text, Align, Font}, util::draw_rect, VIEW_SIZE};
+
+use super::player::Player;
 
 // pub mod collision;
 // pub mod entity;
+
+pub const PHYSICS_STEP: f32 = 1.0 / 120.0;
 
 pub struct Scene {
     level: Level,
     timer: f32,
     chips: usize,
+
+    player: Player,
     // entities: Vec<Box<dyn Entity>>
-    // enemies
+
+    physics_update_timer: f32,
 }
 
 impl Scene {
     pub fn from_editor_level(editor_level: &EditorLevel, player_spawn: Option<Vec2>) -> Self {
-        let level = editor_level.into();
-
-        // let player = match player_spawn {
-        //     Some(p) => Player::new(p),
-        //     None => Player::new(Vec2::ZERO),
-        // };
+        let level = LevelData::from_editor_level(editor_level)
+            .to_level();
 
         Scene {
             level,
             timer: 0.0,
             chips: 0,
-            // entities: vec![Box::new(player)],
+
+            player: Player::new(player_spawn.unwrap_or(editor_level.spawn())),
+
+            physics_update_timer: 0.0,
         }
     }
 
     pub fn update(&mut self, deltatime: f32, resources: &Resources) {
-        if is_key_pressed(KeyCode::H) { self.level.hit_tile_at_pos(vec2(3.5, 9.5) * 16.0, crate::game::level::tile::TileHitKind::Hard, resources); }
-        if is_key_pressed(KeyCode::Z) { self.level.remove_lock_blocks(LockColor::Red); }
-        if is_key_pressed(KeyCode::X) { self.level.remove_lock_blocks(LockColor::Green); }
-        if is_key_pressed(KeyCode::C) { self.level.remove_lock_blocks(LockColor::Blue); }
-        if is_key_pressed(KeyCode::V) { self.level.remove_lock_blocks(LockColor::Yellow); }
-        if is_key_pressed(KeyCode::B) { self.level.remove_lock_blocks(LockColor::White); }
-        if is_key_pressed(KeyCode::N) { self.level.remove_lock_blocks(LockColor::Black); }
-        if is_key_pressed(KeyCode::M) { self.level.remove_lock_blocks(LockColor::Rainbow); }
-
         self.timer -= deltatime;
 
+        /*
+        // if is_key_pressed(KeyCode::H) { self.level.hit_tile_at_pos(vec2(3.5, 9.5) * 16.0, crate::game::level::tile::TileHitKind::Hard, resources); }
+        // if is_key_pressed(KeyCode::Z) { self.level.remove_lock_blocks(LockColor::Red); }
+        // if is_key_pressed(KeyCode::X) { self.level.remove_lock_blocks(LockColor::Green); }
+        // if is_key_pressed(KeyCode::C) { self.level.remove_lock_blocks(LockColor::Blue); }
+        // if is_key_pressed(KeyCode::V) { self.level.remove_lock_blocks(LockColor::Yellow); }
+        // if is_key_pressed(KeyCode::B) { self.level.remove_lock_blocks(LockColor::White); }
+        // if is_key_pressed(KeyCode::N) { self.level.remove_lock_blocks(LockColor::Black); }
+        // if is_key_pressed(KeyCode::M) { self.level.remove_lock_blocks(LockColor::Rainbow); }
+
+        
         // let mut others: Vec<&mut Box<dyn Entity>>;
         // for i in 0..self.entities.len() {
         //     let (left, right) = self.entities.split_at_mut(i);
@@ -62,6 +70,16 @@ impl Scene {
         // }
 
         // self.entities.retain(|e| !e.should_delete());
+        */
+
+        self.player.update();
+        
+        // Update all of the physics in a fixed time-step
+        self.physics_update_timer += deltatime;
+        while self.physics_update_timer >= PHYSICS_STEP {
+            self.player.physics_update(&mut self.level, resources);
+            self.physics_update_timer -= PHYSICS_STEP;
+        }
 
         self.level.update_bumped_tiles(deltatime);
         self.level.update_if_should(resources);
@@ -74,6 +92,10 @@ impl Scene {
         draw_rect(Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y), self.level.bg_col());
         self.level.render_bg(camera_pos, resources);
         self.level.render_below(camera_pos, resources);
+
+        self.player.draw(camera_pos, resources);
+
+
         // Draw the entities in reverse so the player is always on top
         // for (i, entity) in self.entities.iter().enumerate().rev() {
         //     entity.draw(resources, i, debug);
