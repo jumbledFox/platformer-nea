@@ -228,11 +228,14 @@ impl EditorLevel {
     // HOWEVER, it's only called by the editor if the cursor_pos is valid.
     pub fn set_tile_at_pos(&mut self, tile: Tile, pos: Vec2, bg: bool) {
         let index = (pos.x / 16.0).floor() as usize + (pos.y / 16.0).floor() as usize * self.width();
-        match bg {
-            false => self.tiles[index]    = tile,
-            true  => self.tiles_bg[index] = tile,
+        let tiles = match bg {
+            false => &mut self.tiles,
+            true  => &mut self.tiles_bg,
         };
-        self.should_update_render_data = true;
+        if tiles[index] != tile {
+            tiles[index] = tile;
+            self.should_update_render_data = true;
+        }
     }
 
     // These functions are for moving the borders of the level, increasing/decreasing the level's size.
