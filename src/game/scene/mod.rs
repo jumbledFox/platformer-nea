@@ -88,6 +88,7 @@ impl Scene {
     pub fn draw(&self, lives: usize, resources: &Resources, debug: bool) {
         // Temporary
         let camera_pos = Vec2::ZERO;
+        let camera_pos = ((self.player.pos() - VIEW_SIZE / 2.0).floor()).clamp(Vec2::ZERO, vec2(self.level.width() as f32, self.level.height() as f32) * 16.0 - VIEW_SIZE);
 
         draw_rect(Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y), self.level.bg_col());
         self.level.render_bg(camera_pos, resources);

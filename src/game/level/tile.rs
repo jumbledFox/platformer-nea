@@ -177,7 +177,7 @@ impl Default for TileDataManager {
 
         data.insert(Tile::Empty,      TileData::new("Empty".to_owned(),       None, TileCollision::None));
         data.insert(Tile::Door, TileData::new("Door".to_owned(), Some(TileTexture::fixed(140, TileTextureConnection::Vertical(TileTextureConnectionKind::None), false)), TileCollision::None));
-        data.insert(Tile::Lava, TileData::new("Lava".to_owned(), Some(TileTexture::animated(&[82, 82+16, 82+32, 82+48, 82+64, 82+80, 82+96, 82+112], 0.2, TileTextureConnection::Vertical(TileTextureConnectionKind::None), false)), TileCollision::solid(1.0, 0.0, TileHit::None, TileHit::None)));
+        data.insert(Tile::Lava, TileData::new("Lava".to_owned(), Some(TileTexture::animated(&[82, 82+16, 82+32, 82+48, 82+64, 82+80, 82+96, 82+112], 0.2, TileTextureConnection::Vertical(TileTextureConnectionKind::None), true)), TileCollision::None));
         data.insert(Tile::Spikes, TileData::new("Spike".to_owned(), Some(TileTexture::fixed(3, TileTextureConnection::None, false)), TileCollision::solid(1.0, 0.0, TileHit::None, TileHit::None)));
 
         data.insert(Tile::Grass,   TileData::new("Grass".to_owned(),   Some(TileTexture::fixed( 6, TileTextureConnection::Both(TileTextureConnectionKind::Only(vec![Tile::Dirt])), false)), TileCollision::solid_default(false)));

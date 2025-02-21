@@ -43,6 +43,10 @@ pub struct Player {
 }
 
 impl Player {
+    pub fn pos(&self) -> Vec2 {
+        self.pos
+    }
+
     pub fn new(pos: Vec2) -> Self {
         Self {
             state: State::Standing,
@@ -88,9 +92,11 @@ impl Player {
 
         // If we're moving up, handle the head
         if moving_up {
+            // We need to remember where we were as collision_top pushes the player out
+            let hit_pos = self.pos + HEAD;
             let t = collision_top(&mut self.pos, HEAD, level, resources);
             if t {
-                level.hit_tile_at_pos(self.pos + HEAD - 1.0, super::level::tile::TileHitKind::Hard, resources);
+                level.hit_tile_at_pos(hit_pos, super::level::tile::TileHitKind::Hard, resources);
                 self.vel.y = 0.0;
             }
         }
@@ -111,7 +117,7 @@ impl Player {
 
         // draw_rect(Rect::new(self.pos.x, self.pos.y, 16.0, 16.0).offset(-camera_pos), Color::from_rgba(255, 0, 0, 128));
 
-        resources.draw_rect(self.pos - vec2(0.0, 16.0), Rect::new(96.0, 0.0, 16.0, 32.0), WHITE, resources.entity_atlas());
+        resources.draw_rect(self.pos - vec2(0.0, 16.0) - camera_pos, Rect::new(96.0, 0.0, 16.0, 32.0), WHITE, resources.entity_atlas());
 
         for (point, col) in [
             (HEAD, BLUE),

@@ -79,6 +79,12 @@ impl Level {
     pub fn bg_col(&self) -> Color {
         self.bg_col
     }
+    pub fn width(&self) -> usize {
+        self.width
+    }
+    pub fn height(&self) -> usize {
+        self.height
+    }
 
     // Switch blocks - sets the state of all switch tiles in the level and the background
     fn set_switch_state(&mut self, enabled: bool) {

@@ -57,7 +57,7 @@ impl Resources {
     }
 
     pub fn draw_rect(&self, pos: Vec2, rect: Rect, color: Color, atlas: &Texture2D) {
-        draw_texture_ex(atlas, pos.x, pos.y, color, DrawTextureParams {
+        draw_texture_ex(atlas, pos.x.floor(), pos.y.floor(), color, DrawTextureParams {
             source: Some(rect),
             ..Default::default()
         });
