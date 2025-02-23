@@ -23,7 +23,7 @@ impl Key {
             LockColor::Rainbow => ((resources.tile_animation_timer() % (RAINBOW_LOCK_FRAME_DUR * 4.0)) / RAINBOW_LOCK_FRAME_DUR).floor() as usize,
             c @ _ => c as usize,
         };
-        let rect = Rect::new(240.0, 65.0 + sprite as f32 * 16.0, 16.0, 15.0);
-        resources.draw_rect(pos - camera_pos, rect, color, resources.entity_atlas());
+        let rect = Rect::new(256.0, sprite as f32 * 16.0, 16.0, 15.0);
+        resources.draw_rect(pos - camera_pos, rect, false, color, resources.entity_atlas());
     }
 }

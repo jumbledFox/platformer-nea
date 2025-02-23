@@ -2,7 +2,7 @@
 
 use macroquad::{color::{Color, WHITE}, color_u8, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{game::{entity::EntityKind, level::{tile::{render_tile, CheckerBlockColor, LockColor, Tile, TileRenderLayer}, TileDrawKind, TileRenderData}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
+use crate::{game::{entity::EntityKind, level::{things::DoorKind, tile::{render_tile, CheckerBlockColor, LockColor, Tile, TileRenderLayer}, TileDrawKind, TileRenderData}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
 
 const BG_COL: Color = color_u8!(255, 255, 255, 100);
 
@@ -20,7 +20,7 @@ pub enum Object {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ObjectOtherKind {
     Sign,
-    Door(bool), // Teleport
+    Door(DoorKind), // Teleport
     Spawn,
     Finish,
     Checkpoint,
@@ -89,8 +89,9 @@ impl ObjectSelector {
 
         let others = [
             (ObjectOtherKind::Sign, "Sign"),
-            (ObjectOtherKind::Door(false), "Door"),
-            (ObjectOtherKind::Door(true), "Teleporter"),
+            (ObjectOtherKind::Door(DoorKind::Door), "Door"),
+            (ObjectOtherKind::Door(DoorKind::Teleporter), "Teleporter"),
+            (ObjectOtherKind::Door(DoorKind::SeamlessTeleporter), "Seamless Teleporter"),
             (ObjectOtherKind::Spawn, "Spawn"),
             (ObjectOtherKind::Finish, "Finish"),
             (ObjectOtherKind::Checkpoint, "Checkpoint"),
@@ -201,8 +202,9 @@ impl ObjectSelector {
             });
         };
         match other {
-            ObjectOtherKind::Door(false) => draw_from_atlas(Rect::new(208.0, 32.0, 16.0, 16.0)),
-            ObjectOtherKind::Door(true)  => draw_from_atlas(Rect::new(208.0, 48.0, 16.0, 16.0)),
+            ObjectOtherKind::Door(DoorKind::Door)                => draw_from_atlas(Rect::new(208.0, 32.0, 16.0, 16.0)),
+            ObjectOtherKind::Door(DoorKind::Teleporter)          => draw_from_atlas(Rect::new(208.0, 48.0, 16.0, 16.0)),
+            ObjectOtherKind::Door(DoorKind::SeamlessTeleporter)  => draw_from_atlas(Rect::new(208.0, 64.0, 16.0, 16.0)),
             ObjectOtherKind::Sign        => draw_from_atlas(Rect::new(240.0,  0.0, 16.0, 16.0)),
             ObjectOtherKind::Spawn       => draw_from_atlas(Rect::new(208.0, 16.0, 16.0, 16.0)),
             ObjectOtherKind::Finish      => draw_from_atlas(Rect::new(240.0, 16.0, 16.0, 16.0)),

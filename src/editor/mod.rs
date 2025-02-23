@@ -26,7 +26,7 @@ pub struct Editor {
 
 impl Editor {
     pub fn new(resources: &Resources) -> Self {
-        let bytes = include_bytes!("../../levelpacktest.fox");
+        let bytes = include_bytes!("../../test.fox");
         let level_pack_data = crate::level_pack_data::LevelPackData::from_bytes(bytes, resources).unwrap();
         let mut editor_level_pack = level_pack_data.to_editor_level_pack();
 
@@ -74,9 +74,9 @@ impl GameState for Editor {
         }
         if let Some(scene) = &mut self.scene {
             scene.update(deltatime, resources);
-            // If we're in the scene and tab is pressed, exit on the next frame
+            // If we're in the scene and tab or esc is pressed, exit on the next frame
             // We do this so scene isn't None when drawing it this frame
-            if is_key_pressed(KeyCode::Tab) {
+            if is_key_pressed(KeyCode::Tab) || is_key_pressed(KeyCode::Escape) {
                 self.close_scene = true;
             }
             return;

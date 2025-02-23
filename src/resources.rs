@@ -1,4 +1,4 @@
-use macroquad::{color::{Color, WHITE}, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
+use macroquad::{color::Color, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
 
 use crate::{game::level::tile::TileDataManager, text_renderer::FontDataManager};
 
@@ -13,6 +13,7 @@ pub struct Resources {
     player_atlas: Texture2D,
     entity_atlas: Texture2D,
     tile_animation_timer: f64,
+    should_update_anim_timer: bool,
 }
 
 impl Default for Resources {
@@ -24,6 +25,7 @@ impl Default for Resources {
             player_atlas: Texture2D::from_file_with_format(PLAYER_TEXTURE, None),
             entity_atlas: Texture2D::from_file_with_format(ENTITY_TEXTURE, None),
             tile_animation_timer: 0.0,
+            should_update_anim_timer: true,
         }
     }
 }
@@ -50,15 +52,22 @@ impl Resources {
         self.tile_animation_timer
     }
     pub fn update_tile_animation_timer(&mut self, deltatime: f32) {
-        self.tile_animation_timer += deltatime as f64;
+        if self.should_update_anim_timer {
+            self.tile_animation_timer += deltatime as f64;
+        }
     }
     pub fn reset_tile_animation_timer(&mut self) {
         self.tile_animation_timer = 0.0;
     }
 
-    pub fn draw_rect(&self, pos: Vec2, rect: Rect, color: Color, atlas: &Texture2D) {
+    pub fn set_anim_timer_update(&mut self, should: bool) {
+        self.should_update_anim_timer = should;
+    }
+
+    pub fn draw_rect(&self, pos: Vec2, rect: Rect, flip_x: bool, color: Color, atlas: &Texture2D) {
         draw_texture_ex(atlas, pos.x.floor(), pos.y.floor(), color, DrawTextureParams {
             source: Some(rect),
+            flip_x,
             ..Default::default()
         });
     }

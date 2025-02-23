@@ -33,9 +33,9 @@ impl Goat {
         };
         // Draw the body
         let body_x = if step { 15.0 } else { 0.0 };
-        resources.draw_rect(pos + offset - camera_pos, Rect::new(body_x, 82.0, 14.0, 32.0), color, resources.entity_atlas());
+        resources.draw_rect(pos + offset - camera_pos, Rect::new(body_x, 82.0, 14.0, 32.0), false, color, resources.entity_atlas());
         // Draw the arm
         let arm_x = if arm == Arm::Down { 30.0 } else { 48.0 };
-        resources.draw_rect(pos + offset + vec2(0.0, 6.0) - camera_pos, Rect::new(arm_x, 82.0, 17.0, 20.0), color, resources.entity_atlas());
+        resources.draw_rect(pos + offset + vec2(0.0, 6.0) - camera_pos, Rect::new(arm_x, 82.0, 17.0, 20.0), false, color, resources.entity_atlas());
     }
 }

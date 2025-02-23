@@ -20,21 +20,51 @@ impl Sign {
     pub fn read(&self) -> bool {
         self.read
     }
+    pub fn set_read(&mut self, read: bool) {
+        self.read = read;
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum DoorKind {
+    Door, Teleporter, SeamlessTeleporter
+}
+
+impl From<DoorKind> for u8 {
+    fn from(value: DoorKind) -> Self {
+        match value {
+            DoorKind::Door => 0,
+            DoorKind::Teleporter => 1,
+            DoorKind::SeamlessTeleporter => 2,
+        }
+    }
+}
+
+impl TryFrom<u8> for DoorKind {
+    type Error = ();
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(DoorKind::Door),
+            1 => Ok(DoorKind::Teleporter),
+            2 => Ok(DoorKind::SeamlessTeleporter),
+            _ => Err(())
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
 pub struct Door {
-    teleporter: bool,
+    kind: DoorKind,
     pos: Vec2,
     dest: Vec2,
 }
 
 impl Door {
-    pub fn new(teleporter: bool, pos: Vec2, dest: Vec2) -> Self {
-        Self { teleporter, pos, dest }
+    pub fn new(kind: DoorKind, pos: Vec2, dest: Vec2) -> Self {
+        Self { kind, pos, dest }
     }
-    pub fn teleporter(&self) -> bool {
-        self.teleporter
+    pub fn kind(&self) -> DoorKind {
+        self.kind
     }
     pub fn pos(&self) -> Vec2 {
         self.pos

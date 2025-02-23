@@ -5,7 +5,7 @@ use macroquad::{color::{Color, ORANGE, PURPLE, WHITE}, color_u8, input::{is_key_
 use object_selector::{Object, ObjectSelector, ObjectOtherKind};
 use sign_popup::{SignPopup, SignPopupReturn};
 
-use crate::{game::level::{tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}, resources::Resources, ui::{button::Button, Ui}, util::draw_rect, VIEW_HEIGHT, VIEW_SIZE};
+use crate::{game::level::{things::DoorKind, tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}, resources::Resources, ui::{button::Button, Ui}, util::draw_rect, VIEW_HEIGHT, VIEW_SIZE};
 
 use super::{editor_level::EditorLevel, editor_menu::{EditorMenu, HelpKind}, toast::ToastManager};
 
@@ -59,7 +59,7 @@ impl LevelView {
 
         Self {
             // selected_object: Object::Tile(Tile::Grass),
-            selected_object: Object::Other(ObjectOtherKind::Door(true)),
+            selected_object: Object::Other(ObjectOtherKind::Door(DoorKind::SeamlessTeleporter)),
             cursor_pos: None,
             began_drawing_in_area: false,
 
@@ -264,8 +264,8 @@ impl LevelView {
                 Object::Tile(_)   => HelpKind::Tiles,
                 Object::Entity(_) => HelpKind::Entities,
                 Object::Other(ObjectOtherKind::Sign) => HelpKind::Signs,
-                Object::Other(ObjectOtherKind::Door(false)) => HelpKind::Doors,
-                Object::Other(ObjectOtherKind::Door(true))  => HelpKind::Teles,
+                Object::Other(ObjectOtherKind::Door(DoorKind::Door)) => HelpKind::Doors,
+                Object::Other(ObjectOtherKind::Door(_))  => HelpKind::Teles,
                 Object::Other(ObjectOtherKind::Spawn) |
                 Object::Other(ObjectOtherKind::Finish) => HelpKind::SpawnFinish,
                 Object::Other(ObjectOtherKind::Checkpoint) => HelpKind::Checkpoints,
@@ -513,18 +513,15 @@ impl LevelView {
         for (teleporter, pos, dest) in editor_level.doors() {
             Level::render_door_debug(*teleporter, *pos, *dest, camera_pos, resources);
         }
-        if let Object::Other(ObjectOtherKind::Door(teleporter)) = self.selected_object {
+        if let Object::Other(ObjectOtherKind::Door(kind)) = self.selected_object {
             if let Some(pos) = editor_level.door_start() {
-                let rect = match teleporter {
-                    false => Rect::new(240.0, 32.0, 16.0, 16.0),
-                    true  => Rect::new(240.0, 48.0, 16.0, 16.0),
-                };
-                resources.draw_rect(pos - camera_pos, rect, WHITE, resources.entity_atlas());
+                let rect = Rect::new(240.0, 16.0 * (2 + kind as u8) as f32, 16.0, 16.0);
+                resources.draw_rect(pos - camera_pos, rect, false, WHITE, resources.entity_atlas());
             }
         }
         // Render checkpoints and spawn/finish
         for c in editor_level.checkpoints() {
-            resources.draw_rect(*c - camera_pos, Rect::new(224.0, 16.0, 16.0, 16.0), WHITE, resources.entity_atlas());
+            resources.draw_rect(*c - camera_pos, Rect::new(224.0, 16.0, 16.0, 16.0), false, WHITE, resources.entity_atlas());
         }
         Level::render_spawn_finish_debug(editor_level.spawn(), editor_level.finish(), camera_pos, resources);
 
@@ -551,7 +548,7 @@ impl LevelView {
                     false => ORANGE,
                 };
                 draw_outline(vec2(16.0, 16.0), color);
-                resources.draw_rect(pos + 2.0 - camera_pos, Rect::new(2.0, 4.0, 12.0, 11.0), WHITE, resources.player_atlas());
+                resources.draw_rect(pos + 2.0 - camera_pos, Rect::new(2.0, 4.0, 12.0, 11.0), false, WHITE, resources.player_atlas());
             }
             else if let Object::Tile(tile) = self.selected_object {
                 if resources.tile_data_manager().data(tile).texture().is_some() {

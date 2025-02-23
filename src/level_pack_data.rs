@@ -2,7 +2,7 @@
 
 use macroquad::{color::Color, math::{vec2, Vec2}};
 
-use crate::{editor::{editor_level::{EditorLevel, MAX_SIGNS}, editor_level_pack::{EditorLevelPack, MAX_LEVELS}}, game::{entity::EntityKind, level::{things::{Door, Sign}, tile::Tile, Level}}, resources::Resources, text_renderer::Font};
+use crate::{editor::{editor_level::{EditorLevel, MAX_SIGNS}, editor_level_pack::{EditorLevelPack, MAX_LEVELS}}, game::{entity::EntityKind, level::{things::{Door, DoorKind, Sign}, tile::Tile, Level}}, resources::Resources, text_renderer::Font};
 
 // Pack names and authors, level names
 pub const MAX_FIELD_LEN: usize = 24;
@@ -41,7 +41,7 @@ pub struct LevelData {
     finish: LevelPosition,
     checkpoints: Vec<LevelPosition>,
     signs: Vec<(LevelPosition, [String; 4])>,
-    doors: Vec<(bool, LevelPosition, LevelPosition)>,
+    doors: Vec<(DoorKind, LevelPosition, LevelPosition)>,
     entities: Vec<(LevelPosition, EntityKind)>
 }
 
@@ -251,7 +251,7 @@ impl LevelData {
         // Add the number of doors, their types and positions
         bytes.push(self.doors.len() as u8);
         for (kind, pos, dest) in &self.doors {
-            bytes.push(*kind as u8); // kind (if it's a teleporter or not)
+            bytes.push((*kind).into()); // kind (if it's a door, a teleporter, or a seamless teleporter)
             bytes.push(pos.0); // x
             bytes.push(pos.1); // y
             bytes.push(dest.0); // x
@@ -345,16 +345,16 @@ impl LevelData {
 
 
         // Get the doors
-        let mut doors: Vec<(bool, LevelPosition, LevelPosition)> = Vec::new();
+        let mut doors: Vec<(DoorKind, LevelPosition, LevelPosition)> = Vec::new();
         let doors_len = get_byte(*cursor)?;
         *cursor += 1;
         for _ in 0..doors_len {
-            let teleporter = get_byte(*cursor)? != 0;
+            let kind: DoorKind = get_byte(*cursor)?.try_into().ok()?;
             let pos_x  = get_byte(*cursor+1)?;
             let pos_y  = get_byte(*cursor+2)?;
             let dest_x = get_byte(*cursor+3)?;
             let dest_y = get_byte(*cursor+4)?;
-            doors.push((teleporter, (pos_x, pos_y), (dest_x, dest_y)));
+            doors.push((kind, (pos_x, pos_y), (dest_x, dest_y)));
             *cursor += 5;
         }
 

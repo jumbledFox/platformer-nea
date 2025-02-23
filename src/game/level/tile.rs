@@ -395,6 +395,9 @@ impl TileCollision {
     pub fn is_platform(&self) -> bool {
         matches!(self, Self::Platform { .. })
     }
+    pub fn is_ladder(&self) -> bool {
+        matches!(self, Self::Ladder)
+    }
 }
 
 #[derive(Clone, Copy)]

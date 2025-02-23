@@ -3,7 +3,7 @@
 use std::f32::consts::PI;
 
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, shapes::draw_line};
-use things::{Door, Sign};
+use things::{Door, DoorKind, Sign};
 use tile::{render_tile, LockColor, Tile, TileCollision, TileHit, TileHitKind, TileRenderLayer, TileTextureConnection, TileTextureConnectionKind};
 
 use crate::{resources::Resources, text_renderer::{render_text, Align, Font}};
@@ -85,6 +85,18 @@ impl Level {
     pub fn height(&self) -> usize {
         self.height
     }
+    pub fn signs_mut(&mut self) -> &mut Vec<Sign> {
+        &mut self.signs
+    }
+    pub fn doors(&self) -> &Vec<Door> {
+        &self.doors
+    }
+    pub fn checkpoints(&self) -> &Vec<Vec2> {
+        &self.checkpoints
+    }
+    pub fn set_checkpoint(&mut self, index: usize) {
+        self.checkpoint = Some(index);
+    }
 
     // Switch blocks - sets the state of all switch tiles in the level and the background
     fn set_switch_state(&mut self, enabled: bool) {
@@ -163,7 +175,7 @@ impl Level {
 
     pub fn render_bumped_tiles(&self, camera_pos: Vec2, resources: &Resources) {
         for bumped_tile in &self.bumped_tiles {
-            let pos = Level::tile_pos(bumped_tile.index, self.width) - vec2(0.0, (bumped_tile.timer * PI).sin()) * 8.0;
+            let pos = Level::tile_pos(bumped_tile.index, self.width) - vec2(0.0, (bumped_tile.timer * PI * 0.9).sin()) * 8.0;
 
             let render_data = TileRenderData { draw_kind: TileDrawKind::Single(0), tile: bumped_tile.tile, pos};
             render_tile(&render_data, camera_pos, TileRenderLayer::Foreground(false), resources);
@@ -175,8 +187,8 @@ impl Level {
             bumped_tile.timer += deltatime * 5.0;
         }
 
-        let bumped_tile_removed = self.bumped_tiles.iter().any(|t| t.timer >= 1.0);
-        self.bumped_tiles.retain(|t| t.timer < 1.0);
+        let bumped_tile_removed = self.bumped_tiles.iter().any(|t| t.timer >= 1.0 / 0.9);
+        self.bumped_tiles.retain(|t| t.timer < 1.0 / 0.9);
         if bumped_tile_removed {
             self.should_update_render_data = true;
         }
@@ -226,7 +238,7 @@ impl Level {
         Level::render_sign_read_alerts(&self.signs, camera_pos, resources);
         if debug {
             for door in &self.doors {
-                Level::render_door_debug(door.teleporter(), door.pos(), door.dest(), camera_pos, resources);
+                Level::render_door_debug(door.kind(), door.pos(), door.dest(), camera_pos, resources);
             }
             Level::render_spawn_finish_debug(self.spawn, self.finish, camera_pos, resources);
         }
@@ -236,48 +248,54 @@ impl Level {
 
     // Render spawn, finish, and checkpoints for debugging / in the editor
     pub fn render_finish(finish: Vec2, camera_pos: Vec2, resources: &Resources) {
-        resources.draw_rect(finish - camera_pos, Rect::new(224.0, 0.0, 16.0, 16.0), WHITE, resources.entity_atlas());
+        resources.draw_rect(finish - camera_pos, Rect::new(224.0, 0.0, 16.0, 16.0), false, WHITE, resources.entity_atlas());
     }
     pub fn render_spawn_finish_debug(spawn: Vec2, finish: Vec2, camera_pos: Vec2, resources: &Resources) {
-        resources.draw_rect(spawn  - camera_pos, Rect::new(208.0, 16.0, 16.0, 16.0), WHITE, resources.entity_atlas());
-        resources.draw_rect(finish - camera_pos, Rect::new(240.0, 16.0, 16.0, 16.0), WHITE, resources.entity_atlas());
+        resources.draw_rect(spawn  - camera_pos, Rect::new(208.0, 16.0, 16.0, 16.0), false, WHITE, resources.entity_atlas());
+        resources.draw_rect(finish - camera_pos, Rect::new(240.0, 16.0, 16.0, 16.0), false, WHITE, resources.entity_atlas());
     }
 
     pub fn render_checkpoints_sign(checkpoints: &Vec<Vec2>, checkpoint: Option<usize>, camera_pos: Vec2, resources: &Resources) {
-        let bob_amount = (resources.tile_animation_timer() * 3.0).sin() as f32;
+        let bob_amount = (resources.tile_animation_timer().rem_euclid(2.0) >= 1.0) as usize as f32 - 1.0;
         for (i, c) in checkpoints.iter().enumerate() {
             // If this is the active checkpoint, draw the other sprite (with the fox face on :3)
             let rect_x = match checkpoint == Some(i) {
                 true  => 176.0,
                 false => 192.0,
             };
-            resources.draw_rect(*c + vec2(0.0, bob_amount - 1.0) - camera_pos, Rect::new(rect_x, 0.0, 16.0, 16.0), WHITE, resources.entity_atlas());
+            resources.draw_rect(*c + vec2(0.0, bob_amount) - camera_pos, Rect::new(rect_x, 0.0, 16.0, 16.0), false, WHITE, resources.entity_atlas());
         }
     }
 
     pub fn render_checkpoints_dirt(checkpoints: &Vec<Vec2>, camera_pos: Vec2, resources: &Resources) {
         for c in checkpoints {
-            resources.draw_rect(*c + vec2(0.0, 11.0) - camera_pos, Rect::new(208.0, 0.0, 16.0, 6.0), WHITE, resources.entity_atlas());
+            resources.draw_rect(*c + vec2(0.0, 11.0) - camera_pos, Rect::new(208.0, 0.0, 16.0, 6.0), false, WHITE, resources.entity_atlas());
         }
     }
 
     // Renders doors for debugging / in the editor
-    pub fn render_door_debug(teleporter: bool, pos: Vec2, dest: Vec2, camera_pos: Vec2, resources: &Resources) {
+    pub fn render_door_debug(kind: DoorKind, pos: Vec2, dest: Vec2, camera_pos: Vec2, resources: &Resources) {
         let pos  = pos  - camera_pos;
         let dest = dest - camera_pos;
 
-        let (pos_tex, dest_tex, line_col) = match teleporter {
-            false => (Rect::new(240.0, 32.0, 16.0, 16.0), Rect::new(224.0, 32.0, 16.0, 16.0), Color::from_rgba(255, 0, 255, 128)),
-            true  => (Rect::new(240.0, 48.0, 16.0, 16.0), Rect::new(224.0, 48.0, 16.0, 16.0), Color::from_rgba(0, 255, 255, 128)),
+        let (tex_y, line_col) = match kind {
+            DoorKind::Door               => (32.0, Color::from_rgba(255,   0, 255, 128)),
+            DoorKind::Teleporter         => (48.0, Color::from_rgba(  0, 255, 255, 128)),
+            DoorKind::SeamlessTeleporter => (64.0, Color::from_rgba(238, 236,   6, 128)),
         };
 
-        resources.draw_rect(pos,  pos_tex,  WHITE, resources.entity_atlas());
-        resources.draw_rect(dest, dest_tex, WHITE, resources.entity_atlas());
+        let (pos_tex, dest_tex) = (
+            Rect::new(240.0, tex_y, 16.0, 16.0),
+            Rect::new(224.0, tex_y, 16.0, 16.0)
+        );
+
+        resources.draw_rect(pos,  pos_tex,  false, WHITE, resources.entity_atlas());
+        resources.draw_rect(dest, dest_tex, false, WHITE, resources.entity_atlas());
         draw_line(pos.x + 8.0, pos.y + 8.0, dest.x + 8.0, dest.y + 8.0, 1.0, line_col);
     }
     // Renders a sign
     pub fn render_sign(pos: Vec2, camera_pos: Vec2, resources: &Resources) {
-        resources.draw_rect(pos - camera_pos, Rect::new(240.0, 0.0, 16.0, 16.0), WHITE, resources.entity_atlas());
+        resources.draw_rect(pos - camera_pos, Rect::new(240.0, 0.0, 16.0, 16.0), false, WHITE, resources.entity_atlas());
     }
     // Renders the alerts above signs if they haven't been read
     pub fn render_sign_read_alerts(signs: &Vec<Sign>, camera_pos: Vec2, resources: &Resources) {

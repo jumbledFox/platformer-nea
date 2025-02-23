@@ -1,6 +1,6 @@
 use macroquad::{color::Color, math::{vec2, Vec2}};
 
-use crate::{game::{entity::EntityKind, level::{tile::{Tile, TileRenderLayer}, Level, TileRenderData}}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
+use crate::{game::{entity::EntityKind, level::{things::DoorKind, tile::{Tile, TileRenderLayer}, Level, TileRenderData}}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
 
 use super::{level_view::editor_camera::EditorCamera, toast::ToastManager};
 
@@ -37,7 +37,7 @@ pub struct EditorLevel {
     // The door start position, used for the two stages of adding a door
     door_start: Option<Vec2>,
     // Jim Morrison called...
-    doors: Vec<(bool, Vec2, Vec2)>,
+    doors: Vec<(DoorKind, Vec2, Vec2)>,
     spawn:  Vec2,
     finish: Vec2,
     checkpoints: Vec<Vec2>,
@@ -95,7 +95,7 @@ impl EditorLevel {
         tiles: Vec<Tile>,
         tiles_bg: Vec<Tile>,
         signs: Vec<(Vec2, [String; 4])>,
-        doors: Vec<(bool, Vec2, Vec2)>,
+        doors: Vec<(DoorKind, Vec2, Vec2)>,
         spawn: Vec2,
         finish: Vec2,
         checkpoints: Vec<Vec2>,
@@ -173,15 +173,15 @@ impl EditorLevel {
         self.door_start = door_start;
     }
 
-    pub fn doors(&self) -> &Vec<(bool, Vec2, Vec2)> {
+    pub fn doors(&self) -> &Vec<(DoorKind, Vec2, Vec2)> {
         &self.doors
     }
     pub fn can_add_door(&self) -> bool {
         self.doors.len() < MAX_DOORS
     }
-    pub fn try_add_door(&mut self, teleporter: bool, pos: Vec2, dest: Vec2, toast_manager: &mut ToastManager) {
+    pub fn try_add_door(&mut self, kind: DoorKind, pos: Vec2, dest: Vec2, toast_manager: &mut ToastManager) {
         if self.can_add_door() {
-            self.doors.push((teleporter, pos, dest));
+            self.doors.push((kind, pos, dest));
         } else {
             toast_manager.add_door_limit_toast();
         }

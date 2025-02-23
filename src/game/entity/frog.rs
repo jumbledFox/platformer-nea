@@ -45,6 +45,6 @@ impl Frog {
         };
 
         let rect = Rect::new(0.0 + x, 64.0, 19.0, 17.0);
-        resources.draw_rect(pos + vec2(x_offset, 0.0) - camera_pos, rect, color, resources.entity_atlas());
+        resources.draw_rect(pos + vec2(x_offset, 0.0) - camera_pos, rect, false, color, resources.entity_atlas());
     }
 }
