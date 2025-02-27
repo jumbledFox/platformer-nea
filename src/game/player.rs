@@ -207,27 +207,32 @@ impl Player {
         self.allow_climbing(level, resources);
     }
 
-    fn state_jumping(&mut self, level: &Level, resources: &Resources) {
-        let speed = 0.5;
-        self.target_approach = 0.05;
+    fn air_logic(&mut self, speed: f32) {
+        // If we're up against a wall with move_dir left/right, but not holding the key, set move_dir to none
+        if self.nudging_l && self.move_dir == Some(Dir::Left) && !is_key_down(KEY_LEFT)
+        || self.nudging_r && self.move_dir == Some(Dir::Right) && !is_key_down(KEY_RIGHT) {
+            self.move_dir = None;
+        }
+        // If we're moving left/right and not going the right speed, set the target x velocity to it
         if self.move_dir == Some(Dir::Left)  && self.vel.x > -speed { self.target_x_vel = -speed };
         if self.move_dir == Some(Dir::Right) && self.vel.x <  speed { self.target_x_vel =  speed };
+        // If we're against a wall moving left/right, or we've turned mid-air and aren't moving, set the target x velocity to 0
         if self.nudging_l && self.move_dir == Some(Dir::Left)
         || self.nudging_r && self.move_dir == Some(Dir::Right)
         || self.turned_mid_air && self.move_dir == None { self.target_x_vel = 0.0; }
+    }
 
+    fn state_jumping(&mut self, level: &Level, resources: &Resources) {
+        let speed = 0.5;
+        self.target_approach = 0.05;
+        self.air_logic(speed);
         self.allow_climbing(level, resources);
     }
 
     fn state_falling(&mut self, level: &Level, resources: &Resources) {
         let speed = 0.5;
         self.target_approach = 0.05;
-        if self.move_dir == Some(Dir::Left)  && self.vel.x > -speed { self.target_x_vel = -speed };
-        if self.move_dir == Some(Dir::Right) && self.vel.x <  speed { self.target_x_vel =  speed };
-        if self.nudging_l && self.move_dir == Some(Dir::Left)
-        || self.nudging_r && self.move_dir == Some(Dir::Right)
-        || self.turned_mid_air && self.move_dir == None { self.target_x_vel = 0.0; }
-
+        self.air_logic(speed);
         if self.coyote_time < 0.1 {
             self.allow_jumping(self.jump_vel);
         }
@@ -253,6 +258,7 @@ impl Player {
             self.prev_on_ladder = true;
         }
         if self.allow_jumping(self.jump_vel) {
+            self.vel.x *= 3.0;
             self.prev_on_ladder = true;
         }
     }
@@ -329,7 +335,6 @@ impl Player {
             }
         }
 
-
         // Update the state
         self.update_state(level, resources);
 
@@ -339,7 +344,6 @@ impl Player {
             rect.contains(self.pos + CENTER)
         };
         // Check if there are any doors/teleporters to enter
-
         for d in level.doors() {
             if !center_in_tile(d.pos()) {
                 continue;

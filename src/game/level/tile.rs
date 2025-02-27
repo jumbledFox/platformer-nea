@@ -26,6 +26,11 @@ pub enum CheckerBlockColor {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
+pub enum BrickColor {
+    Gray, Tan, Blue, Green,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
 pub enum Tile {
     Empty, 
 
@@ -53,6 +58,8 @@ pub enum Tile {
     TallGrass,
     DeadShortGrass,
     DeadTallGrass,
+
+    Bricks(BrickColor),
 }
 
 impl From<Tile> for u8 {
@@ -103,6 +110,10 @@ impl From<Tile> for u8 {
             Tile::TallGrass => 42,
             Tile::DeadShortGrass => 43,
             Tile::DeadTallGrass => 44,
+            Tile::Bricks(BrickColor::Gray)  => 45,
+            Tile::Bricks(BrickColor::Tan)   => 46,
+            Tile::Bricks(BrickColor::Blue)  => 47,
+            Tile::Bricks(BrickColor::Green) => 48,
         }
     }
 }
@@ -156,6 +167,10 @@ impl TryFrom<u8> for Tile {
             42 => Ok(Tile::TallGrass),
             43 => Ok(Tile::DeadShortGrass),
             44 => Ok(Tile::DeadTallGrass),
+            45 => Ok(Tile::Bricks(BrickColor::Gray)),
+            46 => Ok(Tile::Bricks(BrickColor::Tan)),
+            47 => Ok(Tile::Bricks(BrickColor::Blue)),
+            48 => Ok(Tile::Bricks(BrickColor::Green)),
             _ => Err(())
         }
     }
@@ -202,6 +217,11 @@ impl Default for TileDataManager {
         // Checker blocks
         for (i, color) in [CheckerBlockColor::Cyan, CheckerBlockColor::Orange, CheckerBlockColor::Purple].iter().enumerate() {
             data.insert(Tile::CheckerBlock(*color), TileData::new(format!("{:?} Checker Block", color),   Some(TileTexture::fixed((i+4)*16+6, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
+        }
+
+        // Bricks
+        for (y, color) in [(2, BrickColor::Gray), (3, BrickColor::Tan), (11, BrickColor::Blue), (12, BrickColor::Green)] {
+            data.insert(Tile::Bricks(color), TileData::new(format!("{:?} bricks", color), Some(TileTexture::fixed(12+y*16, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
         }
 
         // Switch blocks
