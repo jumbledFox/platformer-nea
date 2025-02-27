@@ -2,10 +2,18 @@
 
 use macroquad::{color::Color, math::{Rect, Vec2}};
 
-use crate::resources::Resources;
+use crate::{game::level::tile::LockColor, resources::Resources};
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum CrateKind {
+    Frog(bool), // false for few, true for many
+    Chip(bool), // ditto
+    Life,
+    Key(LockColor),
+}
 
 pub struct Crate {
-
+    kind: CrateKind,
 }
 
 impl Crate {

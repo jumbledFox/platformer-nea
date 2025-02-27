@@ -2,7 +2,7 @@
 
 use macroquad::{color::{Color, WHITE}, color_u8, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{game::{entity::EntityKind, level::{things::DoorKind, tile::{render_tile, BrickColor, CheckerBlockColor, LockColor, Tile, TileRenderLayer}, TileDrawKind, TileRenderData}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
+use crate::{game::{entity::{crate_entity::CrateKind, EntityKind}, level::{things::DoorKind, tile::{render_tile, BrickColor, CheckerBlockColor, LockColor, Tile, TileRenderLayer}, TileDrawKind, TileRenderData}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
 
 const BG_COL: Color = color_u8!(255, 255, 255, 100);
 
@@ -72,13 +72,13 @@ impl ObjectSelector {
         ];
         let mut entities = vec![
             (EntityKind::Chip, "Chip".to_string()),
-            (EntityKind::ChipCrate(false), "Chip crate".to_string()),
-            (EntityKind::ChipCrate(true), "Large chip crate".to_string()),
+            (EntityKind::Crate(CrateKind::Chip(false)), "Chip crate".to_string()),
+            (EntityKind::Crate(CrateKind::Chip(true)), "Large chip crate".to_string()),
             (EntityKind::Life, "Life".to_string()),
-            (EntityKind::LifeCrate, "Life crate".to_string()),
+            (EntityKind::Crate(CrateKind::Life), "Life crate".to_string()),
             (EntityKind::Frog, "Frog".to_string()),
-            (EntityKind::FrogCrate(false), "Single-frog crate".to_string()),
-            (EntityKind::FrogCrate(true), "Multi-frog crate".to_string()),
+            (EntityKind::Crate(CrateKind::Frog(false)), "Single-frog crate".to_string()),
+            (EntityKind::Crate(CrateKind::Frog(true)), "Multi-frog crate".to_string()),
             (EntityKind::Goat, "Aerosol Kid".to_string()),
         ];
 
@@ -88,7 +88,7 @@ impl ObjectSelector {
             entities.push((EntityKind::Key(*col), format!("{:?} key", col)));
         }
         for col in LockColor::colors().iter() {
-            entities.push((EntityKind::KeyCrate(*col), format!("{:?} key crate", col)));
+            entities.push((EntityKind::Crate(CrateKind::Key(*col)), format!("{:?} key crate", col)));
         }
 
         let others = [
@@ -107,7 +107,6 @@ impl ObjectSelector {
         let mut y = TILES_Y + 12.0;
         for (i, t) in tiles.iter().enumerate() {
             let button = Button::new(Rect::new(x, y, 16.0, 16.0), None, Some(resources.tile_data_manager().data(*t).name().clone()));
-
             x += 20.0;
             if i % wrap == wrap-1 {
                 x = 8.0;

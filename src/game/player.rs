@@ -203,7 +203,7 @@ impl Player {
             self.target_x_vel = 0.0;
         }
 
-        self.allow_jumping(self.jump_vel + self.vel.x.abs() / 5.0);
+        self.allow_jumping(self.jump_vel + self.vel.x.abs() / 4.0);
         self.allow_climbing(level, resources);
     }
 
