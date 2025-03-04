@@ -1,9 +1,11 @@
 use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
 
-use crate::resources::Resources;
+use crate::{game::level::Level, resources::Resources};
+
+use super::Entity;
 
 pub struct Goat {
-
+    index: usize,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -37,5 +39,18 @@ impl Goat {
         // Draw the arm
         let arm_x = if arm == Arm::Down { 30.0 } else { 48.0 };
         resources.draw_rect(pos + offset + vec2(0.0, 6.0) - camera_pos, Rect::new(arm_x, 82.0, 17.0, 20.0), false, color, resources.entity_atlas());
+    }
+}
+
+impl Entity for Goat {
+    fn index(&self) -> usize { self.index }
+    fn update(&mut self, resources: &Resources) {
+        
+    }
+    fn physics_update(&mut self, level: &mut Level, resources: &Resources) {
+        
+    }
+    fn draw(&self, camera_pos: Vec2, resources: &Resources) {
+        
     }
 }

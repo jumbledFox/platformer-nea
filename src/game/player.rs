@@ -4,7 +4,7 @@ use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_
 
 use crate::{resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect}};
 
-use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{things::{Door, DoorKind}, tile::TileCollision, Level}, scene::{fader::Fader, sign_display::SignDisplay, PHYSICS_STEP}};
+use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{things::{Door, DoorKind}, tile::TileCollision, Level}, scene::{fader::Fader, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.0);
@@ -24,9 +24,6 @@ const KEY_UP:    KeyCode = KeyCode::W;
 const KEY_DOWN:  KeyCode = KeyCode::S;
 const KEY_JUMP:  KeyCode = KeyCode::Space;
 const KEY_RUN:   KeyCode = KeyCode::LeftShift;
-
-const MAX_FALL_SPEED: f32 = 2.0;
-const GRAVITY: f32 = 0.045;
 
 // Finite state-machine for movement
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]

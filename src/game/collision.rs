@@ -1,10 +1,8 @@
-use std::f32::EPSILON;
-
 use macroquad::math::Vec2;
 
 use crate::resources::Resources;
 
-use super::{level::{tile::TileCollision, Level}, scene::PHYSICS_STEP};
+use super::level::{tile::TileCollision, Level};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Side {

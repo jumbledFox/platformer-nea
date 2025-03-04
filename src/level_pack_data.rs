@@ -27,7 +27,7 @@ pub struct LevelPackData {
 
 // EditorLevel -> LevelData
 
-type LevelPosition = (u8, u8);
+pub type LevelPosition = (u8, u8);
 
 pub struct LevelData {
     name: String,
@@ -52,7 +52,7 @@ fn pos_to_level_pos(pos: Vec2) -> LevelPosition {
     (tile_pos.x as u8, tile_pos.y as u8)
 }
 
-fn level_pos_to_pos(level_pos: LevelPosition) -> Vec2 {
+pub fn level_pos_to_pos(level_pos: LevelPosition) -> Vec2 {
     vec2(level_pos.0 as f32, level_pos.1 as f32) * 16.0
 }
 
@@ -140,6 +140,7 @@ impl LevelData {
                 .iter()
                 .map(|(t, p, d)| Door::new(*t, level_pos_to_pos(*p), level_pos_to_pos(*d)))
                 .collect(),
+            self.entities.iter().cloned().collect(),
         )
     }
 }

@@ -8,15 +8,14 @@ use sign_display::SignDisplay;
 
 use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::LevelData, resources::Resources, text_renderer::{render_text, Align, Font}, util::draw_rect, VIEW_SIZE};
 
-use super::player::{FeetPowerup, HeadPowerup, Player};
-
-// pub mod collision;
-// pub mod entity;
+use super::{entity::Entity, player::{FeetPowerup, HeadPowerup, Player}};
 
 pub mod fader;
 pub mod sign_display;
 
 pub const PHYSICS_STEP: f32 = 1.0 / 120.0;
+pub const MAX_FALL_SPEED: f32 = 2.0;
+pub const GRAVITY: f32 = 0.045;
 
 pub struct Scene {
     level: Level,
@@ -24,7 +23,7 @@ pub struct Scene {
     chips: usize,
 
     player: Player,
-    // entities: Vec<Box<dyn Entity>>
+    entities: Vec<Box<dyn Entity>>,
 
     fader: Fader,
     sign_display: SignDisplay,
@@ -42,6 +41,7 @@ impl Scene {
             chips: 0,
 
             player: Player::new(player_spawn.unwrap_or(editor_level.spawn())),
+            entities: vec![],
 
             fader: Fader::default(),
             sign_display: SignDisplay::default(),
@@ -50,6 +50,13 @@ impl Scene {
     }
 
     pub fn update(&mut self, deltatime: f32, resources: &mut Resources) {
+        // See if we should add any entities
+        // TEMP!!
+        let camera_pos = ((self.player.pos() - VIEW_SIZE / 2.0).floor()).clamp(Vec2::ZERO, vec2(self.level.width() as f32, self.level.height() as f32) * 16.0 - VIEW_SIZE);
+        let camera_rect = Rect::new(camera_pos.x, camera_pos.y, VIEW_SIZE.x, VIEW_SIZE.y);
+        
+        // for i in self.level.e
+
         self.timer -= deltatime;
         self.fader.update(deltatime);
         self.sign_display.update();
@@ -95,11 +102,17 @@ impl Scene {
         self.player.update_move_dir();
         if freeze { return; }
         self.player.update(&mut self.fader, &mut self.sign_display, &mut self.level, resources);
-        
+        for e in &mut self.entities {
+            e.update(resources);
+        }
+
         // Update all of the physics in a fixed time-step
         self.physics_update_timer += deltatime;
         while self.physics_update_timer >= PHYSICS_STEP {
             self.player.physics_update(&mut self.level, resources);
+            for e in &mut self.entities {
+                e.physics_update(&mut self.level, resources);
+            }
             self.physics_update_timer -= PHYSICS_STEP;
         }
 
@@ -116,6 +129,9 @@ impl Scene {
         self.level.render_bg(camera_pos, resources);
         self.level.render_below(camera_pos, resources);
 
+        for e in &self.entities {
+            e.draw(camera_pos, resources);
+        }
         self.player.draw(camera_pos, resources, debug);
 
 

@@ -1,12 +1,14 @@
 // A bunch of tiles, doors, etc...
 
-use std::f32::consts::PI;
+use std::{collections::HashMap, f32::consts::PI};
 
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, shapes::draw_line};
 use things::{Door, DoorKind, Sign};
 use tile::{render_tile, LockColor, Tile, TileCollision, TileHit, TileHitKind, TileRenderLayer, TileTextureConnection, TileTextureConnectionKind};
 
-use crate::{resources::Resources, text_renderer::{render_text, Align, Font}};
+use crate::{level_pack_data::LevelPosition, resources::Resources, text_renderer::{render_text, Align, Font}};
+
+use super::entity::EntityKind;
 
 pub mod tile;
 pub mod things;
@@ -36,7 +38,8 @@ pub struct Level {
     signs: Vec<Sign>,
     doors: Vec<Door>,
 
-    // entity start points
+    // entity start points, kinds, and if they should be respawned 
+    entity_spawns: HashMap<LevelPosition, EntityKind>,
 
     // Rendering shenanigans
     should_update_render_data: bool,
@@ -60,7 +63,7 @@ pub enum TileDrawKind {
 }
 
 impl Level {
-    pub fn new(bg_col: Color, width: usize, height: usize, tiles: Vec<Tile>, tiles_bg: Vec<Tile>, spawn: Vec2, finish: Vec2, checkpoints: Vec<Vec2>, signs: Vec<Sign>, doors: Vec<Door>) -> Self {
+    pub fn new(bg_col: Color, width: usize, height: usize, tiles: Vec<Tile>, tiles_bg: Vec<Tile>, spawn: Vec2, finish: Vec2, checkpoints: Vec<Vec2>, signs: Vec<Sign>, doors: Vec<Door>, entity_spawns: HashMap<LevelPosition, EntityKind>) -> Self {
         Self {
             bg_col,
             width, height,
@@ -69,6 +72,7 @@ impl Level {
             checkpoints, signs, doors,
             bumped_tiles: vec![],
             checkpoint: None,
+            entity_spawns,
             should_update_render_data: true,
             tiles_below:      Vec::with_capacity(width*height),
             tiles_above:      Vec::with_capacity(width*height),
