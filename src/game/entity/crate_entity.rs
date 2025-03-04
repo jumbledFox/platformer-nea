@@ -2,7 +2,7 @@
 
 use macroquad::{color::{Color, WHITE}, input::is_key_pressed, math::{vec2, Rect, Vec2}};
 
-use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{tile::LockColor, Level}, scene::{GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{tile::LockColor, Level}, scene::{GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
 
 use super::Entity;
 
@@ -26,12 +26,12 @@ pub struct Crate {
     pos: Vec2,
     vel: Vec2,
     kind: CrateKind,
-    index: usize,
+    spawn_pos: LevelPosition,
 }
 
 impl Crate {
-    pub fn new(pos: Vec2, kind: CrateKind, index: usize) -> Self {
-        Self { kind, pos, vel: Vec2::ZERO, index }
+    pub fn new(pos: Vec2, kind: CrateKind, spawn_pos: LevelPosition) -> Self {
+        Self { kind, pos, vel: Vec2::ZERO, spawn_pos }
     }
 
     pub fn draw(pos: Vec2, camera_pos: Vec2, color: Color, resources: &Resources) {
@@ -44,8 +44,9 @@ impl Crate {
 }
 
 impl Entity for Crate {
-    fn index(&self) -> usize { self.index }
-    fn update(&mut self, resources: &Resources) {
+    fn spawn_pos(&self) -> LevelPosition { self.spawn_pos }
+
+    fn update(&mut self, _resources: &Resources) {
         if is_key_pressed(macroquad::input::KeyCode::G) {
             self.vel = vec2(1.0, -2.0);
         }

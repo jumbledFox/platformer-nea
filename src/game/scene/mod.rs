@@ -1,15 +1,17 @@
 // The current level being played along with the stuff it needs
 // e.g. level, player, enemies, timer, etc
 
+use camera::Camera;
 use fader::Fader;
 // use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
 use macroquad::{color::{Color, GREEN, ORANGE, RED, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}};
 use sign_display::SignDisplay;
 
-use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::LevelData, resources::Resources, text_renderer::{render_text, Align, Font}, util::draw_rect, VIEW_SIZE};
+use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::draw_rect, VIEW_SIZE};
 
-use super::{entity::Entity, player::{FeetPowerup, HeadPowerup, Player}};
+use super::{entity::{crate_entity::Crate, Entity, EntityKind}, player::{FeetPowerup, HeadPowerup, Player}};
 
+pub mod camera;
 pub mod fader;
 pub mod sign_display;
 
@@ -22,6 +24,7 @@ pub struct Scene {
     timer: f32,
     chips: usize,
 
+    camera: Camera,
     player: Player,
     entities: Vec<Box<dyn Entity>>,
 
@@ -35,12 +38,15 @@ impl Scene {
         let level = LevelData::from_editor_level(editor_level)
             .to_level();
 
+        let player_spawn = player_spawn.unwrap_or(editor_level.spawn());
+
         Scene {
             level,
             timer: 0.0,
             chips: 0,
 
-            player: Player::new(player_spawn.unwrap_or(editor_level.spawn())),
+            camera: Camera::new(player_spawn),
+            player: Player::new(player_spawn),
             entities: vec![],
 
             fader: Fader::default(),
@@ -51,11 +57,22 @@ impl Scene {
 
     pub fn update(&mut self, deltatime: f32, resources: &mut Resources) {
         // See if we should add any entities
-        // TEMP!!
-        let camera_pos = ((self.player.pos() - VIEW_SIZE / 2.0).floor()).clamp(Vec2::ZERO, vec2(self.level.width() as f32, self.level.height() as f32) * 16.0 - VIEW_SIZE);
-        let camera_rect = Rect::new(camera_pos.x, camera_pos.y, VIEW_SIZE.x, VIEW_SIZE.y);
-        
-        // for i in self.level.e
+        if self.camera.should_update_entities() {
+            for (&spawn_pos, &k) in self.level.entity_spawns().iter() {
+                // If the spawn pos isn't in the camera's rect, or it exists, don't spawn it!
+                if !self.camera.entity_in_rect(spawn_pos)
+                || self.entities.iter().any(|e| e.spawn_pos() == spawn_pos) {
+                    continue;
+                }
+                // Otherwise... do spawn it!
+                let pos = level_pos_to_pos(spawn_pos);
+                let entity = match k {
+                    EntityKind::Crate(kind) => Box::new(Crate::new(pos, kind, spawn_pos)),
+                    _ => Box::new(Crate::new(pos, super::entity::crate_entity::CrateKind::Life, spawn_pos))
+                };
+                self.entities.push(entity);
+            }
+        }
 
         self.timer -= deltatime;
         self.fader.update(deltatime);
@@ -116,14 +133,14 @@ impl Scene {
             self.physics_update_timer -= PHYSICS_STEP;
         }
 
+        self.camera.update(self.player.pos());
+
         self.level.update_bumped_tiles(deltatime);
         self.level.update_if_should(resources);
     }
 
     pub fn draw(&self, lives: usize, resources: &Resources, debug: bool) {
-        // Temporary
-        let camera_pos = Vec2::ZERO;
-        let camera_pos = ((self.player.pos() - VIEW_SIZE / 2.0).floor()).clamp(Vec2::ZERO, vec2(self.level.width() as f32, self.level.height() as f32) * 16.0 - VIEW_SIZE);
+        let camera_pos = self.camera.pos();
 
         draw_rect(Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y), self.level.bg_col());
         self.level.render_bg(camera_pos, resources);

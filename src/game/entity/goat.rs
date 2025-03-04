@@ -1,11 +1,11 @@
 use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
 
-use crate::{game::level::Level, resources::Resources};
+use crate::{game::level::Level, level_pack_data::LevelPosition, resources::Resources};
 
 use super::Entity;
 
 pub struct Goat {
-    index: usize,
+    spawn_pos: LevelPosition,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -43,7 +43,7 @@ impl Goat {
 }
 
 impl Entity for Goat {
-    fn index(&self) -> usize { self.index }
+    fn spawn_pos(&self) -> LevelPosition { self.spawn_pos }
     fn update(&mut self, resources: &Resources) {
         
     }

@@ -5,7 +5,7 @@ use goat::Goat;
 use key::Key;
 use macroquad::{color::{Color, BLUE, WHITE}, math::{vec2, Rect, Vec2}};
 
-use crate::{resources::Resources, util::{draw_rect, draw_rect_lines}};
+use crate::{level_pack_data::LevelPosition, resources::Resources, util::{draw_rect, draw_rect_lines}};
 
 use super::level::{tile::LockColor, Level};
 
@@ -16,8 +16,8 @@ pub mod frog;
 pub mod goat;
 
 pub trait Entity {
-    // The entities index in the spawn list
-    fn index(&self) -> usize;
+    // The entities spawn position - used to identify and remove from the spawn list
+    fn spawn_pos(&self) -> LevelPosition;
     fn update(&mut self, resources: &Resources);
     fn physics_update(&mut self, level: &mut Level, resources: &Resources);
     fn draw(&self, camera_pos: Vec2, resources: &Resources);
@@ -113,8 +113,8 @@ impl EntityKind {
                     },
                     CrateKind::Chip(false) => Chip::draw_editor(false, center, camera_pos, color, resources),
                     CrateKind::Chip(true) => { 
-                        Chip::draw_editor(false, center - vec2(0.0, 1.0), camera_pos, color, resources);
-                        Chip::draw_editor(false, center + vec2(0.0, 1.0), camera_pos, color, resources);
+                        Chip::draw_editor(false, center - vec2(1.0, 1.0), camera_pos, color, resources);
+                        Chip::draw_editor(false, center + vec2(1.0, 1.0), camera_pos, color, resources);
                     },
                     CrateKind::Life => Chip::draw_editor(true, center, camera_pos, color, resources),
                     CrateKind::Key(key_color) => Key::draw_editor(*key_color, center, camera_pos, color, resources),

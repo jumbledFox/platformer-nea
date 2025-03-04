@@ -45,7 +45,7 @@ pub struct LevelData {
     entities: Vec<(LevelPosition, EntityKind)>
 }
 
-fn pos_to_level_pos(pos: Vec2) -> LevelPosition {
+pub fn pos_to_level_pos(pos: Vec2) -> LevelPosition {
     let tile_pos = (pos / 16.0)
         .floor()
         .clamp(Vec2::splat(0.0), Vec2::splat(255.0));

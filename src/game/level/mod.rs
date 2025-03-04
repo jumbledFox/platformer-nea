@@ -101,6 +101,12 @@ impl Level {
     pub fn set_checkpoint(&mut self, index: usize) {
         self.checkpoint = Some(index);
     }
+    pub fn entity_spawns(&self) -> &HashMap<LevelPosition, EntityKind> {
+        &self.entity_spawns
+    }
+    pub fn remove_entity_spawn(&mut self, pos: LevelPosition) {
+        self.entity_spawns.remove(&pos);
+    }
 
     // Switch blocks - sets the state of all switch tiles in the level and the background
     fn set_switch_state(&mut self, enabled: bool) {
