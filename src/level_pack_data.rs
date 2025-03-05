@@ -56,7 +56,6 @@ pub fn level_pos_to_pos(level_pos: LevelPosition) -> Vec2 {
     vec2(level_pos.0 as f32, level_pos.1 as f32) * 16.0
 }
 
-
 impl LevelData {
     // Turning an editor level into LevelData
     pub fn from_editor_level(editor_level: &EditorLevel) -> Self {

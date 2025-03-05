@@ -1,11 +1,11 @@
 use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
 
-use crate::{game::level::Level, level_pack_data::LevelPosition, resources::Resources};
+use crate::{game::{level::Level, scene::particles::Particles}, level_pack_data::LevelPosition, resources::Resources};
 
 use super::Entity;
 
 pub struct Goat {
-    spawn_pos: LevelPosition,
+    spawn_pos: Option<LevelPosition>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -43,11 +43,18 @@ impl Goat {
 }
 
 impl Entity for Goat {
-    fn spawn_pos(&self) -> LevelPosition { self.spawn_pos }
-    fn update(&mut self, resources: &Resources) {
+    fn spawn_pos(&self) -> Option<LevelPosition> { self.spawn_pos }
+    fn hitbox(&self) -> Rect { Self::hitbox() }
+    fn set_pos(&mut self, _pos: Vec2) { }
+    fn set_vel(&mut self, _vel: Vec2) { }
+    fn should_destroy(&self) -> bool {
+        false
+    }
+
+    fn update(&mut self, _resources: &Resources) {
         
     }
-    fn physics_update(&mut self, level: &mut Level, resources: &Resources) {
+    fn physics_update(&mut self, _new_entities: &mut Vec<Box<dyn Entity>>, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
         
     }
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {

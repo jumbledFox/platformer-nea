@@ -23,7 +23,11 @@ impl Camera {
     }
 
     pub fn entity_in_rect(&self, pos: LevelPosition) -> bool {
-        todo!()
+        let left  = self.center_tile.0.saturating_sub(12);
+        let right = self.center_tile.0.saturating_add(11);
+        let top   = self.center_tile.1.saturating_sub(12);
+        let bot   = self.center_tile.1.saturating_add(11);
+        pos.0 >= left && pos.0 <= right && pos.1 >= top && pos.1 <= bot
     }
 
     // 'Takes' the boolean

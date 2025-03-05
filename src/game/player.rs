@@ -2,9 +2,9 @@ use std::cmp::Ordering;
 
 use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, shapes::draw_circle};
 
-use crate::{resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect}};
+use crate::{level_pack_data::LevelPosition, resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect}};
 
-use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{things::{Door, DoorKind}, tile::TileCollision, Level}, scene::{fader::Fader, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
+use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::Entity, level::{things::{Door, DoorKind}, tile::TileCollision, Level}, scene::{fader::Fader, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.0);
@@ -15,6 +15,7 @@ const SIDE_RB: Vec2 = vec2(12.0, 13.0);
 const FOOT_L:  Vec2 = vec2( 5.0, 16.0);
 const FOOT_R:  Vec2 = vec2(10.0, 16.0);
 
+const HOLD_CHECK: Vec2 = vec2(8.0, -15.0);
 const CENTER: Vec2 = vec2(8.0, 8.0);
 
 // Control
@@ -24,6 +25,7 @@ const KEY_UP:    KeyCode = KeyCode::W;
 const KEY_DOWN:  KeyCode = KeyCode::S;
 const KEY_JUMP:  KeyCode = KeyCode::Space;
 const KEY_RUN:   KeyCode = KeyCode::LeftShift;
+const KEY_GRAB:  KeyCode = KeyCode::LeftShift;
 
 // Finite state-machine for movement
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
@@ -73,6 +75,7 @@ pub struct Player {
     move_dir: Option<Dir>,
     head_powerup: Option<HeadPowerup>,
     feet_powerup: Option<FeetPowerup>,
+    holding: Option<Box<dyn Entity>>,
     
     target_x_vel: f32,
     target_approach: f32,
@@ -80,6 +83,7 @@ pub struct Player {
     run_time: f32,
     coyote_time: f32,
     step_anim: f32,
+    stepping: bool,
 
     prev_in_teleporter: bool,
     prev_on_ladder: bool,
@@ -96,6 +100,36 @@ pub struct Player {
 }
 
 impl Player {
+    pub fn new(pos: Vec2) -> Self {
+        Self {
+            state: State::Standing,
+            pos,
+            vel: Vec2::ZERO,
+            dir: Dir::Right,
+            move_dir: None,
+            head_powerup: None,
+            feet_powerup: None,
+            holding: None,
+            target_x_vel: 0.0,
+            target_approach: 0.0,
+            turned_mid_air: false,
+            run_time: 0.0,
+            coyote_time: 0.0,
+            step_anim: 0.0,
+            stepping: false,
+            prev_in_teleporter: false,
+            prev_on_ladder: false,
+            nudging_l: false,
+            nudging_r: false,
+
+            walk_speed: 0.6,
+            run_speed_beg: 0.7,
+            run_speed_end: 0.9,
+            run_time_max: 1.5,
+            jump_vel: 1.8,
+        }
+    }
+
     pub fn state(&self) -> State {
         self.state
     }
@@ -111,37 +145,12 @@ impl Player {
     pub fn feet_powerup(&self) -> Option<FeetPowerup> {
         self.feet_powerup
     }
+    pub fn holding_spawn_pos(&self) -> Option<LevelPosition> {
+        self.holding.as_ref().map(|e| e.spawn_pos()).flatten()
+    }
 
     pub fn set_pos(&mut self, pos: Vec2) {
         self.pos = pos;
-    }
-
-    pub fn new(pos: Vec2) -> Self {
-        Self {
-            state: State::Standing,
-            pos,
-            vel: Vec2::ZERO,
-            dir: Dir::Right,
-            move_dir: None,
-            head_powerup: None,
-            feet_powerup: None,
-            target_x_vel: 0.0,
-            target_approach: 0.0,
-            turned_mid_air: false,
-            run_time: 0.0,
-            coyote_time: 0.0,
-            step_anim: 0.0,
-            prev_in_teleporter: false,
-            prev_on_ladder: false,
-            nudging_l: false,
-            nudging_r: false,
-
-            walk_speed: 0.6,
-            run_speed_beg: 0.7,
-            run_speed_end: 0.9,
-            run_time_max: 1.5,
-            jump_vel: 1.8,
-        }
     }
 
     // Changing the state
@@ -279,7 +288,7 @@ impl Player {
         matches!(resources.tile_data_manager().data(center_tile).collision(), TileCollision::Ladder)
     }
     fn allow_climbing(&mut self, level: &Level, resources: &Resources) {
-        if self.center_on_ladder(level, resources) && (is_key_pressed(KEY_UP) || (!self.prev_on_ladder && is_key_down(KEY_UP))) {
+        if self.center_on_ladder(level, resources) && (is_key_pressed(KEY_UP) || (!self.prev_on_ladder && is_key_down(KEY_UP))) && self.holding.is_none() {
             self.change_state(State::Climbing);
         }
     }
@@ -313,7 +322,7 @@ impl Player {
         }
     }
 
-    pub fn update(&mut self, fader: &mut Fader, sign_display: &mut SignDisplay, level: &mut Level, resources: &Resources) {
+    pub fn update(&mut self, entities: &mut Vec<Box<dyn Entity>>, fader: &mut Fader, sign_display: &mut SignDisplay, level: &mut Level, resources: &Resources) {
         if self.prev_on_ladder && !self.center_on_ladder(level, resources) {
             self.prev_on_ladder = false;
         }
@@ -334,6 +343,34 @@ impl Player {
 
         // Update the state
         self.update_state(level, resources);
+
+        // Grabbing entities
+        // TODO: Stop double grabbing!
+        if is_key_pressed(KEY_GRAB) && self.holding.is_none() && self.state != State::Climbing {
+            let grab_hitbox = Rect::new(self.pos.x+3.0, self.pos.y-6.0, 16.0-6.0, 16.0+6.0);
+            if let Some(index) = entities.iter().filter(|e| e.hold_offset().is_some()).position(|e| e.hitbox().overlaps(&grab_hitbox)) {
+                self.holding = Some(entities.remove(index));
+            }
+        }
+        // Throwing the grabbed entity
+        let can_throw = !is_key_down(KEY_GRAB)
+        && !fader.fading()
+        && !resources.tile_data_manager().data(level.tile_at_pos(self.pos + HOLD_CHECK)).collision().is_solid();
+        if can_throw {
+            if let Some(mut entity) = self.holding.take() {
+                let mut throw_vel = match (is_key_down(KEY_UP), is_key_down(KEY_DOWN)) {
+                    (true, _)  => vec2(self.vel.x.abs().clamp(0.0, 0.7), -2.4), // Holding up and not moving
+                    (_, true)  => vec2(0.0, 0.0), // Gently putting down
+                    _ => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.6, (-self.vel.x.abs() / 4.0).clamp(0.0, 0.4) - 0.7),
+                };
+                if self.dir == Dir::Left {
+                    throw_vel.x *= -1.0;
+                }
+                throw_vel.y = (throw_vel.y + self.vel.y).clamp(-2.4, 0.0);
+                entity.throw(throw_vel);
+                entities.push(entity);
+            }
+        }
 
         let mut new_pos = None;
         let center_in_tile = |pos: Vec2| -> bool {
@@ -468,6 +505,14 @@ impl Player {
                 }
             }
         }
+
+        // If the player is stepping
+        self.stepping = self.step_anim > 0.5 && (self.state == State::Moving || self.state == State::Climbing);
+        // Updating the grabbed entity
+        if let Some(entity) = &mut self.holding {
+            let offset = vec2(0.0, 16.0 + if self.stepping { 1.0 } else { 0.0 });
+            entity.set_pos(self.pos - offset + entity.hold_offset().unwrap_or_default());
+        }
     }
 
     pub fn part_rect(part: PlayerPart) -> Rect {
@@ -499,7 +544,7 @@ impl Player {
     }
 
     pub fn draw(&self, camera_pos: Vec2, resources: &Resources, debug: bool) {
-        let holding = is_key_down(KeyCode::Key1);
+        let holding = self.holding.is_some();
         let ladder = self.state == State::Climbing;
 
         let (front_arm, back_arm) = match (self.state, holding, ladder) {
@@ -511,12 +556,8 @@ impl Player {
             _ => (Some(PlayerArmKind::Normal), None),
         };
 
-        // If the player is stepping
-        let feet_step = self.step_anim > 0.5
-        && (self.state == State::Moving || self.state == State::Climbing);
-
         // Whether or not the 'run' sprite should be shown for the feet
-        let run = feet_step
+        let run = self.stepping
         || self.state == State::Falling
         || self.state == State::Jumping;
 
@@ -527,11 +568,11 @@ impl Player {
             Some(_) => 10.0,
         };
         // The player sprite should be moved up by one if they're stepping
-        let y_offset = match feet_step && !ladder {
+        let y_offset = match self.stepping && !ladder {
             false => y_offset,
             true  => y_offset + 1.0,
         };
-        let flip_x = (!ladder && self.dir == Dir::Left) || (ladder && feet_step);
+        let flip_x = (!ladder && self.dir == Dir::Left) || (self.stepping && ladder);
         let draw_player_part = |part: PlayerPart| {
             let y = match part {
                 PlayerPart::Head { .. } => 0.0,
@@ -548,6 +589,9 @@ impl Player {
         }
         draw_player_part(PlayerPart::Body { ladder });
         draw_player_part(PlayerPart::Head { powerup: self.head_powerup, ladder });
+        if let Some(entity) = &self.holding {
+            entity.draw(camera_pos, resources);
+        }
         draw_player_part(PlayerPart::Feet { powerup: self.feet_powerup, run, ladder });
         if let Some(front_arm) = front_arm {
             draw_player_part(PlayerPart::Arm { kind: front_arm });

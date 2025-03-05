@@ -5,13 +5,15 @@ use camera::Camera;
 use fader::Fader;
 // use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
 use macroquad::{color::{Color, GREEN, ORANGE, RED, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}};
+use particles::Particles;
 use sign_display::SignDisplay;
 
 use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::draw_rect, VIEW_SIZE};
 
-use super::{entity::{crate_entity::Crate, Entity, EntityKind}, player::{FeetPowerup, HeadPowerup, Player}};
+use super::{entity::{crate_entity::Crate, key::Key, Entity, EntityKind}, player::{FeetPowerup, HeadPowerup, Player}};
 
 pub mod camera;
+pub mod particles;
 pub mod fader;
 pub mod sign_display;
 
@@ -27,6 +29,8 @@ pub struct Scene {
     camera: Camera,
     player: Player,
     entities: Vec<Box<dyn Entity>>,
+    new_entities: Vec<Box<dyn Entity>>,
+    particles: Particles,
 
     fader: Fader,
     sign_display: SignDisplay,
@@ -47,7 +51,9 @@ impl Scene {
 
             camera: Camera::new(player_spawn),
             player: Player::new(player_spawn),
-            entities: vec![],
+            entities:     Vec::with_capacity(64),
+            new_entities: Vec::with_capacity(16),
+            particles: Particles::default(),
 
             fader: Fader::default(),
             sign_display: SignDisplay::default(),
@@ -59,16 +65,19 @@ impl Scene {
         // See if we should add any entities
         if self.camera.should_update_entities() {
             for (&spawn_pos, &k) in self.level.entity_spawns().iter() {
-                // If the spawn pos isn't in the camera's rect, or it exists, don't spawn it!
+                // If the spawn pos isn't in the camera's rect, or it exists, or it's being carried, don't spawn it!
                 if !self.camera.entity_in_rect(spawn_pos)
-                || self.entities.iter().any(|e| e.spawn_pos() == spawn_pos) {
+                || self.entities.iter().any(|e| e.spawn_pos() == Some(spawn_pos))
+                || self.player.holding_spawn_pos() == Some(spawn_pos) {
                     continue;
                 }
-                // Otherwise... do spawn it!
+                // Otherwise... spawn it!
                 let pos = level_pos_to_pos(spawn_pos);
-                let entity = match k {
-                    EntityKind::Crate(kind) => Box::new(Crate::new(pos, kind, spawn_pos)),
-                    _ => Box::new(Crate::new(pos, super::entity::crate_entity::CrateKind::Life, spawn_pos))
+                let spawn_pos = Some(spawn_pos);
+                let entity: Box<dyn Entity> = match k {
+                    EntityKind::Crate(kind) => Box::new(Crate::new(pos, spawn_pos, kind)),
+                    EntityKind::Key(color) => Box::new(Key::new(pos, spawn_pos, color)),
+                    _ => Box::new(Key::new(pos, spawn_pos, LockColor::Rainbow)),
                 };
                 self.entities.push(entity);
             }
@@ -118,7 +127,8 @@ impl Scene {
 
         self.player.update_move_dir();
         if freeze { return; }
-        self.player.update(&mut self.fader, &mut self.sign_display, &mut self.level, resources);
+        self.player.update(&mut self.entities, &mut self.fader, &mut self.sign_display, &mut self.level, resources);
+
         for e in &mut self.entities {
             e.update(resources);
         }
@@ -126,10 +136,27 @@ impl Scene {
         // Update all of the physics in a fixed time-step
         self.physics_update_timer += deltatime;
         while self.physics_update_timer >= PHYSICS_STEP {
+            self.particles.update(&self.camera);
+
             self.player.physics_update(&mut self.level, resources);
-            for e in &mut self.entities {
-                e.physics_update(&mut self.level, resources);
+
+            let mut i = 0;
+            while let Some(e) = self.entities.get_mut(i) {
+                e.physics_update(&mut self.new_entities, &mut self.particles, &mut self.level, resources);
+                self.entities.append(&mut self.new_entities);
+                i += 1;
             }
+            
+            for i in (0..self.entities.len()).rev() {
+                if self.entities[i].should_destroy() {
+                    if let Some(spawn_pos) = self.entities[i].spawn_pos() {
+                        self.level.remove_entity_spawn(spawn_pos);
+                    }
+                    self.entities.remove(i);
+                }
+
+            }
+
             self.physics_update_timer -= PHYSICS_STEP;
         }
 
@@ -150,6 +177,7 @@ impl Scene {
             e.draw(camera_pos, resources);
         }
         self.player.draw(camera_pos, resources, debug);
+        self.particles.draw(camera_pos, resources);
 
 
         // Draw the entities in reverse so the player is always on top
