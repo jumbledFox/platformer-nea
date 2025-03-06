@@ -1,6 +1,6 @@
 use macroquad::math::Vec2;
 
-use crate::{game::entity::{crate_entity::Crate, key::Key, Entity, EntityKind, Id}, level_pack_data::LevelPosition};
+use crate::{game::entity::{crate_entity::Crate, frog::Frog, key::Key, Entity, EntityKind, Id}, level_pack_data::LevelPosition};
 
 struct EntityToSpawn {
     pos: Vec2,
@@ -38,10 +38,10 @@ impl EntitySpawner {
                 self.id += 1;
             }
 
-            // TODO: Stop double grab, etc...
             let entity: Box<dyn Entity> = match e.kind {
-                EntityKind::Key(color) => Box::new(Key::new(color, e.pos, e.vel, id)),
+                EntityKind::Key(color)  => Box::new(Key::new(color, e.pos, e.vel, id)),
                 EntityKind::Crate(kind) => Box::new(Crate::new(kind, e.pos, e.vel, id)),
+                EntityKind::Frog => Box::new(Frog::new(e.pos, e.vel, id)),
                 _ => Box::new(Key::new(crate::game::level::tile::LockColor::Rainbow, e.pos, e.vel, id)),
             };
             entities.push(entity);

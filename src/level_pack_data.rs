@@ -422,7 +422,7 @@ impl LevelPackData {
             if let Some(p) = level_data {
                 levels.push(p);
             } else {
-                println!("wtf?!?! {:?}", &bytes[cursor..]);
+                println!("wtf?!?! {:02X?}", &bytes[cursor..]);
                 break;
             }
         }

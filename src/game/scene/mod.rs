@@ -75,7 +75,7 @@ impl Scene {
                     continue;
                 }
                 // Otherwise... spawn it!
-                self.entity_spawner.add_entity(level_pos_to_pos(spawn_pos), Vec2::ZERO, k, Some(spawn_pos));
+                self.entity_spawner.add_entity(level_pos_to_pos(spawn_pos) + k.tile_offset(), Vec2::ZERO, k, Some(spawn_pos));
             }
             // Spawn all of them
             self.entity_spawner.spawn_entities(&mut self.entities);

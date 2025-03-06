@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}};
 
-use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{tile::{LockColor, RAINBOW_LOCK_FRAME_DUR}, Level}, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
+use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top, default_collision}, level::{tile::{LockColor, TileHitKind, RAINBOW_LOCK_FRAME_DUR}, Level}, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
 
 use super::{Entity, Id};
 
@@ -27,7 +27,7 @@ impl Key {
         Rect::new(0.0, 0.0, 16.0, 14.0)
     }
     pub fn tile_offset() -> Vec2 {
-        vec2(0.0, 1.0)
+        vec2(0.0, 2.0)
     }
 
     pub fn draw_editor(key_color: LockColor, pos: Vec2, camera_pos: Vec2, color: Color, resources: &Resources) {
@@ -63,29 +63,12 @@ impl Entity for Key {
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
 
-        let moving_up = self.vel.y < 0.0;
-        // Top/bottom
-        if moving_up {
-            // Top
-            if collision_top(&mut self.pos, TOP, level, resources) {
-                self.vel.y = 0.0;
-            }
-        } else {
-            // Bottom
-            if collision_bottom(&mut self.pos, BOT_L, level, resources)
-            || collision_bottom(&mut self.pos, BOT_R, level, resources) {
-                self.vel.y = 0.0;
-                self.vel.x = 0.0;
-            }
-        }
-        // Sides
-        let sl = collision_left(&mut self.pos, SIDE_LT, true, level, resources)
-        ||       collision_left(&mut self.pos, SIDE_LB, true, level, resources);
-        let sr = collision_right(&mut self.pos, SIDE_RT, true, level, resources)
-        ||       collision_right(&mut self.pos, SIDE_RB, true, level, resources);
-        if sl && self.vel.x < 0.0 || sr && self.vel.x > 0.0 {
-            self.vel.x = 0.0;
-        }
+        let mut tops   = [(TOP, false)];
+        let mut bots   = [(BOT_L, false), (BOT_R, false)];
+        let mut lefts  = [(SIDE_LT, true, false), (SIDE_LB, true, false)];
+        let mut rights = [(SIDE_RT, true, false), (SIDE_RB, true, false)];
+        let (_, b, ..) = default_collision(&mut self.pos, &mut self.vel, Some(TileHitKind::Soft), &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
+        if b { self.vel.x = 0.0; }
     }
 
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {

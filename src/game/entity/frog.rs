@@ -1,15 +1,22 @@
-use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
+use std::ops::Rem;
 
-use crate::{game::scene::{entity_spawner::EntitySpawner, GRAVITY, MAX_FALL_SPEED}, level_pack_data::LevelPosition, resources::Resources};
+use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range, shapes::draw_circle};
+
+use crate::{game::{collision::default_collision, level::Level, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
 
 use super::{Entity, Id};
 
-const SHAKE_TIME: f32 = 1.0;
+const TOP:   Vec2 = vec2( 9.0,  1.0);
+const BOT_L: Vec2 = vec2( 5.0, 18.0);
+const BOT_R: Vec2 = vec2(13.0, 18.0);
+const LEFT:  Vec2 = vec2( 3.0,  8.0);
+const RIGHT: Vec2 = vec2(15.0,  8.0);
+
+const SHAKE_TIME: f32 = 0.5;
 
 enum State {
     Waiting(f32), // Time left
-    Jumping,
-    Falling,
+    Air,
     Dead,
 }
 
@@ -21,20 +28,20 @@ pub struct Frog {
 }
 
 impl Frog {
-    pub fn new(id: Id, pos: Vec2) -> Self {
+    pub fn new(pos: Vec2, vel: Vec2, id: Id) -> Self {
         Self {
             id,
             pos,
-            vel: Vec2::ZERO,
-            state: State::Waiting(gen_range(0.5, 1.5)),
+            vel,
+            state: State::Air,
         }
     }
 
     pub fn hitbox() -> Rect {
-        Rect::new(4.0, 7.0, 11.0, 8.0)
+        Rect::new(4.0, 8.0, 11.0, 8.0)
     }
     pub fn tile_offset() -> Vec2 {
-        vec2(-1.0, -1.0)
+        vec2(-1.0, -2.0)
     }
     
     pub fn draw_editor(pos: Vec2, camera_pos: Vec2, color: Color, resources: &Resources) {
@@ -50,15 +57,16 @@ impl Frog {
             State::Waiting(t) if *t > SHAKE_TIME => (0.0, 0.0),
             // Down and shaking
             // TODO: Make shake work
-            State::Waiting(t) => (19.0, *t),
+            State::Waiting(t) => { 
+                (19.0, [1.0, -1.0][(t % 0.1 > 0.05) as usize])
+            },
             // Leaping
-            State::Jumping |
-            State::Falling => (38.0, 0.0),
+            State::Air => (38.0, 0.0),
             // DEAD!!
             State::Dead    => (57.0, 0.0)
         };
 
-        let rect = Rect::new(0.0 + x, 64.0, 19.0, 17.0);
+        let rect = Rect::new(0.0 + x, 63.0, 19.0, 18.0);
         resources.draw_rect(pos + vec2(x_offset, 0.0) - camera_pos, rect, false, color, resources.entity_atlas());
     }
 }
@@ -83,11 +91,41 @@ impl Entity for Frog {
     fn update(&mut self, resources: &Resources) {
 
     }
-    fn physics_update(&mut self, _entity_spawner: &mut EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, resources: &Resources) {
-        self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
+
+    fn physics_update(&mut self, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
+        match &mut self.state {
+            State::Waiting(t) => {
+                *t -= 1.0 / 120.0;
+                if *t <= 0.0 {
+                    self.state = State::Air;
+                    self.vel.y = -1.6;
+                }
+            },
+            _ => {}
+        }
+
+        self.vel.y = (self.vel.y + GRAVITY * 0.5).min(MAX_FALL_SPEED);
         self.pos += self.vel; // my code is awesome #selflove love frome jo
+
+        let mut tops   = [(TOP, false)];
+        let mut bots   = [(BOT_L, false), (BOT_R, false)];
+        let mut lefts  = [(LEFT, true, false)];
+        let mut rights = [(RIGHT, true, false)];
+        let (_, b, _, _, _) = default_collision(&mut self.pos, &mut self.vel, None, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
+        if b {
+            self.vel.x = 0.0;
+            if !matches!(self.state, State::Waiting(_)) {
+                self.state = State::Waiting(gen_range(1.2, 1.9));
+            }
+        } else {
+            self.state = State::Air;
+        }
     }
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {
         Self::draw(&self.state, self.pos, camera_pos, WHITE, resources);
+
+        // for i in [TOP, BOT_L, BOT_R, LEFT, RIGHT] {
+        //     draw_circle(self.pos.x + i.x - camera_pos.x, self.pos.y + i.y - camera_pos.y, 1.0, WHITE);
+        // }
     }
 }

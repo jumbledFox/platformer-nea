@@ -39,7 +39,7 @@ pub trait Entity {
 pub enum EntityKind {
     Crate(CrateKind),
     Key(LockColor),
-    Chip,
+    Chip(bool),
     Life,
     Frog,
     Goat,
@@ -51,7 +51,7 @@ impl EntityKind {
         match self {
             Self::Crate(_) => Crate::hitbox(),
             Self::Key(_) => Key::hitbox(),
-            Self::Chip | Self::Life => Chip::hitbox(),
+            Self::Chip(_) | Self::Life => Chip::hitbox(),
             Self::Frog => Frog::hitbox(),
             Self::Goat => Goat::hitbox(),
         }
@@ -62,7 +62,7 @@ impl EntityKind {
             // Crates have no offset
             Self::Crate(_)=> Vec2::ZERO,
             Self::Key(_) => Key::tile_offset(),
-            Self::Chip | Self::Life => Chip::tile_offset(),
+            Self::Chip(_) | Self::Life => Chip::tile_offset(),
             Self::Frog => Frog::tile_offset(),
             Self::Goat => Goat::tile_offset(),
         }
@@ -74,7 +74,7 @@ impl EntityKind {
             Self::Crate(_) => Vec2::ZERO,
             // Most things don't...
             Self::Key(_) |
-            Self::Chip | Self::Life => Vec2::ZERO,
+            Self::Chip(_) | Self::Life => Vec2::ZERO,
             
             Self::Frog => Frog::object_selector_rect().point(),
             Self::Goat => Goat::object_selector_rect().point(),
@@ -85,7 +85,7 @@ impl EntityKind {
         match self {
             Self::Crate(_) => Crate::hitbox().size(),
             Self::Key(_) => Key::hitbox().size(),
-            Self::Chip | Self::Life => Chip::object_selector_size(),
+            Self::Chip(_) | Self::Life => Chip::object_selector_size(),
             Self::Frog => Frog::object_selector_rect().size(),
             Self::Goat => Goat::object_selector_rect().size(),
         }
@@ -132,7 +132,7 @@ impl EntityKind {
                 }
             }
             EntityKind::Key(c) => Key::draw_editor(*c, pos, camera_pos, color, resources),
-            EntityKind::Chip => Chip::draw_editor(false, pos, camera_pos, color, resources),
+            EntityKind::Chip(_) => Chip::draw_editor(false, pos, camera_pos, color, resources),
             EntityKind::Life => Chip::draw_editor(true, pos, camera_pos, color, resources),
             EntityKind::Frog => Frog::draw_editor(pos, camera_pos, color, resources),
             EntityKind::Goat => Goat::draw_editor(pos, camera_pos, color, resources),
@@ -162,9 +162,9 @@ impl From<EntityKind> for u8 {
             EntityKind::Key(LockColor::White)   => 4,
             EntityKind::Key(LockColor::Black)   => 5,
             EntityKind::Key(LockColor::Rainbow) => 6,
-            EntityKind::Chip      => 14,
-            EntityKind::Life      => 17,
-            EntityKind::Frog             => 19,
+            EntityKind::Chip(_) => 14,
+            EntityKind::Life    => 17,
+            EntityKind::Frog => 19,
             EntityKind::Goat => 22,
         }
     }
@@ -193,7 +193,7 @@ impl TryFrom<u8> for EntityKind {
              4 => Ok(EntityKind::Key(LockColor::White)),
              5 => Ok(EntityKind::Key(LockColor::Black)),
              6 => Ok(EntityKind::Key(LockColor::Rainbow)),
-            14 => Ok(EntityKind::Chip),
+            14 => Ok(EntityKind::Chip(false)),
             17 => Ok(EntityKind::Life),
             19 => Ok(EntityKind::Frog),
             22 => Ok(EntityKind::Goat),

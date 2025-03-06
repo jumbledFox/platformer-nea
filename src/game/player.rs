@@ -76,7 +76,7 @@ pub struct Player {
     head_powerup: Option<HeadPowerup>,
     feet_powerup: Option<FeetPowerup>,
     holding: Option<Box<dyn Entity>>,
-    prev_held: Option<Id>,
+    prev_held: Option<(f32, Id)>,
     
     target_x_vel: f32,
     target_approach: f32,
@@ -348,11 +348,12 @@ impl Player {
         self.update_state(level, resources);
 
         // Grabbing entities
-        // TODO: Stop double grabbing!
         if is_key_pressed(KEY_GRAB) && self.holding.is_none() && self.state != State::Climbing {
             let grab_hitbox = Rect::new(3.0, -6.0, 16.0-6.0, 16.0+6.0).offset(self.pos);
             for i in (0..entities.len()).rev() {
-                if entities[i].hold_offset().is_none() {
+                if entities[i].hold_offset().is_none()
+                || self.prev_held.is_some_and(|(_, id)| id == entities[i].id())
+                {
                     continue;
                 }
                 if entities[i].hitbox().overlaps(&grab_hitbox) {
@@ -376,6 +377,7 @@ impl Player {
                     throw_vel.x *= -1.0;
                 }
                 throw_vel.y = (throw_vel.y + self.vel.y).clamp(-2.4, 0.0);
+                self.prev_held = Some((0.4, entity.id()));
                 entity.throw(throw_vel);
                 entities.push(entity);
             }
@@ -439,6 +441,13 @@ impl Player {
     }
 
     pub fn physics_update(&mut self, level: &mut Level, resources: &Resources) {
+        if let Some((t, _)) = &mut self.prev_held {
+            *t -= 1.0 / 120.0;
+        }
+        if self.prev_held.is_some_and(|(t, _)| t <= 0.0) {
+            self.prev_held = None;
+        }
+
         if self.state != State::Climbing {
             let gravity = match (self.state, is_key_down(KEY_JUMP)) {
                 (State::Jumping, true) => GRAVITY * 0.7,

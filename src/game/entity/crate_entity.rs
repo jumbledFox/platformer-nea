@@ -2,9 +2,9 @@
 
 use macroquad::{color::{Color, WHITE}, input::is_key_pressed, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{tile::{LockColor, TileHitKind}, Level}, scene::{entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::{level_pos_to_pos, LevelPosition}, resources::Resources};
+use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top, default_collision}, level::{tile::{LockColor, TileHitKind}, Level}, scene::{entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::{level_pos_to_pos, LevelPosition}, resources::Resources};
 
-use super::{frog::Frog, key::Key, Entity, Id};
+use super::{frog::Frog, key::Key, Entity, EntityKind, Id};
 
 const TOP:     Vec2 = vec2( 8.0,  0.0);
 const SIDE_LT: Vec2 = vec2( 0.0,  2.0);
@@ -79,61 +79,22 @@ impl Entity for Crate {
         }
     }
 
-    fn physics_update(&mut self, _entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, resources: &Resources) {
+    fn physics_update(&mut self, entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, resources: &Resources) {
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
 
-        let prev_pos = self.pos;
         let prev_vel = self.vel;
 
-        let moving_up = self.vel.y < 0.0;
-        // Top/bottom
-        let (mut t, mut b) = (false, false);
-        if moving_up {
-            // Top
-            if collision_top(&mut self.pos, TOP, level, resources) {
-                self.vel.y = 0.0;
-                t = true;
-            }
-        } else {
-            // Bottom
-            if collision_bottom(&mut self.pos, BOT_L, level, resources)
-            || collision_bottom(&mut self.pos, BOT_R, level, resources) {
-                self.vel.y = 0.0;
-                self.vel.x = 0.0;
-                b = true;
-            }
-        }
-        // Sides
-        let sl = collision_left(&mut self.pos, SIDE_LT, true, level, resources)
-        ||       collision_left(&mut self.pos, SIDE_LB, true, level, resources);
-        let sr = collision_right(&mut self.pos, SIDE_RT, true, level, resources)
-        ||       collision_right(&mut self.pos, SIDE_RB, true, level, resources);
-
-        let s = sl && self.vel.x < 0.0
-        ||      sr && self.vel.x > 0.0;
-        if s {
-            self.vel.x = 0.0;
-        }
+        let mut tops   = [(TOP, false)];
+        let mut bots   = [(BOT_L, false), (BOT_R, false)];
+        let mut lefts  = [(SIDE_LT, true, false), (SIDE_LB, true, false)];
+        let mut rights = [(SIDE_RT, true, false), (SIDE_RB, true, false)];
+        let (t, b, _, _, hit) = default_collision(&mut self.pos, &mut self.vel, Some(TileHitKind::Soft), &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
+        if b { self.vel.x = 0.0; }
 
         // If we collided and have been thrown... we need to be destroyed and release the entities inside! also hit switches and stuff...
-        let should_break = (prev_vel.x.abs() > 1.0 && s)
-        || ((prev_vel.y.abs() > 1.5 || (prev_vel.y.abs() > 0.5 && prev_vel.x.abs() > 0.7)) && (t || b));
-
-        if should_break {
+        if hit {
             self.hit = true;
-            
-            // match self.kind {
-            //     CrateKind::Key(color)  => new_entities.push(Box::new(Key::new(self.pos, None, color))),
-            //     CrateKind::Frog(false) => new_entities.push(Box::new(Frog::new(self.pos, None))),
-            //     CrateKind::Frog(true) => { 
-            //         for _ in 0..gen_range(2, 3) {
-            //             new_entities.push(Box::new(Frog::new(self.pos, None)));
-            //             new_entities.push(Box::new(Frog::new(self.pos, None)));
-            //         }
-            //     }
-            //     _ => new_entities.push(Box::new(Key::new(self.pos, None, LockColor::Rainbow)))
-            // }
 
             // Velocities for all the items in the crate
             let (y_min, y_max) = match (t, b) {
@@ -150,10 +111,23 @@ impl Entity for Crate {
                 (false, _, true)  => (-1.0, -0.5),
                 (false, _, false) => ( 0.5,  1.0),
             };
-            // for e in new_entities {
-            //     e.set_vel(vec2(gen_range(x_min, x_max), gen_range(y_min, y_max)) * 0.7);
-            // }
+            let mut spawn_entity = |kind: EntityKind| {
+                let vel = vec2(gen_range(x_min, x_max), gen_range(y_min, y_max)) * 0.7;
+                entity_spawner.add_entity(self.pos, vel, kind, None);
+            };
+            match self.kind {
+                CrateKind::Key(color)  => spawn_entity(EntityKind::Key(color)),
+                CrateKind::Frog(false) => spawn_entity(EntityKind::Frog),
+                CrateKind::Frog(true)  => for _ in 0..gen_range(2, 3) { spawn_entity(EntityKind::Frog) },
+                CrateKind::Chip(false) => spawn_entity(EntityKind::Chip(true)),
+                CrateKind::Chip(true)  => for _ in 0..gen_range(2, 4) { spawn_entity(EntityKind::Chip(true)) },
+                CrateKind::Life => {
+                    spawn_entity(EntityKind::Life);
+                    for _ in 0..gen_range(2, 4) { spawn_entity(EntityKind::Chip(true)) }
+                },
+            }
 
+            // Very ugly code... but it works!
             for (kind, offset, vel_x, vel_y) in [
                 (CrateParticleKind::Tl, vec2(0.0, 0.0), vec2(-1.0, -0.5), vec2(-1.0, -0.5)),
                 (CrateParticleKind::Tr, vec2(8.0, 0.0), vec2( 0.5,  1.0), vec2(-1.0, -0.5)),
@@ -170,18 +144,6 @@ impl Entity for Crate {
             ] {
                 let vel = vec2(gen_range(vel_x.x, vel_x.y), gen_range(vel_y.x, vel_y.y));
                 particles.add_particle(self.pos + offset, vel, ParticleKind::Crate(kind));
-            }
-
-            let can_hit_l = prev_vel.x <= -0.5;
-            let can_hit_r = prev_vel.x >=  0.5;
-            if let Some((_, p)) = [
-                (t && self.vel.y >= 0.0, TOP),
-                (sl && can_hit_l, SIDE_LT),
-                (sl && can_hit_l, SIDE_LB),
-                (sr && can_hit_r, SIDE_RT),
-                (sr && can_hit_r, SIDE_RB)
-            ].iter().find(|(s, _)| *s) {
-                level.hit_tile_at_pos(prev_pos + *p, TileHitKind::Soft, resources);
             }
         }
     }

@@ -71,7 +71,7 @@ impl ObjectSelector {
             Tile::Lava,
         ];
         let mut entities = vec![
-            (EntityKind::Chip, "Chip".to_string()),
+            (EntityKind::Chip(false), "Chip".to_string()),
             (EntityKind::Crate(CrateKind::Chip(false)), "Chip crate".to_string()),
             (EntityKind::Crate(CrateKind::Chip(true)), "Large chip crate".to_string()),
             (EntityKind::Life, "Life".to_string()),

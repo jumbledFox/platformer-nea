@@ -200,6 +200,7 @@ impl EditorMenu {
                     .write(true)
                     .open(format!("{}.fox", editor_level_pack.name()))
                     .unwrap();
+                file.set_len(0).unwrap();
                 file.write_all(&bytes).unwrap();
 
                 println!("saved to file...");

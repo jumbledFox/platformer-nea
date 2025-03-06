@@ -206,15 +206,15 @@ impl Level {
 
     pub fn tile_at_pos(&self, pos: Vec2) -> Tile {
         // If the position is out of the map horizontally, it should be solid, however if it's below/above the map, it should be passable.
-        let pos = pos / 16.0;
+        let pos = (pos / 16.0).floor();
         if pos.x < 0.0 || pos.x >= self.width as f32 {
             return Tile::Empty;
         }
         if pos.y < 0.0 || pos.y >= self.height as f32 {
             return Tile::Empty;
         }
-        let x = pos.x.floor() as usize;
-        let y = pos.y.floor() as usize;
+        let x = pos.x as usize;
+        let y = pos.y as usize;
         let index = y * self.width + x;
 
         self.tiles[index]

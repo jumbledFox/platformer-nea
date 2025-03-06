@@ -26,7 +26,7 @@ pub struct Editor {
 
 impl Editor {
     pub fn new(resources: &Resources) -> Self {
-        let bytes = include_bytes!("../../test2.fox");
+        let bytes = include_bytes!("../../test.fox");
         let level_pack_data = crate::level_pack_data::LevelPackData::from_bytes(bytes, resources).unwrap();
         let mut editor_level_pack = level_pack_data.to_editor_level_pack();
 

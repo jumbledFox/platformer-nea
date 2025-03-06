@@ -12,8 +12,8 @@ use super::{Entity, EntityCollisionSides};
 const HEAD:    Vec2 = vec2( 8.0,  0.5);
 const SIDE_L:  Vec2 = vec2( 4.0,  8.0);
 const SIDE_R:  Vec2 = vec2(12.0,  8.0);
-const FOOT_L:  Vec2 = vec2( 5.0, 15.9);
-const FOOT_R:  Vec2 = vec2(10.0, 15.9);
+const FOOT_L:  Vec2 = vec2( 5.0, 17.0);
+const FOOT_R:  Vec2 = vec2(10.0, 17.0);
 
 // Control
 const KEY_LEFT:  KeyCode = KeyCode::A;

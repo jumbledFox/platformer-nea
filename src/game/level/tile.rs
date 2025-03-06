@@ -384,6 +384,7 @@ pub enum TileCollision {
     Ladder,
 }
 
+#[derive(Clone, Copy)]
 pub enum TileHitKind {
     Soft, Hard,
 }
