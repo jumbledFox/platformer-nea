@@ -7,7 +7,7 @@ use macroquad::{color::{Color, BLUE, WHITE}, math::{vec2, Rect, Vec2}};
 
 use crate::{level_pack_data::LevelPosition, resources::Resources, util::{draw_rect, draw_rect_lines}};
 
-use super::{level::{tile::LockColor, Level}, scene::particles::Particles};
+use super::{level::{tile::LockColor, Level}, scene::{entity_spawner::EntitySpawner, particles::Particles}};
 
 pub mod crate_entity;
 pub mod chip;
@@ -15,9 +15,14 @@ pub mod key;
 pub mod frog;
 pub mod goat;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Id {
+    Level(LevelPosition),
+    Spawned(u32),
+}
+
 pub trait Entity {
-    // The entities spawn position - used to identify and remove from the spawn list
-    fn spawn_pos(&self) -> Option<LevelPosition>;
+    fn id(&self) -> Id;
     fn hitbox(&self) -> Rect;
     fn hold_offset(&self) -> Option<Vec2> { None }
     fn set_pos(&mut self, pos: Vec2);
@@ -26,7 +31,7 @@ pub trait Entity {
     fn should_destroy(&self) -> bool;
 
     fn update(&mut self, resources: &Resources);
-    fn physics_update(&mut self, _new_entities: &mut Vec<Box<dyn Entity>>, _particles: &mut Particles, level: &mut Level, resources: &Resources);
+    fn physics_update(&mut self, entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources);
     fn draw(&self, camera_pos: Vec2, resources: &Resources);
 }
 

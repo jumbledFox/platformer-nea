@@ -4,7 +4,7 @@ use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_
 
 use crate::{level_pack_data::LevelPosition, resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect}};
 
-use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::Entity, level::{things::{Door, DoorKind}, tile::TileCollision, Level}, scene::{fader::Fader, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
+use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, Id}, level::{things::{Door, DoorKind}, tile::TileCollision, Level}, scene::{fader::Fader, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.0);
@@ -76,6 +76,7 @@ pub struct Player {
     head_powerup: Option<HeadPowerup>,
     feet_powerup: Option<FeetPowerup>,
     holding: Option<Box<dyn Entity>>,
+    prev_held: Option<Id>,
     
     target_x_vel: f32,
     target_approach: f32,
@@ -87,7 +88,6 @@ pub struct Player {
 
     prev_in_teleporter: bool,
     prev_on_ladder: bool,
-
     nudging_l: bool,
     nudging_r: bool,
 
@@ -110,6 +110,8 @@ impl Player {
             head_powerup: None,
             feet_powerup: None,
             holding: None,
+            prev_held: None,
+
             target_x_vel: 0.0,
             target_approach: 0.0,
             turned_mid_air: false,
@@ -117,6 +119,7 @@ impl Player {
             coyote_time: 0.0,
             step_anim: 0.0,
             stepping: false,
+            
             prev_in_teleporter: false,
             prev_on_ladder: false,
             nudging_l: false,
@@ -145,8 +148,8 @@ impl Player {
     pub fn feet_powerup(&self) -> Option<FeetPowerup> {
         self.feet_powerup
     }
-    pub fn holding_spawn_pos(&self) -> Option<LevelPosition> {
-        self.holding.as_ref().map(|e| e.spawn_pos()).flatten()
+    pub fn holding_id(&self) -> Option<Id> {
+        self.holding.as_ref().map(|e| e.id())
     }
 
     pub fn set_pos(&mut self, pos: Vec2) {

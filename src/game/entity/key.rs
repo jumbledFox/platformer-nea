@@ -1,8 +1,8 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}};
 
-use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{tile::{LockColor, RAINBOW_LOCK_FRAME_DUR}, Level}, scene::{particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
+use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{tile::{LockColor, RAINBOW_LOCK_FRAME_DUR}, Level}, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
 
-use super::Entity;
+use super::{Entity, Id};
 
 const TOP:     Vec2 = vec2( 8.0,  0.0);
 const SIDE_LT: Vec2 = vec2( 0.0,  2.0);
@@ -13,20 +13,15 @@ const BOT_L:   Vec2 = vec2( 5.0, 14.0);
 const BOT_R:   Vec2 = vec2(11.0, 14.0);
 
 pub struct Key {
+    id: Id,
     pos: Vec2,
     vel: Vec2,
     color: LockColor,
-    spawn_pos: Option<LevelPosition>,
 }
 
 impl Key {
-    pub fn new(pos: Vec2, spawn_pos: Option<LevelPosition>, color: LockColor) -> Self {
-        Self {
-            pos,
-            vel: Vec2::ZERO,
-            color,
-            spawn_pos,
-        }
+    pub fn new(color: LockColor, pos: Vec2, vel: Vec2, id: Id) -> Self {
+        Self { pos, vel, color, id }
     }
     pub fn hitbox() -> Rect {
         Rect::new(0.0, 0.0, 16.0, 14.0)
@@ -50,7 +45,7 @@ impl Key {
 }
 
 impl Entity for Key {
-    fn spawn_pos(&self) -> Option<LevelPosition> { self.spawn_pos }
+    fn id(&self) -> Id { self.id }
     fn hitbox(&self) -> Rect { Self::hitbox().offset(self.pos) }
     fn hold_offset(&self) -> Option<Vec2> { Some(vec2(0.0, 3.0)) }
     fn throw(&mut self, vel: Vec2) {
@@ -64,7 +59,7 @@ impl Entity for Key {
 
     }
 
-    fn physics_update(&mut self, _new_entities: &mut Vec<Box<dyn Entity>>, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
+    fn physics_update(&mut self, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
 

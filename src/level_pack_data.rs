@@ -343,7 +343,6 @@ impl LevelData {
             *cursor += 2;
         }
 
-
         // Get the doors
         let mut doors: Vec<(DoorKind, LevelPosition, LevelPosition)> = Vec::new();
         let doors_len = get_byte(*cursor)?;

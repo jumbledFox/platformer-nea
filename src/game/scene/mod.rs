@@ -2,6 +2,7 @@
 // e.g. level, player, enemies, timer, etc
 
 use camera::Camera;
+use entity_spawner::EntitySpawner;
 use fader::Fader;
 // use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
 use macroquad::{color::{Color, GREEN, ORANGE, RED, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}};
@@ -10,9 +11,10 @@ use sign_display::SignDisplay;
 
 use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
 
-use super::{entity::{crate_entity::Crate, key::Key, Entity, EntityKind}, player::{FeetPowerup, HeadPowerup, Player}};
+use super::{entity::{crate_entity::Crate, key::Key, Entity, EntityKind, Id}, player::{FeetPowerup, HeadPowerup, Player}};
 
 pub mod camera;
+pub mod entity_spawner;
 pub mod particles;
 pub mod fader;
 pub mod sign_display;
@@ -29,7 +31,7 @@ pub struct Scene {
     camera: Camera,
     player: Player,
     entities: Vec<Box<dyn Entity>>,
-    new_entities: Vec<Box<dyn Entity>>,
+    entity_spawner: EntitySpawner,
     particles: Particles,
 
     fader: Fader,
@@ -52,7 +54,7 @@ impl Scene {
             camera: Camera::new(player_spawn),
             player: Player::new(player_spawn),
             entities:     Vec::with_capacity(64),
-            new_entities: Vec::with_capacity(16),
+            entity_spawner: EntitySpawner::default(),
             particles: Particles::default(),
 
             fader: Fader::default(),
@@ -65,22 +67,18 @@ impl Scene {
         // See if we should add any entities
         if self.camera.should_update_entities() {
             for (&spawn_pos, &k) in self.level.entity_spawns().iter() {
+                let id = Id::Level(spawn_pos);
                 // If the spawn pos isn't in the camera's rect, or it exists, or it's being carried, don't spawn it!
                 if !self.camera.entity_in_rect(spawn_pos)
-                || self.entities.iter().any(|e| e.spawn_pos() == Some(spawn_pos))
-                || self.player.holding_spawn_pos() == Some(spawn_pos) {
+                || self.entities.iter().any(|e| e.id() == id)
+                || self.player.holding_id() == Some(id) {
                     continue;
                 }
                 // Otherwise... spawn it!
-                let pos = level_pos_to_pos(spawn_pos);
-                let spawn_pos = Some(spawn_pos);
-                let entity: Box<dyn Entity> = match k {
-                    EntityKind::Crate(kind) => Box::new(Crate::new(pos, spawn_pos, kind)),
-                    EntityKind::Key(color) => Box::new(Key::new(pos, spawn_pos, color)),
-                    _ => Box::new(Key::new(pos, spawn_pos, LockColor::Rainbow)),
-                };
-                self.entities.push(entity);
+                self.entity_spawner.add_entity(level_pos_to_pos(spawn_pos), Vec2::ZERO, k, Some(spawn_pos));
             }
+            // Spawn all of them
+            self.entity_spawner.spawn_entities(&mut self.entities);
         }
 
         self.timer -= deltatime;
@@ -139,22 +137,18 @@ impl Scene {
             self.particles.update(&self.camera);
 
             self.player.physics_update(&mut self.level, resources);
-
-            let mut i = 0;
-            while let Some(e) = self.entities.get_mut(i) {
-                e.physics_update(&mut self.new_entities, &mut self.particles, &mut self.level, resources);
-                self.entities.append(&mut self.new_entities);
-                i += 1;
+            for e in &mut self.entities {
+                e.physics_update(&mut self.entity_spawner, &mut self.particles, &mut self.level, resources);
             }
+            self.entity_spawner.spawn_entities(&mut self.entities);
             
             for i in (0..self.entities.len()).rev() {
                 if self.entities[i].should_destroy() {
-                    if let Some(spawn_pos) = self.entities[i].spawn_pos() {
+                    if let Id::Level(spawn_pos) = self.entities[i].id() {
                         self.level.remove_entity_spawn(spawn_pos);
                     }
                     self.entities.remove(i);
                 }
-
             }
 
             self.physics_update_timer -= PHYSICS_STEP;

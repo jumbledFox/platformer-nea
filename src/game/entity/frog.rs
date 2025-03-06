@@ -1,8 +1,8 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::scene::{GRAVITY, MAX_FALL_SPEED}, level_pack_data::LevelPosition, resources::Resources};
+use crate::{game::scene::{entity_spawner::EntitySpawner, GRAVITY, MAX_FALL_SPEED}, level_pack_data::LevelPosition, resources::Resources};
 
-use super::Entity;
+use super::{Entity, Id};
 
 const SHAKE_TIME: f32 = 1.0;
 
@@ -14,19 +14,19 @@ enum State {
 }
 
 pub struct Frog {
+    id: Id,
     pos: Vec2,
     vel: Vec2,
     state: State,
-    spawn_pos: Option<LevelPosition>,
 }
 
 impl Frog {
-    pub fn new(pos: Vec2, spawn_pos: Option<LevelPosition>) -> Self {
+    pub fn new(id: Id, pos: Vec2) -> Self {
         Self {
+            id,
             pos,
             vel: Vec2::ZERO,
             state: State::Waiting(gen_range(0.5, 1.5)),
-            spawn_pos,
         }
     }
 
@@ -63,23 +63,9 @@ impl Frog {
     }
 }
 
-/*
-    fn spawn_pos(&self) -> Option<LevelPosition>;
-    fn hitbox(&self) -> Rect;
-    fn hold_offset(&self) -> Option<Vec2> { None }
-    fn set_pos(&mut self, pos: Vec2);
-    fn set_vel(&mut self, vel: Vec2);
-    fn throw(&mut self, _vel: Vec2) { }
-
-    fn update(&mut self, resources: &Resources);
-    fn physics_update(&mut self, _new_entities: &mut Vec<Box<dyn Entity>>, _particles: &mut Particles, level: &mut Level, resources: &Resources);
-    fn draw(&self, camera_pos: Vec2, resources: &Resources);
-
-    fn should_destroy(&self) -> bool;
-*/
 impl Entity for Frog {
-    fn spawn_pos(&self) -> Option<LevelPosition> {
-        self.spawn_pos
+    fn id(&self) -> Id {
+        self.id
     }
     fn hitbox(&self) -> Rect {
         Self::hitbox().offset(self.pos)
@@ -97,7 +83,7 @@ impl Entity for Frog {
     fn update(&mut self, resources: &Resources) {
 
     }
-    fn physics_update(&mut self, _new_entities: &mut Vec<Box<dyn Entity>>, _particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, resources: &Resources) {
+    fn physics_update(&mut self, _entity_spawner: &mut EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, resources: &Resources) {
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel; // my code is awesome #selflove love frome jo
     }

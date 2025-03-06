@@ -2,9 +2,9 @@
 
 use macroquad::{color::{Color, WHITE}, input::is_key_pressed, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{tile::{LockColor, TileHitKind}, Level}, scene::{particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::{level_pos_to_pos, LevelPosition}, resources::Resources};
+use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{tile::{LockColor, TileHitKind}, Level}, scene::{entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::{level_pos_to_pos, LevelPosition}, resources::Resources};
 
-use super::{frog::Frog, key::Key, Entity};
+use super::{frog::Frog, key::Key, Entity, Id};
 
 const TOP:     Vec2 = vec2( 8.0,  0.0);
 const SIDE_LT: Vec2 = vec2( 0.0,  2.0);
@@ -23,20 +23,20 @@ pub enum CrateKind {
 }
 
 pub struct Crate {
+    id: Id,
     pos: Vec2,
     vel: Vec2,
     kind: CrateKind,
-    spawn_pos: Option<LevelPosition>,
     hit: bool,
 }
 
 impl Crate {
-    pub fn new(pos: Vec2, spawn_pos: Option<LevelPosition>, kind: CrateKind) -> Self {
+    pub fn new(kind: CrateKind, pos: Vec2, vel: Vec2, id: Id) -> Self {
         Self {
+            id,
             pos,
-            vel: Vec2::ZERO,
+            vel,
             kind,
-            spawn_pos,
             hit: false,
         }
     }
@@ -51,8 +51,8 @@ impl Crate {
 }
 
 impl Entity for Crate {
-    fn spawn_pos(&self) -> Option<LevelPosition> {
-        self.spawn_pos
+    fn id(&self) -> Id {
+        self.id
     }
     fn hitbox(&self) -> Rect {
         Self::hitbox().offset(self.pos)
@@ -79,7 +79,7 @@ impl Entity for Crate {
         }
     }
 
-    fn physics_update(&mut self, new_entities: &mut Vec<Box<dyn Entity>>, particles: &mut Particles, level: &mut Level, resources: &Resources) {
+    fn physics_update(&mut self, _entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, resources: &Resources) {
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
 
@@ -123,17 +123,17 @@ impl Entity for Crate {
         if should_break {
             self.hit = true;
             
-            match self.kind {
-                CrateKind::Key(color)  => new_entities.push(Box::new(Key::new(self.pos, None, color))),
-                CrateKind::Frog(false) => new_entities.push(Box::new(Frog::new(self.pos, None))),
-                CrateKind::Frog(true) => { 
-                    for _ in 0..gen_range(2, 3) {
-                        new_entities.push(Box::new(Frog::new(self.pos, None)));
-                        new_entities.push(Box::new(Frog::new(self.pos, None)));
-                    }
-                }
-                _ => new_entities.push(Box::new(Key::new(self.pos, None, LockColor::Rainbow)))
-            }
+            // match self.kind {
+            //     CrateKind::Key(color)  => new_entities.push(Box::new(Key::new(self.pos, None, color))),
+            //     CrateKind::Frog(false) => new_entities.push(Box::new(Frog::new(self.pos, None))),
+            //     CrateKind::Frog(true) => { 
+            //         for _ in 0..gen_range(2, 3) {
+            //             new_entities.push(Box::new(Frog::new(self.pos, None)));
+            //             new_entities.push(Box::new(Frog::new(self.pos, None)));
+            //         }
+            //     }
+            //     _ => new_entities.push(Box::new(Key::new(self.pos, None, LockColor::Rainbow)))
+            // }
 
             // Velocities for all the items in the crate
             let (y_min, y_max) = match (t, b) {
@@ -150,9 +150,9 @@ impl Entity for Crate {
                 (false, _, true)  => (-1.0, -0.5),
                 (false, _, false) => ( 0.5,  1.0),
             };
-            for e in new_entities {
-                e.set_vel(vec2(gen_range(x_min, x_max), gen_range(y_min, y_max)) * 0.7);
-            }
+            // for e in new_entities {
+            //     e.set_vel(vec2(gen_range(x_min, x_max), gen_range(y_min, y_max)) * 0.7);
+            // }
 
             for (kind, offset, vel_x, vel_y) in [
                 (CrateParticleKind::Tl, vec2(0.0, 0.0), vec2(-1.0, -0.5), vec2(-1.0, -0.5)),
