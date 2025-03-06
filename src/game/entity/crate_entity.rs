@@ -4,7 +4,7 @@ use macroquad::{color::{Color, WHITE}, input::is_key_pressed, math::{vec2, Rect,
 
 use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{tile::{LockColor, TileHitKind}, Level}, scene::{particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::{level_pos_to_pos, LevelPosition}, resources::Resources};
 
-use super::{key::Key, Entity};
+use super::{frog::Frog, key::Key, Entity};
 
 const TOP:     Vec2 = vec2( 8.0,  0.0);
 const SIDE_LT: Vec2 = vec2( 0.0,  2.0);
@@ -51,14 +51,24 @@ impl Crate {
 }
 
 impl Entity for Crate {
-    fn spawn_pos(&self) -> Option<LevelPosition> { self.spawn_pos }
-    fn hitbox(&self) -> Rect { Self::hitbox().offset(self.pos) }
-    fn hold_offset(&self) -> Option<Vec2> { Some(Vec2::ZERO) }
+    fn spawn_pos(&self) -> Option<LevelPosition> {
+        self.spawn_pos
+    }
+    fn hitbox(&self) -> Rect {
+        Self::hitbox().offset(self.pos)
+    }
+    fn hold_offset(&self) -> Option<Vec2> {
+        Some(Vec2::ZERO)
+    }
     fn throw(&mut self, vel: Vec2) {
         self.vel = vel;
     }
-    fn set_pos(&mut self, pos: Vec2) { self.pos = pos; }
-    fn set_vel(&mut self, vel: Vec2) { self.vel = vel; }
+    fn set_pos(&mut self, pos: Vec2) {
+        self.pos = pos;
+    }
+    fn set_vel(&mut self, vel: Vec2) {
+        self.vel = vel;
+    }
     fn should_destroy(&self) -> bool {
         self.hit
     }
@@ -95,22 +105,33 @@ impl Entity for Crate {
             }
         }
         // Sides
-        let slt = collision_left(&mut self.pos, SIDE_LT, true, level, resources);
-        let slb = collision_left(&mut self.pos, SIDE_LB, true, level, resources);
-        let srt = collision_right(&mut self.pos, SIDE_RT, true, level, resources);
-        let srb = collision_right(&mut self.pos, SIDE_RB, true, level, resources);
+        let sl = collision_left(&mut self.pos, SIDE_LT, true, level, resources)
+        ||       collision_left(&mut self.pos, SIDE_LB, true, level, resources);
+        let sr = collision_right(&mut self.pos, SIDE_RT, true, level, resources)
+        ||       collision_right(&mut self.pos, SIDE_RB, true, level, resources);
 
-        let s = slt || slb || srt || srb;
+        let s = sl && self.vel.x < 0.0
+        ||      sr && self.vel.x > 0.0;
         if s {
             self.vel.x = 0.0;
         }
 
         // If we collided and have been thrown... we need to be destroyed and release the entities inside! also hit switches and stuff...
-        if prev_vel.length_squared() > 1.5 && (s || t || b) {
+        let should_break = (prev_vel.x.abs() > 1.0 && s)
+        || ((prev_vel.y.abs() > 1.5 || (prev_vel.y.abs() > 0.5 && prev_vel.x.abs() > 0.7)) && (t || b));
+
+        if should_break {
             self.hit = true;
             
             match self.kind {
-                CrateKind::Key(color) => new_entities.push(Box::new(Key::new(self.pos, None, color))),
+                CrateKind::Key(color)  => new_entities.push(Box::new(Key::new(self.pos, None, color))),
+                CrateKind::Frog(false) => new_entities.push(Box::new(Frog::new(self.pos, None))),
+                CrateKind::Frog(true) => { 
+                    for _ in 0..gen_range(2, 3) {
+                        new_entities.push(Box::new(Frog::new(self.pos, None)));
+                        new_entities.push(Box::new(Frog::new(self.pos, None)));
+                    }
+                }
                 _ => new_entities.push(Box::new(Key::new(self.pos, None, LockColor::Rainbow)))
             }
 
@@ -155,10 +176,10 @@ impl Entity for Crate {
             let can_hit_r = prev_vel.x >=  0.5;
             if let Some((_, p)) = [
                 (t && self.vel.y >= 0.0, TOP),
-                (slt && can_hit_l, SIDE_LT),
-                (slb && can_hit_l, SIDE_LB),
-                (srt && can_hit_r, SIDE_RT),
-                (srb && can_hit_r, SIDE_RB)
+                (sl && can_hit_l, SIDE_LT),
+                (sl && can_hit_l, SIDE_LB),
+                (sr && can_hit_r, SIDE_RT),
+                (sr && can_hit_r, SIDE_RB)
             ].iter().find(|(s, _)| *s) {
                 level.hit_tile_at_pos(prev_pos + *p, TileHitKind::Soft, resources);
             }

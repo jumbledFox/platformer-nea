@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}};
 
-use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{tile::{LockColor, RAINBOW_LOCK_FRAME_DUR}, Level}, scene::{particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::{level_pos_to_pos, LevelPosition}, resources::Resources};
+use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top}, level::{tile::{LockColor, RAINBOW_LOCK_FRAME_DUR}, Level}, scene::{particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
 
 use super::Entity;
 
@@ -68,9 +68,6 @@ impl Entity for Key {
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
 
-        let prev_pos = self.pos;
-        let prev_vel = self.vel;
-
         let moving_up = self.vel.y < 0.0;
         // Top/bottom
         if moving_up {
@@ -87,11 +84,11 @@ impl Entity for Key {
             }
         }
         // Sides
-        let s = collision_left(&mut self.pos, SIDE_LT, true, level, resources)
-        ||      collision_left(&mut self.pos, SIDE_LB, true, level, resources)
-        ||      collision_right(&mut self.pos, SIDE_RT, true, level, resources)
-        ||      collision_right(&mut self.pos, SIDE_RB, true, level, resources);
-        if s {
+        let sl = collision_left(&mut self.pos, SIDE_LT, true, level, resources)
+        ||       collision_left(&mut self.pos, SIDE_LB, true, level, resources);
+        let sr = collision_right(&mut self.pos, SIDE_RT, true, level, resources)
+        ||       collision_right(&mut self.pos, SIDE_RB, true, level, resources);
+        if sl && self.vel.x < 0.0 || sr && self.vel.x > 0.0 {
             self.vel.x = 0.0;
         }
     }

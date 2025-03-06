@@ -419,8 +419,13 @@ impl LevelPackData {
         let mut levels: Vec<LevelData> = Vec::new();
         // Repeat until the cursor is out of the bounds of the file
         while cursor <= bytes.len() - 1 {
-            let level_data = LevelData::from_bytes(bytes, &mut cursor, resources)?;
-            levels.push(level_data);
+            let level_data = LevelData::from_bytes(bytes, &mut cursor, resources);
+            if let Some(p) = level_data {
+                levels.push(p);
+            } else {
+                println!("wtf?!?! {:?}", &bytes[cursor..]);
+                break;
+            }
         }
 
         if levels.len() == 0 || levels.len() > MAX_LEVELS {

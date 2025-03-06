@@ -347,9 +347,15 @@ impl Player {
         // Grabbing entities
         // TODO: Stop double grabbing!
         if is_key_pressed(KEY_GRAB) && self.holding.is_none() && self.state != State::Climbing {
-            let grab_hitbox = Rect::new(self.pos.x+3.0, self.pos.y-6.0, 16.0-6.0, 16.0+6.0);
-            if let Some(index) = entities.iter().filter(|e| e.hold_offset().is_some()).position(|e| e.hitbox().overlaps(&grab_hitbox)) {
-                self.holding = Some(entities.remove(index));
+            let grab_hitbox = Rect::new(3.0, -6.0, 16.0-6.0, 16.0+6.0).offset(self.pos);
+            for i in (0..entities.len()).rev() {
+                if entities[i].hold_offset().is_none() {
+                    continue;
+                }
+                if entities[i].hitbox().overlaps(&grab_hitbox) {
+                    self.holding = Some(entities.remove(i));
+                    break;
+                }
             }
         }
         // Throwing the grabbed entity

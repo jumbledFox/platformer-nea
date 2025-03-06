@@ -8,7 +8,7 @@ use macroquad::{color::{Color, GREEN, ORANGE, RED, WHITE}, input::{is_key_presse
 use particles::Particles;
 use sign_display::SignDisplay;
 
-use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::draw_rect, VIEW_SIZE};
+use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
 
 use super::{entity::{crate_entity::Crate, key::Key, Entity, EntityKind}, player::{FeetPowerup, HeadPowerup, Player}};
 
@@ -186,7 +186,7 @@ impl Scene {
         // }
         self.level.render_above(camera_pos, resources, debug);
         self.level.render_bumped_tiles(camera_pos, resources);
-        
+
         // Draw the UI
         // Lives
         render_text("- fox -",           ORANGE, vec2( 40.0,  8.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);

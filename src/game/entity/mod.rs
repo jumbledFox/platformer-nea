@@ -23,12 +23,11 @@ pub trait Entity {
     fn set_pos(&mut self, pos: Vec2);
     fn set_vel(&mut self, vel: Vec2);
     fn throw(&mut self, _vel: Vec2) { }
+    fn should_destroy(&self) -> bool;
 
     fn update(&mut self, resources: &Resources);
     fn physics_update(&mut self, _new_entities: &mut Vec<Box<dyn Entity>>, _particles: &mut Particles, level: &mut Level, resources: &Resources);
     fn draw(&self, camera_pos: Vec2, resources: &Resources);
-
-    fn should_destroy(&self) -> bool;
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
