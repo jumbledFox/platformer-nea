@@ -108,7 +108,7 @@ impl Entity for Crate {
             self.hit = true;
             // Velocities for all the items in the crate
             let (y_min, y_max) = match (t, b) {
-                (true, false)  => ( 0.1,  0.2),
+                (true, false)  => (-0.1,  0.0),
                 (false, true)  => (-1.0, -0.4),
                 (_, _)         => (-1.0,  1.0),
             };
@@ -124,9 +124,9 @@ impl Entity for Crate {
             let mut spawn_entity = |kind: EntityKind| {
                 let multiplier = match self.kind {
                     CrateKind::Key(_) => 0.7,
-                    CrateKind::Frog(_) => 1.0,
-                    CrateKind::Chip(_) => 1.2,
-                    CrateKind::Life => 1.2
+                    CrateKind::Frog(_) => 0.6,
+                    CrateKind::Chip(_) => 1.0,
+                    CrateKind::Life => 0.7,
                 };
                 let vel = vec2(gen_range(x_min, x_max), gen_range(y_min, y_max)) * multiplier;
                 entity_spawner.add_entity(self.pos, vel, kind, None);

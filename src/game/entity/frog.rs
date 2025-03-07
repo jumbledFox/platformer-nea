@@ -118,7 +118,7 @@ impl Entity for Frog {
                     self.vel.y = -1.6;
 
                     let dist_to_player = player.pos().x - self.pos.x;
-                    self.vel.x = dist_to_player.clamp(-1.0, 1.0) * gen_range(0.5, 0.8);
+                    self.vel.x = (dist_to_player / 16.0).clamp(-1.0, 1.0) * gen_range(0.5, 0.8);
                 }
             },
             State::Dead(t) => {

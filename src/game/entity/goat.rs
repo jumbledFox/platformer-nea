@@ -9,6 +9,7 @@ pub struct Goat {
     pos: Vec2,
     vel: Vec2,
     arm: Arm,
+    step_anim: f32,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -18,7 +19,13 @@ enum Arm {
 
 impl Goat {
     pub fn new(pos: Vec2, vel: Vec2, id: Id) -> Self {
-        Self { id, pos, vel, arm: Arm::Down }
+        Self {
+            id,
+            pos,
+            vel,
+            arm: Arm::Down,
+            step_anim: 0.0,
+        }
     }
 
     pub fn hitbox() -> Rect {
@@ -73,9 +80,11 @@ impl Entity for Goat {
         
     }
     fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
-        
+        self.vel.x = -0.5;
+        self.pos += self.vel;
+        self.step_anim = (self.step_anim + self.vel.x.abs() / 12.0).rem_euclid(1.0);
     }
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {
-        Self::draw(false, self.arm, self.pos, camera_pos, WHITE, resources);
+        Self::draw(self.step_anim > 0.5, self.arm, self.pos, camera_pos, WHITE, resources);
     }
 }
