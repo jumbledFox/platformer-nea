@@ -1,8 +1,8 @@
-use macroquad::math::{vec2, Vec2};
+use macroquad::math::{vec2, Rect, Vec2};
 
 use crate::resources::Resources;
 
-use super::level::{tile::{TileCollision, TileHitKind}, Level};
+use super::{entity::{Entity, EntityKind}, level::{tile::{TileCollision, TileHitKind}, Level}};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Side {
@@ -66,18 +66,26 @@ pub fn collision_top(pos: &mut Vec2, point: Vec2, level: &Level, resources: &Res
     true
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum EntityHitKind {
+    All,
+    AllButCrates,
+}
+
 // Some nice default collision
 pub fn default_collision(
     pos: &mut Vec2,
     vel: &mut Vec2,
-    hit_kind: Option<TileHitKind>,
+    tile_hit_kind: Option<TileHitKind>,
+    entity_hit: Option<(EntityHitKind, Rect)>,
+    others: &mut Vec<&mut Box<dyn Entity>>,
     tops:   &mut[(Vec2, bool)],
     bots:   &mut[(Vec2, bool)],
     lefts:  &mut[(Vec2, bool, bool)],
     rights: &mut[(Vec2, bool, bool)],
     level: &mut Level,
     resources: &Resources,
-) -> (bool, bool, bool, bool, bool) {
+) -> (bool, bool, bool, bool, bool, bool) {
     let prev_pos = *pos;
     let prev_vel = *vel;
 
@@ -129,9 +137,9 @@ pub fn default_collision(
     || ((prev_vel.y.abs() >= 1.5 || (prev_vel.y.abs() >= 0.5 && prev_vel.x.abs() >= 0.7)) && (t || b));
 
     if hit {
-        if let Some(hit_kind) = hit_kind {
+        if let Some(tile_hit_kind) = tile_hit_kind {
             let mut hit_tile = |point: Vec2| {
-                level.hit_tile_at_pos(prev_pos + point, hit_kind, resources);
+                level.hit_tile_at_pos(prev_pos + point, tile_hit_kind, resources);
             };
             // Top
             if prev_vel.y < 0.0 {
@@ -147,5 +155,24 @@ pub fn default_collision(
         }
     }
 
-    (t, b, l, r, hit)
+    // Hitting other entities
+    // TODO: Make hitting score points, perhaps some kind of 'score' struct that keeps track of airbourne ids and their hit count?
+    let mut hit_entity = false;
+    if let Some((entity_hit_kind, hitbox)) = entity_hit {
+        if vel.length_squared() >= 1.5 {
+            for e in others {
+                if e.hitbox().overlaps(&hitbox)
+                && ((entity_hit_kind == EntityHitKind::All) || (entity_hit_kind == EntityHitKind::AllButCrates && !matches!(e.kind(), EntityKind::Crate(_))))
+                {
+                    hit_entity |= e.hit_with_throwable(prev_vel);
+                }
+            }
+            if hit_entity {
+                vel.y = vel.y.min(-1.0);
+                vel.x *= 0.75;
+            }
+        }
+    }
+
+    (t, b, l, r, hit, hit_entity)
 }

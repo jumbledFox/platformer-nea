@@ -7,7 +7,7 @@ use macroquad::{color::{Color, BLUE, WHITE}, math::{vec2, Rect, Vec2}};
 
 use crate::{level_pack_data::LevelPosition, resources::Resources, util::{draw_rect, draw_rect_lines}};
 
-use super::{level::{tile::LockColor, Level}, scene::{entity_spawner::EntitySpawner, particles::Particles}};
+use super::{level::{tile::LockColor, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::Particles}};
 
 pub mod crate_entity;
 pub mod chip;
@@ -23,15 +23,17 @@ pub enum Id {
 
 pub trait Entity {
     fn id(&self) -> Id;
+    fn kind(&self) -> EntityKind;
     fn hitbox(&self) -> Rect;
     fn hold_offset(&self) -> Option<Vec2> { None }
     fn set_pos(&mut self, pos: Vec2);
     fn set_vel(&mut self, vel: Vec2);
     fn throw(&mut self, _vel: Vec2) { }
+    fn hit_with_throwable(&mut self, _vel: Vec2) -> bool { false }
     fn should_destroy(&self) -> bool;
 
-    fn update(&mut self, resources: &Resources);
-    fn physics_update(&mut self, entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources);
+    fn update(&mut self, _resources: &Resources) {}
+    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources);
     fn draw(&self, camera_pos: Vec2, resources: &Resources);
 }
 
@@ -40,7 +42,7 @@ pub enum EntityKind {
     Crate(CrateKind),
     Key(LockColor),
     Chip(bool),
-    Life,
+    Life(bool),
     Frog,
     Goat,
 }
@@ -51,7 +53,7 @@ impl EntityKind {
         match self {
             Self::Crate(_) => Crate::hitbox(),
             Self::Key(_) => Key::hitbox(),
-            Self::Chip(_) | Self::Life => Chip::hitbox(),
+            Self::Chip(_) | Self::Life(_) => Chip::hitbox(),
             Self::Frog => Frog::hitbox(),
             Self::Goat => Goat::hitbox(),
         }
@@ -62,7 +64,7 @@ impl EntityKind {
             // Crates have no offset
             Self::Crate(_)=> Vec2::ZERO,
             Self::Key(_) => Key::tile_offset(),
-            Self::Chip(_) | Self::Life => Chip::tile_offset(),
+            Self::Chip(_) | Self::Life(_) => Chip::tile_offset(),
             Self::Frog => Frog::tile_offset(),
             Self::Goat => Goat::tile_offset(),
         }
@@ -74,7 +76,7 @@ impl EntityKind {
             Self::Crate(_) => Vec2::ZERO,
             // Most things don't...
             Self::Key(_) |
-            Self::Chip(_) | Self::Life => Vec2::ZERO,
+            Self::Chip(_) | Self::Life(_) => Vec2::ZERO,
             
             Self::Frog => Frog::object_selector_rect().point(),
             Self::Goat => Goat::object_selector_rect().point(),
@@ -85,7 +87,7 @@ impl EntityKind {
         match self {
             Self::Crate(_) => Crate::hitbox().size(),
             Self::Key(_) => Key::hitbox().size(),
-            Self::Chip(_) | Self::Life => Chip::object_selector_size(),
+            Self::Chip(_) | Self::Life(_) => Chip::object_selector_size(),
             Self::Frog => Frog::object_selector_rect().size(),
             Self::Goat => Goat::object_selector_rect().size(),
         }
@@ -133,7 +135,7 @@ impl EntityKind {
             }
             EntityKind::Key(c) => Key::draw_editor(*c, pos, camera_pos, color, resources),
             EntityKind::Chip(_) => Chip::draw_editor(false, pos, camera_pos, color, resources),
-            EntityKind::Life => Chip::draw_editor(true, pos, camera_pos, color, resources),
+            EntityKind::Life(_) => Chip::draw_editor(true, pos, camera_pos, color, resources),
             EntityKind::Frog => Frog::draw_editor(pos, camera_pos, color, resources),
             EntityKind::Goat => Goat::draw_editor(pos, camera_pos, color, resources),
         }
@@ -163,7 +165,7 @@ impl From<EntityKind> for u8 {
             EntityKind::Key(LockColor::Black)   => 5,
             EntityKind::Key(LockColor::Rainbow) => 6,
             EntityKind::Chip(_) => 14,
-            EntityKind::Life    => 17,
+            EntityKind::Life(_) => 17,
             EntityKind::Frog => 19,
             EntityKind::Goat => 22,
         }
@@ -194,7 +196,7 @@ impl TryFrom<u8> for EntityKind {
              5 => Ok(EntityKind::Key(LockColor::Black)),
              6 => Ok(EntityKind::Key(LockColor::Rainbow)),
             14 => Ok(EntityKind::Chip(false)),
-            17 => Ok(EntityKind::Life),
+            17 => Ok(EntityKind::Life(false)),
             19 => Ok(EntityKind::Frog),
             22 => Ok(EntityKind::Goat),
             _ => Err(())

@@ -1,11 +1,14 @@
-use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
+use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}};
 
-use crate::{game::{level::Level, scene::{entity_spawner::EntitySpawner, particles::Particles}}, level_pack_data::LevelPosition, resources::Resources};
+use crate::{game::{level::Level, player::Player, scene::{entity_spawner::EntitySpawner, particles::Particles}}, level_pack_data::LevelPosition, resources::Resources};
 
-use super::{Entity, Id};
+use super::{Entity, EntityKind, Id};
 
 pub struct Goat {
     id: Id,
+    pos: Vec2,
+    vel: Vec2,
+    arm: Arm,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -14,6 +17,10 @@ enum Arm {
 }
 
 impl Goat {
+    pub fn new(pos: Vec2, vel: Vec2, id: Id) -> Self {
+        Self { id, pos, vel, arm: Arm::Down }
+    }
+
     pub fn hitbox() -> Rect {
         Rect::new(3.0, 4.0, 8.0, 28.0)
     }
@@ -43,10 +50,21 @@ impl Goat {
 }
 
 impl Entity for Goat {
-    fn id(&self) -> Id { self.id }
-    fn hitbox(&self) -> Rect { Self::hitbox() }
-    fn set_pos(&mut self, _pos: Vec2) { }
-    fn set_vel(&mut self, _vel: Vec2) { }
+    fn id(&self) -> Id {
+        self.id
+    }
+    fn kind(&self) -> EntityKind {
+        EntityKind::Goat
+    }
+    fn hitbox(&self) -> Rect {
+        Self::hitbox()
+    }
+    fn set_pos(&mut self, pos: Vec2) {
+        self.pos = pos;
+    }
+    fn set_vel(&mut self, vel: Vec2) {
+        self.vel = vel;
+    }
     fn should_destroy(&self) -> bool {
         false
     }
@@ -54,10 +72,10 @@ impl Entity for Goat {
     fn update(&mut self, _resources: &Resources) {
         
     }
-    fn physics_update(&mut self, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
+    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
         
     }
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {
-        
+        Self::draw(false, self.arm, self.pos, camera_pos, WHITE, resources);
     }
 }

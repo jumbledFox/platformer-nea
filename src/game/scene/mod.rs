@@ -85,35 +85,6 @@ impl Scene {
         self.fader.update(deltatime);
         self.sign_display.update();
 
-        /*
-        // if is_key_pressed(KeyCode::H) { self.level.hit_tile_at_pos(vec2(3.5, 9.5) * 16.0, crate::game::level::tile::TileHitKind::Hard, resources); }
-        // if is_key_pressed(KeyCode::Z) { self.level.remove_lock_blocks(LockColor::Red); }
-        // if is_key_pressed(KeyCode::X) { self.level.remove_lock_blocks(LockColor::Green); }
-        // if is_key_pressed(KeyCode::C) { self.level.remove_lock_blocks(LockColor::Blue); }
-        // if is_key_pressed(KeyCode::V) { self.level.remove_lock_blocks(LockColor::Yellow); }
-        // if is_key_pressed(KeyCode::B) { self.level.remove_lock_blocks(LockColor::White); }
-        // if is_key_pressed(KeyCode::N) { self.level.remove_lock_blocks(LockColor::Black); }
-        // if is_key_pressed(KeyCode::M) { self.level.remove_lock_blocks(LockColor::Rainbow); }
-
-        
-        // let mut others: Vec<&mut Box<dyn Entity>>;
-        // for i in 0..self.entities.len() {
-        //     let (left, right) = self.entities.split_at_mut(i);
-        //     // The unwrap is safe as 'i' is always valid!
-        //     let (entity, right) = right.split_first_mut().unwrap();
-
-        //     others = left
-        //         .iter_mut()
-        //         .chain(right.iter_mut())
-        //         .collect();
-
-        //     entity.update(&mut others, &mut self.level, deltatime);
-        //     entity.update_collision(&mut others, &mut self.level);
-        // }
-
-        // self.entities.retain(|e| !e.should_delete());
-        */
-
         let mut freeze = self.fader.fading();
         if let Some(dest) = self.fader.move_player() {
             freeze = false;
@@ -137,11 +108,23 @@ impl Scene {
             self.particles.update(&self.camera);
 
             self.player.physics_update(&mut self.level, resources);
-            for e in &mut self.entities {
-                e.physics_update(&mut self.entity_spawner, &mut self.particles, &mut self.level, resources);
+
+            // Update all of the entities
+            let mut others: Vec<&mut Box<dyn Entity>>;
+            for i in 0..self.entities.len() {
+                let (left, right) = self.entities.split_at_mut(i);
+                // The unwrap is safe as 'i' is always valid!
+                let (entity, right) = right.split_first_mut().unwrap();
+                others = left
+                    .iter_mut()
+                    .chain(right.iter_mut())
+                    .collect();
+                entity.physics_update(&self.player, &mut others, &mut self.entity_spawner, &mut self.particles, &mut self.level, resources);
             }
             self.entity_spawner.spawn_entities(&mut self.entities);
             
+            // Remove all the entities that need to be destroyed
+            // TODO: Soft remove all entities out of the screen with a spawn_pos id 
             for i in (0..self.entities.len()).rev() {
                 if self.entities[i].should_destroy() {
                     if let Id::Level(spawn_pos) = self.entities[i].id() {

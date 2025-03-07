@@ -1,8 +1,8 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}};
 
-use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top, default_collision}, level::{tile::{LockColor, TileHitKind, RAINBOW_LOCK_FRAME_DUR}, Level}, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
+use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top, default_collision, EntityHitKind}, level::{tile::{LockColor, Tile, TileHitKind, RAINBOW_LOCK_FRAME_DUR}, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
 
-use super::{Entity, Id};
+use super::{Entity, EntityKind, Id};
 
 const TOP:     Vec2 = vec2( 8.0,  0.0);
 const SIDE_LT: Vec2 = vec2( 0.0,  2.0);
@@ -45,9 +45,18 @@ impl Key {
 }
 
 impl Entity for Key {
-    fn id(&self) -> Id { self.id }
-    fn hitbox(&self) -> Rect { Self::hitbox().offset(self.pos) }
-    fn hold_offset(&self) -> Option<Vec2> { Some(vec2(0.0, 3.0)) }
+    fn id(&self) -> Id {
+        self.id
+    }
+    fn kind(&self) -> EntityKind {
+        EntityKind::Key(self.color)
+    }
+    fn hitbox(&self) -> Rect {
+        Self::hitbox().offset(self.pos)
+    }
+    fn hold_offset(&self) -> Option<Vec2> {
+        Some(vec2(0.0, 3.0))
+    }
     fn throw(&mut self, vel: Vec2) {
         self.vel = vel;
     }
@@ -55,20 +64,31 @@ impl Entity for Key {
     fn set_vel(&mut self, vel: Vec2) { self.vel = vel; }
     fn should_destroy(&self) -> bool { false }
 
-    fn update(&mut self, _resources: &Resources) {
-
-    }
-
-    fn physics_update(&mut self, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
+    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
+        let prev_pos = self.pos;
+        let prev_vel = self.vel;
 
         let mut tops   = [(TOP, false)];
         let mut bots   = [(BOT_L, false), (BOT_R, false)];
         let mut lefts  = [(SIDE_LT, true, false), (SIDE_LB, true, false)];
         let mut rights = [(SIDE_RT, true, false), (SIDE_RB, true, false)];
-        let (_, b, ..) = default_collision(&mut self.pos, &mut self.vel, Some(TileHitKind::Soft), &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
+        let entity_hit = Some((EntityHitKind::All, self.hitbox()));
+        let (t, b, l, r, _, _) = default_collision(&mut self.pos, &mut self.vel, Some(TileHitKind::Soft), entity_hit, others, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
         if b { self.vel.x = 0.0; }
+
+        // If we hit a tile, check if it's a lock block!
+        if t || b || l || r {
+            for point in [TOP, BOT_L, BOT_R, SIDE_LT, SIDE_LB, SIDE_RT, SIDE_RB] {
+                // If so, destroy all the lock blocks of our color and destroy ourself.
+                if level.tile_at_pos(prev_pos + point) == Tile::Lock(self.color) {
+                    // TODO: Particles
+                    level.remove_lock_blocks(self.color);
+                    continue;
+                }
+            }
+        }
     }
 
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {

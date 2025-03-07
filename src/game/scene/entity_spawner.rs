@@ -1,6 +1,6 @@
 use macroquad::math::Vec2;
 
-use crate::{game::entity::{crate_entity::Crate, frog::Frog, key::Key, Entity, EntityKind, Id}, level_pack_data::LevelPosition};
+use crate::{game::entity::{chip::Chip, crate_entity::Crate, frog::Frog, goat::Goat, key::Key, Entity, EntityKind, Id}, level_pack_data::LevelPosition};
 
 struct EntityToSpawn {
     pos: Vec2,
@@ -39,10 +39,12 @@ impl EntitySpawner {
             }
 
             let entity: Box<dyn Entity> = match e.kind {
-                EntityKind::Key(color)  => Box::new(Key::new(color, e.pos, e.vel, id)),
                 EntityKind::Crate(kind) => Box::new(Crate::new(kind, e.pos, e.vel, id)),
+                EntityKind::Key(color)  => Box::new(Key::new(color, e.pos, e.vel, id)),
+                EntityKind::Chip(gravity) => Box::new(Chip::new(false, e.pos, if gravity { Some(e.vel) } else { None }, id)),
+                EntityKind::Life(gravity) => Box::new(Chip::new(true,  e.pos, if gravity { Some(e.vel) } else { None }, id)),
                 EntityKind::Frog => Box::new(Frog::new(e.pos, e.vel, id)),
-                _ => Box::new(Key::new(crate::game::level::tile::LockColor::Rainbow, e.pos, e.vel, id)),
+                EntityKind::Goat => Box::new(Goat::new(e.pos, e.vel, id)),
             };
             entities.push(entity);
         }

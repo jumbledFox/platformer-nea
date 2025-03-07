@@ -39,7 +39,7 @@ impl Camera {
 
     // Yeah this needs to be much better, it's temporary!!!!
     pub fn update(&mut self, player_pos: Vec2) {
-        self.center = player_pos;
+        self.center = player_pos.max(VIEW_SIZE / 2.0);
         
         let center_tile = pos_to_level_pos(self.center);
         if center_tile != self.center_tile {

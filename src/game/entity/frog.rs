@@ -2,9 +2,9 @@ use std::ops::Rem;
 
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range, shapes::draw_circle};
 
-use crate::{game::{collision::default_collision, level::Level, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
+use crate::{game::{collision::default_collision, level::Level, player::Player, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
 
-use super::{Entity, Id};
+use super::{Entity, EntityKind, Id};
 
 const TOP:   Vec2 = vec2( 9.0,  1.0);
 const BOT_L: Vec2 = vec2( 5.0, 18.0);
@@ -17,7 +17,7 @@ const SHAKE_TIME: f32 = 0.5;
 enum State {
     Waiting(f32), // Time left
     Air,
-    Dead,
+    Dead(f32),
 }
 
 pub struct Frog {
@@ -56,14 +56,13 @@ impl Frog {
             // Normal waiting
             State::Waiting(t) if *t > SHAKE_TIME => (0.0, 0.0),
             // Down and shaking
-            // TODO: Make shake work
             State::Waiting(t) => { 
                 (19.0, [1.0, -1.0][(t % 0.1 > 0.05) as usize])
             },
             // Leaping
             State::Air => (38.0, 0.0),
             // DEAD!!
-            State::Dead    => (57.0, 0.0)
+            State::Dead(_) => (57.0, 0.0)
         };
 
         let rect = Rect::new(0.0 + x, 63.0, 19.0, 18.0);
@@ -75,6 +74,9 @@ impl Entity for Frog {
     fn id(&self) -> Id {
         self.id
     }
+    fn kind(&self) -> EntityKind {
+        EntityKind::Frog
+    }
     fn hitbox(&self) -> Rect {
         Self::hitbox().offset(self.pos)
     }
@@ -85,33 +87,52 @@ impl Entity for Frog {
         self.vel = vel;
     }
     fn should_destroy(&self) -> bool {
-        false
+        match self.state {
+            State::Dead(t) if t <= 0.0 => true,
+            _ => false,
+        }
+    }
+
+    fn hit_with_throwable(&mut self, vel: Vec2) -> bool {
+        if matches!(self.state, State::Dead(_)) {
+            return false;
+        }
+        self.state = State::Dead(3.0);
+        self.vel = vec2(vel.x.clamp(-1.0, 1.0) / 2.0, -1.0);
+        true
     }
 
     fn update(&mut self, resources: &Resources) {
 
     }
 
-    fn physics_update(&mut self, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
+    fn physics_update(&mut self, player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
+        self.vel.y = (self.vel.y + GRAVITY * 0.5).min(MAX_FALL_SPEED);
+        self.pos += self.vel; // my code is awesome #selflove love frome jo
+
         match &mut self.state {
             State::Waiting(t) => {
                 *t -= 1.0 / 120.0;
                 if *t <= 0.0 {
                     self.state = State::Air;
                     self.vel.y = -1.6;
+
+                    let dist_to_player = player.pos().x - self.pos.x;
+                    self.vel.x = dist_to_player.clamp(-1.0, 1.0) * gen_range(0.5, 0.8);
                 }
             },
+            State::Dead(t) => {
+                *t -= 1.0 / 120.0;
+                return;
+            }
             _ => {}
         }
-
-        self.vel.y = (self.vel.y + GRAVITY * 0.5).min(MAX_FALL_SPEED);
-        self.pos += self.vel; // my code is awesome #selflove love frome jo
 
         let mut tops   = [(TOP, false)];
         let mut bots   = [(BOT_L, false), (BOT_R, false)];
         let mut lefts  = [(LEFT, true, false)];
         let mut rights = [(RIGHT, true, false)];
-        let (_, b, _, _, _) = default_collision(&mut self.pos, &mut self.vel, None, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
+        let (_, b, _, _, _, _) = default_collision(&mut self.pos, &mut self.vel, None, None, others, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
         if b {
             self.vel.x = 0.0;
             if !matches!(self.state, State::Waiting(_)) {

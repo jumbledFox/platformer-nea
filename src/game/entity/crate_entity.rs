@@ -2,7 +2,7 @@
 
 use macroquad::{color::{Color, WHITE}, input::is_key_pressed, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top, default_collision}, level::{tile::{LockColor, TileHitKind}, Level}, scene::{entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::{level_pos_to_pos, LevelPosition}, resources::Resources};
+use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top, default_collision, EntityHitKind}, level::{tile::{LockColor, TileHitKind}, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::{level_pos_to_pos, LevelPosition}, resources::Resources};
 
 use super::{frog::Frog, key::Key, Entity, EntityKind, Id};
 
@@ -28,6 +28,7 @@ pub struct Crate {
     vel: Vec2,
     kind: CrateKind,
     hit: bool,
+    should_break: bool,
 }
 
 impl Crate {
@@ -38,6 +39,7 @@ impl Crate {
             vel,
             kind,
             hit: false,
+            should_break: false,
         }
     }
 
@@ -53,6 +55,9 @@ impl Crate {
 impl Entity for Crate {
     fn id(&self) -> Id {
         self.id
+    }
+    fn kind(&self) -> EntityKind {
+        EntityKind::Crate(self.kind)
     }
     fn hitbox(&self) -> Rect {
         Self::hitbox().offset(self.pos)
@@ -72,6 +77,11 @@ impl Entity for Crate {
     fn should_destroy(&self) -> bool {
         self.hit
     }
+    fn hit_with_throwable(&mut self, vel: Vec2) -> bool {
+        self.should_break = true;
+        self.vel = vel;
+        true
+    }
 
     fn update(&mut self,  _resources: &Resources) {
         if is_key_pressed(macroquad::input::KeyCode::G) {
@@ -79,7 +89,7 @@ impl Entity for Crate {
         }
     }
 
-    fn physics_update(&mut self, entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, resources: &Resources) {
+    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, resources: &Resources) {
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
 
@@ -89,13 +99,13 @@ impl Entity for Crate {
         let mut bots   = [(BOT_L, false), (BOT_R, false)];
         let mut lefts  = [(SIDE_LT, true, false), (SIDE_LB, true, false)];
         let mut rights = [(SIDE_RT, true, false), (SIDE_RB, true, false)];
-        let (t, b, _, _, hit) = default_collision(&mut self.pos, &mut self.vel, Some(TileHitKind::Soft), &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
+        let entity_hit = Some((EntityHitKind::AllButCrates, self.hitbox()));
+        let (t, b, _, _, hit, hit_entity) = default_collision(&mut self.pos, &mut self.vel, Some(TileHitKind::Soft), entity_hit, others, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
         if b { self.vel.x = 0.0; }
 
         // If we collided and have been thrown... we need to be destroyed and release the entities inside! also hit switches and stuff...
-        if hit {
+        if self.should_break || hit || hit_entity {
             self.hit = true;
-
             // Velocities for all the items in the crate
             let (y_min, y_max) = match (t, b) {
                 (true, false)  => ( 0.1,  0.2),
@@ -112,7 +122,13 @@ impl Entity for Crate {
                 (false, _, false) => ( 0.5,  1.0),
             };
             let mut spawn_entity = |kind: EntityKind| {
-                let vel = vec2(gen_range(x_min, x_max), gen_range(y_min, y_max)) * 0.7;
+                let multiplier = match self.kind {
+                    CrateKind::Key(_) => 0.7,
+                    CrateKind::Frog(_) => 1.0,
+                    CrateKind::Chip(_) => 1.2,
+                    CrateKind::Life => 1.2
+                };
+                let vel = vec2(gen_range(x_min, x_max), gen_range(y_min, y_max)) * multiplier;
                 entity_spawner.add_entity(self.pos, vel, kind, None);
             };
             match self.kind {
@@ -122,7 +138,7 @@ impl Entity for Crate {
                 CrateKind::Chip(false) => spawn_entity(EntityKind::Chip(true)),
                 CrateKind::Chip(true)  => for _ in 0..gen_range(2, 4) { spawn_entity(EntityKind::Chip(true)) },
                 CrateKind::Life => {
-                    spawn_entity(EntityKind::Life);
+                    spawn_entity(EntityKind::Life(true));
                     for _ in 0..gen_range(2, 4) { spawn_entity(EntityKind::Chip(true)) }
                 },
             }
