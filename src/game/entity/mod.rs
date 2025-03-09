@@ -43,7 +43,7 @@ pub enum EntityKind {
     Key(LockColor),
     Chip(bool),
     Life(bool),
-    Frog,
+    Frog(bool),
     Goat,
 }
 
@@ -54,7 +54,7 @@ impl EntityKind {
             Self::Crate(_) => Crate::hitbox(),
             Self::Key(_) => Key::hitbox(),
             Self::Chip(_) | Self::Life(_) => Chip::hitbox(),
-            Self::Frog => Frog::hitbox(),
+            Self::Frog(_) => Frog::hitbox(),
             Self::Goat => Goat::hitbox(),
         }
     }
@@ -65,7 +65,7 @@ impl EntityKind {
             Self::Crate(_)=> Vec2::ZERO,
             Self::Key(_) => Key::tile_offset(),
             Self::Chip(_) | Self::Life(_) => Chip::tile_offset(),
-            Self::Frog => Frog::tile_offset(),
+            Self::Frog(_) => Frog::tile_offset(),
             Self::Goat => Goat::tile_offset(),
         }
     }
@@ -78,7 +78,7 @@ impl EntityKind {
             Self::Key(_) |
             Self::Chip(_) | Self::Life(_) => Vec2::ZERO,
             
-            Self::Frog => Frog::object_selector_rect().point(),
+            Self::Frog(_) => Frog::object_selector_rect().point(),
             Self::Goat => Goat::object_selector_rect().point(),
         }
     }
@@ -88,7 +88,7 @@ impl EntityKind {
             Self::Crate(_) => Crate::hitbox().size(),
             Self::Key(_) => Key::hitbox().size(),
             Self::Chip(_) | Self::Life(_) => Chip::object_selector_size(),
-            Self::Frog => Frog::object_selector_rect().size(),
+            Self::Frog(_) => Frog::object_selector_rect().size(),
             Self::Goat => Goat::object_selector_rect().size(),
         }
     }
@@ -136,7 +136,7 @@ impl EntityKind {
             EntityKind::Key(c) => Key::draw_editor(*c, pos, camera_pos, color, resources),
             EntityKind::Chip(_) => Chip::draw_editor(false, pos, camera_pos, color, resources),
             EntityKind::Life(_) => Chip::draw_editor(true, pos, camera_pos, color, resources),
-            EntityKind::Frog => Frog::draw_editor(pos, camera_pos, color, resources),
+            EntityKind::Frog(_) => Frog::draw_editor(pos, camera_pos, color, resources),
             EntityKind::Goat => Goat::draw_editor(pos, camera_pos, color, resources),
         }
     }
@@ -166,7 +166,7 @@ impl From<EntityKind> for u8 {
             EntityKind::Key(LockColor::Rainbow) => 6,
             EntityKind::Chip(_) => 14,
             EntityKind::Life(_) => 17,
-            EntityKind::Frog => 19,
+            EntityKind::Frog(_) => 19,
             EntityKind::Goat => 22,
         }
     }
@@ -197,7 +197,7 @@ impl TryFrom<u8> for EntityKind {
              6 => Ok(EntityKind::Key(LockColor::Rainbow)),
             14 => Ok(EntityKind::Chip(false)),
             17 => Ok(EntityKind::Life(false)),
-            19 => Ok(EntityKind::Frog),
+            19 => Ok(EntityKind::Frog(false)),
             22 => Ok(EntityKind::Goat),
             _ => Err(())
         }

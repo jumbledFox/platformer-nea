@@ -107,16 +107,20 @@ impl Entity for Crate {
         if self.should_break || hit || hit_entity {
             self.hit = true;
             // Velocities for all the items in the crate
-            let (y_min, y_max) = match (t, b) {
-                (true, false)  => (-0.1,  0.0),
-                (false, true)  => (-1.0, -0.4),
-                (_, _)         => (-1.0,  1.0),
+            let (y_min, y_max) = match (self.should_break, t, b) {
+                // If we hit the bottom of a tile, or we should break, launch entities upwards
+                (true,  _,     _) |
+                (_,     false, true)  => (-1.0, -0.4),
+                // If we hit the top, launch them sliiightly upwards
+                (false, true,  false) => (-0.1,  0.0),
+                // If we hit the side (not top/bottom) launch in all directions vertically
+                (_,     _,     _)     => (-1.0,  1.0),
             };
             let (x_min, x_max) = match (t || b, prev_vel.x.abs() > 0.5, prev_vel.x > 0.0) {
                 // Hitting top/bottom
                 (true, true, true)  => ( 0.1,  1.0),
                 (true, true, false) => (-1.0, -0.1),
-                (true, false, _) => (-0.5, 0.5),
+                (true, false, _)    => (-0.5,  0.5),
                 // Hitting sides
                 (false, _, true)  => (-1.0, -0.5),
                 (false, _, false) => ( 0.5,  1.0),
@@ -133,8 +137,8 @@ impl Entity for Crate {
             };
             match self.kind {
                 CrateKind::Key(color)  => spawn_entity(EntityKind::Key(color)),
-                CrateKind::Frog(false) => spawn_entity(EntityKind::Frog),
-                CrateKind::Frog(true)  => for _ in 0..gen_range(2, 3) { spawn_entity(EntityKind::Frog) },
+                CrateKind::Frog(false) => spawn_entity(EntityKind::Frog(true)),
+                CrateKind::Frog(true)  => for _ in 0..gen_range(2, 3) { spawn_entity(EntityKind::Frog(true)) },
                 CrateKind::Chip(false) => spawn_entity(EntityKind::Chip(true)),
                 CrateKind::Chip(true)  => for _ in 0..gen_range(2, 4) { spawn_entity(EntityKind::Chip(true)) },
                 CrateKind::Life => {

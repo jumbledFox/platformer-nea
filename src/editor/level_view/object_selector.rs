@@ -76,7 +76,7 @@ impl ObjectSelector {
             (EntityKind::Crate(CrateKind::Chip(true)), "Large chip crate".to_string()),
             (EntityKind::Life(false), "Life".to_string()),
             (EntityKind::Crate(CrateKind::Life), "Life crate".to_string()),
-            (EntityKind::Frog, "Frog".to_string()),
+            (EntityKind::Frog(false), "Frog".to_string()),
             (EntityKind::Crate(CrateKind::Frog(false)), "Single-frog crate".to_string()),
             (EntityKind::Crate(CrateKind::Frog(true)), "Multi-frog crate".to_string()),
             (EntityKind::Goat, "Aerosol Kid".to_string()),

@@ -43,7 +43,7 @@ impl EntitySpawner {
                 EntityKind::Key(color)  => Box::new(Key::new(color, e.pos, e.vel, id)),
                 EntityKind::Chip(gravity) => Box::new(Chip::new(false, e.pos, if gravity { Some(e.vel) } else { None }, id)),
                 EntityKind::Life(gravity) => Box::new(Chip::new(true,  e.pos, if gravity { Some(e.vel) } else { None }, id)),
-                EntityKind::Frog => Box::new(Frog::new(e.pos, e.vel, id)),
+                EntityKind::Frog(invuln) => Box::new(Frog::new(e.pos, e.vel, invuln, id)),
                 EntityKind::Goat => Box::new(Goat::new(e.pos, e.vel, id)),
             };
             entities.push(entity);

@@ -24,15 +24,21 @@ pub struct Frog {
     id: Id,
     pos: Vec2,
     vel: Vec2,
+    invuln: Option<f32>,
     state: State,
 }
 
 impl Frog {
-    pub fn new(pos: Vec2, vel: Vec2, id: Id) -> Self {
+    pub fn new(pos: Vec2, vel: Vec2, invuln: bool, id: Id) -> Self {
+        let invuln = match invuln {
+            true => Some(1.0),
+            false => None,
+        };
         Self {
             id,
             pos,
             vel,
+            invuln,
             state: State::Air,
         }
     }
@@ -75,7 +81,7 @@ impl Entity for Frog {
         self.id
     }
     fn kind(&self) -> EntityKind {
-        EntityKind::Frog
+        EntityKind::Frog(self.invuln.is_some())
     }
     fn hitbox(&self) -> Rect {
         Self::hitbox().offset(self.pos)
@@ -92,9 +98,8 @@ impl Entity for Frog {
             _ => false,
         }
     }
-
     fn hit_with_throwable(&mut self, vel: Vec2) -> bool {
-        if matches!(self.state, State::Dead(_)) {
+        if matches!(self.state, State::Dead(_)) || self.invuln.is_some() {
             return false;
         }
         self.state = State::Dead(3.0);
@@ -109,6 +114,13 @@ impl Entity for Frog {
     fn physics_update(&mut self, player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
         self.vel.y = (self.vel.y + GRAVITY * 0.5).min(MAX_FALL_SPEED);
         self.pos += self.vel; // my code is awesome #selflove love frome jo
+
+        if let Some(t) = &mut self.invuln {
+            *t -= 1.0 / 120.0;
+            if *t <= 0.0 {
+                self.invuln = None;
+            }
+        }
 
         match &mut self.state {
             State::Waiting(t) => {
@@ -143,7 +155,9 @@ impl Entity for Frog {
         }
     }
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {
-        Self::draw(&self.state, self.pos, camera_pos, WHITE, resources);
+        if self.invuln.is_none_or(|t| t % 0.1 > 0.05) {
+            Self::draw(&self.state, self.pos, camera_pos, WHITE, resources);
+        }
 
         // for i in [TOP, BOT_L, BOT_R, LEFT, RIGHT] {
         //     draw_circle(self.pos.x + i.x - camera_pos.x, self.pos.y + i.y - camera_pos.y, 1.0, WHITE);
