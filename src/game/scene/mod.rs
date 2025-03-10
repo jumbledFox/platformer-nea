@@ -137,6 +137,9 @@ impl Scene {
             self.physics_update_timer -= PHYSICS_STEP;
         }
 
+        // Sorting them every frame?! idk man...... it works..
+        self.entities.sort_by(|e1, e2| e1.kind().cmp(&e2.kind()));
+
         self.camera.update(self.player.pos());
 
         self.level.update_bumped_tiles(deltatime);

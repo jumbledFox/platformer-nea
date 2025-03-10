@@ -79,7 +79,7 @@ impl Entity for Goat {
     fn update(&mut self, _resources: &Resources) {
         
     }
-    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
+    fn physics_update(&mut self, _player: &Player, _others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
         self.vel.x = -0.5;
         self.pos += self.vel;
         self.step_anim = (self.step_anim + self.vel.x.abs() / 12.0).rem_euclid(1.0);

@@ -47,6 +47,27 @@ pub enum EntityKind {
     Goat,
 }
 
+impl Ord for EntityKind {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        fn order(kind: &EntityKind) -> u8 {
+            match kind {
+                EntityKind::Crate(_) => 0,
+                EntityKind::Chip(_)  => 1,
+                EntityKind::Life(_)  => 2,
+                EntityKind::Goat |
+                EntityKind::Frog(_) => 3,
+                EntityKind::Key(_) => 4,
+            }
+        }
+        order(self).cmp(&order(other))
+    }
+}
+impl PartialOrd for EntityKind {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl EntityKind {
     // The hitbox of the entity
     pub fn hitbox(&self) -> Rect {
