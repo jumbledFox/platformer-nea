@@ -41,7 +41,8 @@ pub struct Scene {
 
 impl Scene {
     pub fn from_editor_level(editor_level: &EditorLevel, player_spawn: Option<Vec2>) -> Self {
-        let level = LevelData::from_editor_level(editor_level)
+        // TODO: ... We can set world as 0 since we don't really care at all, as we're in the editor... for now?! 
+        let level = LevelData::from_editor_level(editor_level, 0)
             .to_level();
 
         let player_spawn = player_spawn.unwrap_or(editor_level.spawn());

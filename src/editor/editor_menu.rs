@@ -9,7 +9,7 @@ use crate::{level_pack_data::LevelPackData, resources::Resources, text_renderer:
 use super::{editor_level::{BG_CLOUD, BG_DESERT, BG_NIGHT, BG_SKY, BG_SUNSET}, editor_level_pack::EditorLevelPack, level_view::LevelView};
 
 const PACK_EDIT_POS: Vec2 = vec2(5.0, 30.0);
-const BG_COL_POS: Vec2 = vec2(5.0, 100.0);
+const BG_COL_POS: Vec2 = vec2(5.0, 120.0);
 const BG_COL: Color = color_u8!(255, 255, 255, 100);
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -54,6 +54,7 @@ pub struct EditorMenu {
     save_button: Button,
 
     // Manipulating the level pack
+    pack_level_world_input: TextInput,
     pack_level_name_input: TextInput,
     pack_add: Button,
     pack_del: Button,
@@ -102,13 +103,14 @@ impl Default for EditorMenu {
             help_button: Button::new(Rect::new(5.0, 5.0, 54.0, 12.0), Some(String::from("Help!")), None),
             save_button: Button::new(Rect::new(64.0, 5.0, 54.0, 12.0), Some(String::from("Save")), None),
 
-            pack_level_name_input: TextInput::new(PACK_EDIT_POS + vec2(43.0, 12.0)),
-            pack_add: Button::new(Rect::new(PACK_EDIT_POS.x, PACK_EDIT_POS.y + 28.0, 12.0, 12.0), Some(String::from("+")), Some(String::from("Insert new level"))),
-            pack_del: Button::new(Rect::new(PACK_EDIT_POS.x + 100.0, PACK_EDIT_POS.y + 28.0, 53.0, 12.0), Some(String::from("Delete")), Some(String::from("Delete current level"))),
-            pack_prev:       Button::new(Rect::new(PACK_EDIT_POS.x + 25.0, PACK_EDIT_POS.y + 28.0, 12.0, 12.0), Some(String::from("🮤")), Some(String::from("Previous level"))),
-            pack_next:       Button::new(Rect::new(PACK_EDIT_POS.x + 39.0, PACK_EDIT_POS.y + 28.0, 12.0, 12.0), Some(String::from("🮥")), Some(String::from("Next level"))),
-            pack_shift_prev: Button::new(Rect::new(PACK_EDIT_POS.x + 60.0, PACK_EDIT_POS.y + 28.0, 12.0, 12.0), Some(String::from("↞")), Some(String::from("Shift level back"))),
-            pack_shift_next: Button::new(Rect::new(PACK_EDIT_POS.x + 74.0, PACK_EDIT_POS.y + 28.0, 12.0, 12.0), Some(String::from("↠")), Some(String::from("Shift level forward"))),
+            pack_level_world_input: TextInput::new(PACK_EDIT_POS + vec2(53.0, 12.0)),
+            pack_level_name_input: TextInput::new(PACK_EDIT_POS + vec2(53.0, 26.0)),
+            pack_add: Button::new(Rect::new(PACK_EDIT_POS.x, PACK_EDIT_POS.y + 42.0, 12.0, 12.0), Some(String::from("+")), Some(String::from("Insert new level"))),
+            pack_del: Button::new(Rect::new(PACK_EDIT_POS.x + 100.0, PACK_EDIT_POS.y + 42.0, 53.0, 12.0), Some(String::from("Delete")), Some(String::from("Delete current level"))),
+            pack_prev:       Button::new(Rect::new(PACK_EDIT_POS.x + 25.0, PACK_EDIT_POS.y + 42.0, 12.0, 12.0), Some(String::from("🮤")), Some(String::from("Previous level"))),
+            pack_next:       Button::new(Rect::new(PACK_EDIT_POS.x + 39.0, PACK_EDIT_POS.y + 42.0, 12.0, 12.0), Some(String::from("🮥")), Some(String::from("Next level"))),
+            pack_shift_prev: Button::new(Rect::new(PACK_EDIT_POS.x + 60.0, PACK_EDIT_POS.y + 42.0, 12.0, 12.0), Some(String::from("↞")), Some(String::from("Shift level back"))),
+            pack_shift_next: Button::new(Rect::new(PACK_EDIT_POS.x + 74.0, PACK_EDIT_POS.y + 42.0, 12.0, 12.0), Some(String::from("↠")), Some(String::from("Shift level forward"))),
 
             popup: PopupKind::None,
             pack_popup_name_input:   TextInput::new(vec2((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0,  90.0)),
@@ -242,6 +244,7 @@ impl EditorMenu {
             return;
         }
 
+        self.pack_level_world_input.update(editor_level_pack.editor_level_mut().world_mut(), deltatime, ui, resources);
         self.pack_level_name_input.update(editor_level_pack.editor_level_mut().name_mut(), deltatime, ui, resources);
         self.pack_add.set_disabled(!editor_level_pack.can_add());
         self.pack_prev.set_disabled(!editor_level_pack.can_prev());
@@ -488,6 +491,7 @@ impl EditorMenu {
         }
 
         // Draw the pack edit ui thingies
+        self.pack_level_world_input.draw(editor_level_pack.editor_level().world(), "World (empty for prev)", resources);
         self.pack_level_name_input.draw(editor_level_pack.editor_level().name(), "Level name", resources);
         self.pack_add.draw(resources);
         self.pack_del.draw(resources);
@@ -496,7 +500,8 @@ impl EditorMenu {
         self.pack_shift_prev.draw(resources);
         self.pack_shift_next.draw(resources);
         render_text(&format!("Level {:0>2}/{:0>2}", editor_level_pack.current() + 1, editor_level_pack.level_count()), WHITE, PACK_EDIT_POS, Vec2::ONE, Align::End, Font::Small, resources);
-        render_text(&"Name: ", WHITE, PACK_EDIT_POS + vec2(0.0, 14.0), Vec2::ONE, Align::End, Font::Small, resources);
+        render_text(&"World: ", WHITE, PACK_EDIT_POS + vec2(0.0, 14.0), Vec2::ONE, Align::End, Font::Small, resources);
+        render_text(&"Name:  ", WHITE, PACK_EDIT_POS + vec2(0.0, 28.0), Vec2::ONE, Align::End, Font::Small, resources);
 
         render_text("Level background color", WHITE, BG_COL_POS - vec2(0.0, 10.0), Vec2::ONE, Align::End, Font::Small, resources);
         // Draw the bg col sliders and the color below them

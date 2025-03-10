@@ -59,8 +59,9 @@ impl Button {
             self.state = ButtonState::Idle;
             return;
         }
+
         // If the mouse isn't over the button, make it idle and return!
-        if !self.rect().contains(Ui::mouse_pos()) {
+        if !Ui::mouse_pos().is_some_and(|m| self.rect().contains(m)) {
             self.state = ButtonState::Idle;
             return;
         }

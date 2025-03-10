@@ -20,8 +20,9 @@ impl SliderU8 {
     }
     // Update the slider
     pub fn update(&mut self, value: &mut u8, ui: &mut Ui) {
+        
         // If the mouse has been pressed over the slider, make it active
-        if is_mouse_button_pressed(MouseButton::Left) && self.rect.contains(Ui::mouse_pos()) {
+        if is_mouse_button_pressed(MouseButton::Left) && Ui::mouse_pos().is_some_and(|m| self.rect.contains(m)) {
             self.active = true;
         }
         // If the mouse is over the slider but isn't down, we're not active
@@ -30,7 +31,7 @@ impl SliderU8 {
         }
 
         // If the mouse is over the slider, use arrow keys for subtle movements
-        if self.rect.contains(Ui::mouse_pos()) {
+        if Ui::mouse_pos().is_some_and(|m| self.rect.contains(m)) {
             if is_key_pressed(KeyCode::Left) {
                 *value = value.saturating_sub(1).clamp(self.min, self.max);
             }
@@ -41,11 +42,12 @@ impl SliderU8 {
 
         // If active, interact and update the value based on the mouse position
         if self.active {
-            if ui.interacted() {
-                return; 
-            }
+            let mouse_pos = match Ui::mouse_pos() {
+                Some(m) if !ui.interacted() => m,
+                _ => return,
+            };
             ui.interact();
-            let percent = ((Ui::mouse_pos().x - self.rect.x) / (self.rect.w - 1.0)).clamp(0.0, 1.0);
+            let percent = ((mouse_pos.x - self.rect.x) / (self.rect.w - 1.0)).clamp(0.0, 1.0);
             *value = self.min + (percent * (self.max - self.min) as f32) as u8;
         }
     }

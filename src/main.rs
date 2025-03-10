@@ -81,18 +81,21 @@ async fn main() {
         ui.draw(&resources);
 
         // Draw the render target
+        let r = Ui::render_target_rect();
+
         set_default_camera();
         clear_background(BLACK);
-        draw_texture_ex(&render_target.texture, 0.0, 0.0, WHITE, DrawTextureParams {
-            dest_size: Some(vec2(screen_width(), screen_height())),
+        draw_texture_ex(&render_target.texture, r.x, r.y, WHITE, DrawTextureParams {
+            dest_size: Some(r.size()),
             flip_y: true,
             ..Default::default()
         });
 
         // Wait for the next frame
         // We sleep here to stop macroquad from going over ~60 fps, which would be pointless and hog the CPU
+        // TODO:... remove this
         if !is_key_down(KeyCode::F) {
-        sleep(Duration::from_millis(6));
+            sleep(Duration::from_millis(6));
         } else {
             sleep(Duration::from_millis(100));
         }

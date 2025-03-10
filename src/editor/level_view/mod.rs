@@ -58,8 +58,7 @@ impl LevelView {
         }
 
         Self {
-            // selected_object: Object::Tile(Tile::Grass),
-            selected_object: Object::Other(ObjectOtherKind::Door(DoorKind::SeamlessTeleporter)),
+            selected_object: Object::Tile(Tile::Grass),
             cursor_pos: None,
             began_drawing_in_area: false,
 
@@ -275,172 +274,174 @@ impl LevelView {
 
         self.cursor_pos = None;
 
-        if !ui.interacted() {
-            // Set the cursor position to align with the grid, only if it exists inside of the level grid
-            let mouse_tile = (Ui::mouse_pos() / 16.0 + self.camera.pos() / 16.0).floor();
-            if mouse_tile.x >= 0.0 && mouse_tile.x < editor_level.width()  as f32
-            && mouse_tile.y >= 0.0 && mouse_tile.y < editor_level.height() as f32 {
-                self.cursor_pos = Some(mouse_tile * 16.0);
-            } else {
-                self.cursor_pos = None;
-            }
-
-            if (is_mouse_button_pressed(MouseButton::Left) || is_mouse_button_pressed(MouseButton::Right)) && self.cursor_pos.is_some() {
-                self.began_drawing_in_area = true;
-            }
-            if !is_mouse_button_down(MouseButton::Left) && !is_mouse_button_down(MouseButton::Right) {
-                self.began_drawing_in_area = false;
-            }
-
-            let copy_pressed = is_key_pressed(KeyCode::C);
-            let cut_pressed = is_key_pressed(KeyCode::X);
-
-            if let Some(cursor_pos) = self.cursor_pos {
-                // If the user presses tab, let them place the test spawn point
-                if is_key_pressed(KeyCode::Tab) {
-                    self.test_spawn_point = match self.test_spawn_point {
-                        None => Some((cursor_pos, false)),
-                        _ => None,
-                    };
+        if let Some(mouse_pos) = Ui::mouse_pos() {
+            if !ui.interacted() {
+                // Set the cursor position to align with the grid, only if it exists inside of the level grid
+                let mouse_tile = (mouse_pos / 16.0 + self.camera.pos() / 16.0).floor();
+                if mouse_tile.x >= 0.0 && mouse_tile.x < editor_level.width()  as f32
+                && mouse_tile.y >= 0.0 && mouse_tile.y < editor_level.height() as f32 {
+                    self.cursor_pos = Some(mouse_tile * 16.0);
+                } else {
+                    self.cursor_pos = None;
                 }
-                // Updating the test spawn point
-                else if let Some((pos, placed)) = &mut self.test_spawn_point {
-                    *pos = cursor_pos;
-                    // If the user clicks, set the placed flag to true
-                    if is_mouse_button_pressed(MouseButton::Left) {
-                        *placed = true;
-                    }
+    
+                if (is_mouse_button_pressed(MouseButton::Left) || is_mouse_button_pressed(MouseButton::Right)) && self.cursor_pos.is_some() {
+                    self.began_drawing_in_area = true;
                 }
-                // If the object is a tile
-                else if let Object::Tile(tile) = self.selected_object {
-                    // Drawing
-                    if is_mouse_button_down(MouseButton::Left) && self.began_drawing_in_area {
-                        editor_level.set_tile_at_pos(tile, cursor_pos, self.layer_bg);
-                    }
-                    // Erasing
-                    else if is_mouse_button_down(MouseButton::Right) && self.began_drawing_in_area {
-                        editor_level.set_tile_at_pos(Tile::Empty, cursor_pos, self.layer_bg);
-                    }
+                if !is_mouse_button_down(MouseButton::Left) && !is_mouse_button_down(MouseButton::Right) {
+                    self.began_drawing_in_area = false;
                 }
-                // If the object is an entity
-                else if let Object::Entity(kind) = self.selected_object {
-                    // Placing
-                    if is_mouse_button_pressed(MouseButton::Left) {
-                        editor_level.try_add_entity(cursor_pos, kind, toast_manager);
+    
+                let copy_pressed = is_key_pressed(KeyCode::C);
+                let cut_pressed = is_key_pressed(KeyCode::X);
+    
+                if let Some(cursor_pos) = self.cursor_pos {
+                    // If the user presses tab, let them place the test spawn point
+                    if is_key_pressed(KeyCode::Tab) {
+                        self.test_spawn_point = match self.test_spawn_point {
+                            None => Some((cursor_pos, false)),
+                            _ => None,
+                        };
                     }
-                    // Removing
-                    else if is_mouse_button_pressed(MouseButton::Right) {
-                        editor_level.try_remove_entity(cursor_pos);
-                    }
-                    // Copying / Cutting
-                    else if copy_pressed || cut_pressed {
-                        if let Some(kind) = editor_level.entities()
-                            .iter()
-                            .find(|e| e.0 == cursor_pos)
-                            .map(|e| e.1)
-                        {
-                            self.selected_object = Object::Entity(kind);
-                            // Cutting
-                            if cut_pressed {
-                                editor_level.try_remove_entity(cursor_pos);
-                            }
+                    // Updating the test spawn point
+                    else if let Some((pos, placed)) = &mut self.test_spawn_point {
+                        *pos = cursor_pos;
+                        // If the user clicks, set the placed flag to true
+                        if is_mouse_button_pressed(MouseButton::Left) {
+                            *placed = true;
                         }
                     }
-                }
-                // If the object is a sign
-                else if self.selected_object == Object::Other(ObjectOtherKind::Sign) {
-                    let get_sign_lines_at_cursor_pos = || -> Option<[String; 4]> {
-                        editor_level
-                            .signs()
-                            .iter()
-                            .find(|s| s.0 == cursor_pos)
-                            .map(|s| s.1.clone())
-                    };
-
-                    if is_mouse_button_pressed(MouseButton::Left) {
-                        // If we clicked on an existing sign, edit that
-                        let lines = get_sign_lines_at_cursor_pos();
-
-                        match &self.sign_clipboard {
-                            // If we're copying/cutting a sign and we're not editing an existing one, paste it.
-                            SignClipboard::Copy(sign_data) | SignClipboard::Cut(sign_data) if lines.is_none() => {
-                                editor_level.try_remove_sign(cursor_pos);
-                                editor_level.try_add_sign(cursor_pos, sign_data.clone(), toast_manager);
-                                self.sign_clipboard = SignClipboard::None;
-                            }
-                            // Otherwise (we're not copying/cutting a sign, or we are but we've clicked on an existing one), open the gui for a new sign (unless there are too many)
-                            _ => {
-                                if editor_level.can_add_sign() {
-                                    self.sign_popup = Some(SignPopup::new(cursor_pos, lines));
-                                } else {
-                                    toast_manager.add_sign_limit_toast();
+                    // If the object is a tile
+                    else if let Object::Tile(tile) = self.selected_object {
+                        // Drawing
+                        if is_mouse_button_down(MouseButton::Left) && self.began_drawing_in_area {
+                            editor_level.set_tile_at_pos(tile, cursor_pos, self.layer_bg);
+                        }
+                        // Erasing
+                        else if is_mouse_button_down(MouseButton::Right) && self.began_drawing_in_area {
+                            editor_level.set_tile_at_pos(Tile::Empty, cursor_pos, self.layer_bg);
+                        }
+                    }
+                    // If the object is an entity
+                    else if let Object::Entity(kind) = self.selected_object {
+                        // Placing
+                        if is_mouse_button_pressed(MouseButton::Left) {
+                            editor_level.try_add_entity(cursor_pos, kind, toast_manager);
+                        }
+                        // Removing
+                        else if is_mouse_button_pressed(MouseButton::Right) {
+                            editor_level.try_remove_entity(cursor_pos);
+                        }
+                        // Copying / Cutting
+                        else if copy_pressed || cut_pressed {
+                            if let Some(kind) = editor_level.entities()
+                                .iter()
+                                .find(|e| e.0 == cursor_pos)
+                                .map(|e| e.1)
+                            {
+                                self.selected_object = Object::Entity(kind);
+                                // Cutting
+                                if cut_pressed {
+                                    editor_level.try_remove_entity(cursor_pos);
                                 }
                             }
                         }
-                    } else if is_mouse_button_pressed(MouseButton::Right) {
-                        // If a sign exists here and we've right clicked, remove it
-                        editor_level.try_remove_sign(cursor_pos);
                     }
-                    // Copying / Cutting
-                    else if copy_pressed || cut_pressed {
-                        if let Some(lines) = get_sign_lines_at_cursor_pos() {
-                            self.sign_clipboard = match cut_pressed {
-                                false => SignClipboard::Copy(lines),
-                                true  => SignClipboard::Cut(lines),
-                            };
-                            // Cutting
-                            if cut_pressed {
-                                editor_level.try_remove_sign(cursor_pos);
+                    // If the object is a sign
+                    else if self.selected_object == Object::Other(ObjectOtherKind::Sign) {
+                        let get_sign_lines_at_cursor_pos = || -> Option<[String; 4]> {
+                            editor_level
+                                .signs()
+                                .iter()
+                                .find(|s| s.0 == cursor_pos)
+                                .map(|s| s.1.clone())
+                        };
+    
+                        if is_mouse_button_pressed(MouseButton::Left) {
+                            // If we clicked on an existing sign, edit that
+                            let lines = get_sign_lines_at_cursor_pos();
+    
+                            match &self.sign_clipboard {
+                                // If we're copying/cutting a sign and we're not editing an existing one, paste it.
+                                SignClipboard::Copy(sign_data) | SignClipboard::Cut(sign_data) if lines.is_none() => {
+                                    editor_level.try_remove_sign(cursor_pos);
+                                    editor_level.try_add_sign(cursor_pos, sign_data.clone(), toast_manager);
+                                    self.sign_clipboard = SignClipboard::None;
+                                }
+                                // Otherwise (we're not copying/cutting a sign, or we are but we've clicked on an existing one), open the gui for a new sign (unless there are too many)
+                                _ => {
+                                    if editor_level.can_add_sign() {
+                                        self.sign_popup = Some(SignPopup::new(cursor_pos, lines));
+                                    } else {
+                                        toast_manager.add_sign_limit_toast();
+                                    }
+                                }
+                            }
+                        } else if is_mouse_button_pressed(MouseButton::Right) {
+                            // If a sign exists here and we've right clicked, remove it
+                            editor_level.try_remove_sign(cursor_pos);
+                        }
+                        // Copying / Cutting
+                        else if copy_pressed || cut_pressed {
+                            if let Some(lines) = get_sign_lines_at_cursor_pos() {
+                                self.sign_clipboard = match cut_pressed {
+                                    false => SignClipboard::Copy(lines),
+                                    true  => SignClipboard::Cut(lines),
+                                };
+                                // Cutting
+                                if cut_pressed {
+                                    editor_level.try_remove_sign(cursor_pos);
+                                }
                             }
                         }
                     }
-                }
-                // If the object is a door
-                else if let Object::Other(ObjectOtherKind::Door(teleport)) = self.selected_object {
-                    // If we press right click and we're adding a door, stop
-                    // If we're not adding a door though, try to remove a door if ONLY it's pos is here, not it's dest
-                    if is_mouse_button_pressed(MouseButton::Right) {
-                        if editor_level.door_start().is_some() {
-                            editor_level.set_door_start(None);
-                        } else {
-                            editor_level.try_remove_door(cursor_pos);
-                        }
-                    }
-                    // Left clicking...
-                    // If we've already put a start position, finish the door!!
-                    // If we've not put a start position down, do that (unless it's on a door.. in that case do nothing idk)
-                    if is_mouse_button_pressed(MouseButton::Left) {
-                        if let Some(door_start) = editor_level.door_start() {
-                            editor_level.try_add_door(teleport, door_start, cursor_pos, toast_manager);
-                            editor_level.set_door_start(None);
-                        } else {
-                            if editor_level.can_add_door() {
-                                if !editor_level.doors().iter().any(|d| d.1 == cursor_pos) {
-                                    editor_level.set_door_start(Some(cursor_pos));
-                                }
+                    // If the object is a door
+                    else if let Object::Other(ObjectOtherKind::Door(teleport)) = self.selected_object {
+                        // If we press right click and we're adding a door, stop
+                        // If we're not adding a door though, try to remove a door if ONLY it's pos is here, not it's dest
+                        if is_mouse_button_pressed(MouseButton::Right) {
+                            if editor_level.door_start().is_some() {
+                                editor_level.set_door_start(None);
                             } else {
-                                toast_manager.add_door_limit_toast();
+                                editor_level.try_remove_door(cursor_pos);
+                            }
+                        }
+                        // Left clicking...
+                        // If we've already put a start position, finish the door!!
+                        // If we've not put a start position down, do that (unless it's on a door.. in that case do nothing idk)
+                        if is_mouse_button_pressed(MouseButton::Left) {
+                            if let Some(door_start) = editor_level.door_start() {
+                                editor_level.try_add_door(teleport, door_start, cursor_pos, toast_manager);
+                                editor_level.set_door_start(None);
+                            } else {
+                                if editor_level.can_add_door() {
+                                    if !editor_level.doors().iter().any(|d| d.1 == cursor_pos) {
+                                        editor_level.set_door_start(Some(cursor_pos));
+                                    }
+                                } else {
+                                    toast_manager.add_door_limit_toast();
+                                }
                             }
                         }
                     }
-                }
-                // Spawn point / finish point
-                else if self.selected_object == Object::Other(ObjectOtherKind::Spawn) {
-                    if is_mouse_button_pressed(MouseButton::Left) {
-                        editor_level.set_spawn(cursor_pos);
+                    // Spawn point / finish point
+                    else if self.selected_object == Object::Other(ObjectOtherKind::Spawn) {
+                        if is_mouse_button_pressed(MouseButton::Left) {
+                            editor_level.set_spawn(cursor_pos);
+                        }
+                    } else if self.selected_object == Object::Other(ObjectOtherKind::Finish) {
+                        if is_mouse_button_pressed(MouseButton::Left) {
+                            editor_level.set_finish(cursor_pos);
+                        }
                     }
-                } else if self.selected_object == Object::Other(ObjectOtherKind::Finish) {
-                    if is_mouse_button_pressed(MouseButton::Left) {
-                        editor_level.set_finish(cursor_pos);
-                    }
-                }
-                // Checkpoint
-                else if self.selected_object == Object::Other(ObjectOtherKind::Checkpoint) {
-                    if is_mouse_button_pressed(MouseButton::Left) {
-                        editor_level.try_add_checkpoint(cursor_pos, toast_manager);
-                    }
-                    if is_mouse_button_pressed(MouseButton::Right) {
-                        editor_level.try_remove_checkpoint(cursor_pos);
+                    // Checkpoint
+                    else if self.selected_object == Object::Other(ObjectOtherKind::Checkpoint) {
+                        if is_mouse_button_pressed(MouseButton::Left) {
+                            editor_level.try_add_checkpoint(cursor_pos, toast_manager);
+                        }
+                        if is_mouse_button_pressed(MouseButton::Right) {
+                            editor_level.try_remove_checkpoint(cursor_pos);
+                        }
                     }
                 }
             }

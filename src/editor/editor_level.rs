@@ -25,6 +25,7 @@ pub const BG_NIGHT: (u8, u8, u8) = (32, 45, 70);
 pub const BG_CLOUD: (u8, u8, u8) = (197, 218, 230);
 
 pub struct EditorLevel {
+    world: String,
     name: String,
     bg_col: (u8, u8, u8),
 
@@ -62,6 +63,7 @@ impl Default for EditorLevel {
         }
 
         Self {
+            world: String::new(),
             name: String::new(),
             bg_col: BG_SKY,
 
@@ -88,6 +90,7 @@ impl Default for EditorLevel {
 
 impl EditorLevel {
     pub fn new(
+        world: String,
         name: String,
         bg_col: (u8, u8, u8),
         width: usize,
@@ -102,6 +105,7 @@ impl EditorLevel {
         entities: Vec<(Vec2, EntityKind)>,
     ) -> Self {
         Self {
+            world,
             name, bg_col, width, height, tiles, tiles_bg, signs, doors, spawn, finish, checkpoints, entities,
             door_start: None,
             tiles_above:      vec![],
@@ -111,6 +115,12 @@ impl EditorLevel {
         }
     }
 
+    pub fn world(&self) -> &String {
+        &self.world
+    }
+    pub fn world_mut(&mut self) -> &mut String {
+        &mut self.world
+    }
     pub fn name(&self) -> &String {
         &self.name
     }

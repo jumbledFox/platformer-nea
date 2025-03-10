@@ -17,7 +17,7 @@ pub const MAX_FIELD_LEN: usize = 24;
 pub struct LevelPackData {
     name: String,
     author: String,
-
+    worlds: Vec<String>,
     levels: Vec<LevelData>,
 }
 
@@ -31,6 +31,7 @@ pub type LevelPosition = (u8, u8);
 
 pub struct LevelData {
     name: String,
+    world: u8,
     bg_col: (u8, u8, u8),
     width: u8,
     height: u8,
@@ -58,8 +59,9 @@ pub fn level_pos_to_pos(level_pos: LevelPosition) -> Vec2 {
 
 impl LevelData {
     // Turning an editor level into LevelData
-    pub fn from_editor_level(editor_level: &EditorLevel) -> Self {
+    pub fn from_editor_level(editor_level: &EditorLevel, world: u8) -> Self {
         Self {
+            world,
             name: editor_level.name().clone(),
             bg_col: editor_level.bg_col(),
             width:  editor_level.width() .clamp(0, 255) as u8,
@@ -88,8 +90,9 @@ impl LevelData {
     }
 
     // Turning level data to an editor level
-    pub fn to_editor_level(&self) -> EditorLevel {
+    pub fn to_editor_level(&self, world_name: String) -> EditorLevel {
         EditorLevel::new(
+            world_name,
             self.name.clone(),
             self.bg_col,
             self.width as usize,
@@ -146,20 +149,42 @@ impl LevelData {
 
 impl LevelPackData {
     pub fn from_editor_level_pack(value: &EditorLevelPack) -> Self {
+        let mut levels: Vec<LevelData> = Vec::with_capacity(value.level_count());
+        let mut worlds: Vec<String> = vec![];
+        let mut current_world = 0;
+
+        for editor_level in value.levels() {
+            // If the level has a world, add it to worlds!
+            if !editor_level.world().is_empty() {
+                worlds.push(editor_level.world().clone());
+                current_world += 1;
+            }
+
+            levels.push(LevelData::from_editor_level(editor_level, current_world));
+        }
+
         Self {
             name:   value.name().clone(),
             author: value.author().clone(),
-            levels: value.levels()
-                .iter()
-                .map(|l| LevelData::from_editor_level(l))
-                .collect(),
+            worlds,
+            levels,
         }
     }
 
     pub fn to_editor_level_pack(&self) -> EditorLevelPack {
-        let levels = self.levels.iter()
-            .map(|l| l.to_editor_level())
-            .collect();
+        let mut levels = Vec::new();
+
+        let mut prev_world = 0;
+        for level in &self.levels {
+            // Get the world names (only if it's the first level in the world)
+            let world_name = match level.world != prev_world {
+                false => String::new(),
+                true  => self.worlds.get(level.world as usize - 1).cloned().unwrap_or_default(),
+            };
+            prev_world = level.world;
+            levels.push(level.to_editor_level(world_name));
+        }
+
         EditorLevelPack::new(self.name.clone(), self.author.clone(), levels)
     }
 }
@@ -208,6 +233,8 @@ impl LevelData {
         
         // Add the name
         bytes.extend_from_slice(&string_to_bytes(&self.name, resources));
+        // Add the world number
+        bytes.push(self.world);
         // Add the background color
         bytes.push(self.bg_col.0); // r
         bytes.push(self.bg_col.1); // g
@@ -271,12 +298,16 @@ impl LevelData {
         // Don't want to have to write *bytes.get(index)? each time... this closure makes it easier!
         // If only I could add the ? to the closure........ :c
         let get_byte = |index: usize| -> Option<u8> {
-            bytes.get(index).map(|&b| b)
+            bytes.get(index).cloned()
         };
 
         // Get the name and move the cursor
         let name = bytes_to_string(*cursor, &bytes, resources)?;
         *cursor += MAX_FIELD_LEN;
+
+        // Get the world number and move the cursor
+        let world = get_byte(*cursor)?;
+        *cursor += 1;
 
         // Get the background color, width, and height
         let bg_col = (
@@ -370,7 +401,7 @@ impl LevelData {
             *cursor += 3;
         }
 
-        Some(Self { name, bg_col, width, height, tiles, tiles_bg, spawn, finish, checkpoints, signs, doors, entities })
+        Some(Self { name, world, bg_col, width, height, tiles, tiles_bg, spawn, finish, checkpoints, signs, doors, entities })
     }
 }
 
@@ -385,7 +416,11 @@ impl LevelPackData {
         // Add the name and author
         bytes.extend_from_slice(&string_to_bytes(&self.name, resources));
         bytes.extend_from_slice(&string_to_bytes(&self.author, resources));
-
+        // Add the worlds
+        bytes.push(self.worlds.len() as u8);
+        for w in &self.worlds {
+            bytes.extend_from_slice(&string_to_bytes(w, resources));
+        }
         // Add each level
         for l in &self.levels {
             let level_bytes = l.to_bytes(resources);
@@ -414,6 +449,17 @@ impl LevelPackData {
         let author = bytes_to_string(cursor, bytes, resources)?;
         cursor += MAX_FIELD_LEN;
 
+        // Get the worlds
+        let world_count = bytes.get(cursor).cloned()?;
+        cursor += 1;
+        let mut worlds = Vec::with_capacity(world_count as usize);
+        for _ in 0..world_count {
+            // Get the name and add it
+            let world_name = bytes_to_string(cursor, bytes, resources)?;
+            cursor += MAX_FIELD_LEN;
+            worlds.push(world_name);
+        }
+
         // Get each level
         let mut levels: Vec<LevelData> = Vec::new();
         // Repeat until the cursor is out of the bounds of the file
@@ -431,7 +477,7 @@ impl LevelPackData {
             return None;
         }
 
-        Some(Self { name, author, levels })
+        Some(Self { name, author, worlds, levels })
     }
 }
 

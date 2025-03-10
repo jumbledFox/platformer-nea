@@ -41,7 +41,7 @@ impl TextInput {
             return;
         }
         // If the mouse is over the text input, take interaction 
-        if TEXT_INPUT_RECT.offset(self.pos).contains(Ui::mouse_pos()) {
+        if Ui::mouse_pos().is_some_and(|m| TEXT_INPUT_RECT.offset(self.pos).contains(m)) {
             // ui.interact();
             // If the mouse has clicked on the rect, toggle it being active
             if is_mouse_button_pressed(MouseButton::Left) {
