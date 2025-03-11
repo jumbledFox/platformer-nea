@@ -41,7 +41,7 @@ impl Editor {
             level_view: LevelView::new(resources),
             toast_manager: ToastManager::default(),
 
-            instarun: false,
+            instarun: true,
         }
     }
 

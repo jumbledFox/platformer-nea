@@ -1,8 +1,6 @@
-use std::ops::Rem;
+use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range, shapes::draw_circle};
-
-use crate::{game::{collision::default_collision, level::Level, player::Player, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
+use crate::{game::{collision::default_collision, level::Level, player::Player, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -31,7 +29,7 @@ pub struct Frog {
 impl Frog {
     pub fn new(pos: Vec2, vel: Vec2, invuln: bool, id: Id) -> Self {
         let invuln = match invuln {
-            true => Some(1.0),
+            true  => Some(1.0),
             false => None,
         };
         Self {
@@ -93,10 +91,7 @@ impl Entity for Frog {
         self.vel = vel;
     }
     fn should_destroy(&self) -> bool {
-        match self.state {
-            State::Dead(t) if t <= 0.0 => true,
-            _ => false,
-        }
+        matches!(self.state, State::Dead(t) if t <= 0.0)
     }
     fn hit_with_throwable(&mut self, vel: Vec2) -> bool {
         if matches!(self.state, State::Dead(_)) || self.invuln.is_some() {
@@ -107,7 +102,7 @@ impl Entity for Frog {
         true
     }
 
-    fn update(&mut self, resources: &Resources) {
+    fn update(&mut self, _resources: &Resources) {
 
     }
 
@@ -155,7 +150,7 @@ impl Entity for Frog {
         }
     }
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {
-        if self.invuln.is_none_or(|t| t % 0.1 > 0.05) {
+        if self.invuln.is_none_or(|t| t % 0.1 < 0.05) {
             Self::draw(&self.state, self.pos, camera_pos, WHITE, resources);
         }
 

@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}};
 
-use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top, default_collision, EntityHitKind}, level::{tile::{LockColor, Tile, TileHitKind, RAINBOW_LOCK_FRAME_DUR}, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::LevelPosition, resources::Resources};
+use crate::{game::{collision::{default_collision, EntityHitKind}, level::{tile::{LockColor, Tile, TileHitKind, RAINBOW_LOCK_FRAME_DUR}, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -10,6 +10,7 @@ const SIDE_LB: Vec2 = vec2( 0.0, 12.0);
 const SIDE_RT: Vec2 = vec2(16.0,  2.0);
 const SIDE_RB: Vec2 = vec2(16.0, 12.0);
 const BOT_L:   Vec2 = vec2( 5.0, 14.0);
+const BOT_M:   Vec2 = vec2( 8.0, 14.0);
 const BOT_R:   Vec2 = vec2(11.0, 14.0);
 
 pub struct Key {
@@ -68,10 +69,9 @@ impl Entity for Key {
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
         let prev_pos = self.pos;
-        let prev_vel = self.vel;
 
         let mut tops   = [(TOP, false)];
-        let mut bots   = [(BOT_L, false), (BOT_R, false)];
+        let mut bots   = [(BOT_L, false), (BOT_M, false), (BOT_R, false)];
         let mut lefts  = [(SIDE_LT, true, false), (SIDE_LB, true, false)];
         let mut rights = [(SIDE_RT, true, false), (SIDE_RB, true, false)];
         let entity_hit = Some((EntityHitKind::All, self.hitbox()));
@@ -80,7 +80,7 @@ impl Entity for Key {
 
         // If we hit a tile, check if it's a lock block!
         if t || b || l || r {
-            for point in [TOP, BOT_L, BOT_R, SIDE_LT, SIDE_LB, SIDE_RT, SIDE_RB] {
+            for point in [TOP, BOT_L, BOT_M, BOT_R, SIDE_LT, SIDE_LB, SIDE_RT, SIDE_RB] {
                 // If so, destroy all the lock blocks of our color and destroy ourself.
                 if level.tile_at_pos(prev_pos + point) == Tile::Lock(self.color) {
                     // TODO: Particles

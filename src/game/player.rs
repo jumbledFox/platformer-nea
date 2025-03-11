@@ -38,8 +38,17 @@ pub enum State {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Dir {
+pub enum Dir {
     Left, Right,
+}
+
+impl Dir {
+    pub fn flipped(self) -> Self {
+        match self {
+            Self::Left  => Self::Right,
+            Self::Right => Self::Left,
+        }
+    }
 }
 
 // Powerups
@@ -371,7 +380,7 @@ impl Player {
                 let mut throw_vel = match (is_key_down(KEY_UP), is_key_down(KEY_DOWN)) {
                     (true, _)  => vec2(self.vel.x.abs().clamp(0.0, 0.7), -2.4), // Holding up and not moving
                     (_, true)  => vec2(0.0, 0.0), // Gently putting down
-                    _ => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.6, (-self.vel.x.abs() / 4.0).clamp(0.0, 0.4) - 0.7),
+                    _ => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.6, (-self.vel.x.abs() / 4.0).clamp(0.0, 0.4) - 0.6),
                 };
                 if self.dir == Dir::Left {
                     throw_vel.x *= -1.0;

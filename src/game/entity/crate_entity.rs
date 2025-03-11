@@ -2,9 +2,9 @@
 
 use macroquad::{color::{Color, WHITE}, input::is_key_pressed, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{collision::{collision_bottom, collision_left, collision_right, collision_top, default_collision, EntityHitKind}, level::{tile::{LockColor, TileHitKind}, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, level_pack_data::{level_pos_to_pos, LevelPosition}, resources::Resources};
+use crate::{game::{collision::{default_collision, EntityHitKind}, level::{tile::{LockColor, TileHitKind}, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
-use super::{frog::Frog, key::Key, Entity, EntityKind, Id};
+use super::{Entity, EntityKind, Id};
 
 const TOP:     Vec2 = vec2( 8.0,  0.0);
 const SIDE_LT: Vec2 = vec2( 0.0,  2.0);
@@ -133,7 +133,7 @@ impl Entity for Crate {
                     CrateKind::Life => 0.7,
                 };
                 let vel = vec2(gen_range(x_min, x_max), gen_range(y_min, y_max)) * multiplier;
-                entity_spawner.add_entity(self.pos, vel, kind, None);
+                entity_spawner.add_entity(self.pos + vec2(0.0, 1.0), vel, kind, None);
             };
             match self.kind {
                 CrateKind::Key(color)  => spawn_entity(EntityKind::Key(color)),

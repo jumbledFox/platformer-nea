@@ -95,7 +95,7 @@ async fn main() {
         // We sleep here to stop macroquad from going over ~60 fps, which would be pointless and hog the CPU
         // TODO:... remove this
         if !is_key_down(KeyCode::F) {
-            sleep(Duration::from_millis(6));
+            // sleep(Duration::from_millis(6));
         } else {
             sleep(Duration::from_millis(100));
         }

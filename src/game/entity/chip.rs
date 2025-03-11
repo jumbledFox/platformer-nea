@@ -46,17 +46,6 @@ impl Chip {
     }
 }
 
-/*
-    fn id(&self) -> Id;
-    fn hitbox(&self) -> Rect;
-    fn set_pos(&mut self, pos: Vec2);
-    fn set_vel(&mut self, vel: Vec2);
-    fn hit_with_throwable(&mut self, _vel: Vec2) -> bool { false }
-    fn should_destroy(&self) -> bool;
-
-    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources);
-    fn draw(&self, camera_pos: Vec2, resources: &Resources);
-*/
 impl Entity for Chip {
     fn id(&self) -> Id {
         self.id

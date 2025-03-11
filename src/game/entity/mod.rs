@@ -3,9 +3,9 @@ use crate_entity::{Crate, CrateKind};
 use frog::Frog;
 use goat::Goat;
 use key::Key;
-use macroquad::{color::{Color, BLUE, WHITE}, math::{vec2, Rect, Vec2}};
+use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
 
-use crate::{level_pack_data::LevelPosition, resources::Resources, util::{draw_rect, draw_rect_lines}};
+use crate::{level_pack_data::LevelPosition, resources::Resources};
 
 use super::{level::{tile::LockColor, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::Particles}};
 
@@ -14,6 +14,7 @@ pub mod chip;
 pub mod key;
 pub mod frog;
 pub mod goat;
+pub mod danger_cloud;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Id {
@@ -45,6 +46,8 @@ pub enum EntityKind {
     Life(bool),
     Frog(bool),
     Goat,
+
+    DangerCloud,
 }
 
 impl Ord for EntityKind {
@@ -57,6 +60,8 @@ impl Ord for EntityKind {
                 EntityKind::Goat |
                 EntityKind::Frog(_) => 3,
                 EntityKind::Key(_) => 4,
+
+                EntityKind::DangerCloud => 5,
             }
         }
         order(self).cmp(&order(other))
@@ -77,6 +82,8 @@ impl EntityKind {
             Self::Chip(_) | Self::Life(_) => Chip::hitbox(),
             Self::Frog(_) => Frog::hitbox(),
             Self::Goat => Goat::hitbox(),
+
+            _ => Rect::default(),
         }
     }
     // The offset of this entity when it's being spawned into the level and displayed in the view 
@@ -88,6 +95,8 @@ impl EntityKind {
             Self::Chip(_) | Self::Life(_) => Chip::tile_offset(),
             Self::Frog(_) => Frog::tile_offset(),
             Self::Goat => Goat::tile_offset(),
+
+            _ => Vec2::ZERO,
         }
     }
     // The offset of this entity when it's being displayed in the object selector
@@ -101,6 +110,8 @@ impl EntityKind {
             
             Self::Frog(_) => Frog::object_selector_rect().point(),
             Self::Goat => Goat::object_selector_rect().point(),
+
+            _ => Vec2::ZERO,
         }
     }
     // The hitbox in the object selector
@@ -111,6 +122,8 @@ impl EntityKind {
             Self::Chip(_) | Self::Life(_) => Chip::object_selector_size(),
             Self::Frog(_) => Frog::object_selector_rect().size(),
             Self::Goat => Goat::object_selector_rect().size(),
+
+            _ => Vec2::ZERO,
         }
     }
     // Draw the entity kind, for use in the editor
@@ -159,6 +172,7 @@ impl EntityKind {
             EntityKind::Life(_) => Chip::draw_editor(true, pos, camera_pos, color, resources),
             EntityKind::Frog(_) => Frog::draw_editor(pos, camera_pos, color, resources),
             EntityKind::Goat => Goat::draw_editor(pos, camera_pos, color, resources),
+            _ => {}
         }
     }
 }
@@ -189,6 +203,9 @@ impl From<EntityKind> for u8 {
             EntityKind::Life(_) => 17,
             EntityKind::Frog(_) => 19,
             EntityKind::Goat => 22,
+
+            // This shouldn't be saved!! it can't be placed!!
+            EntityKind::DangerCloud => 0,
         }
     }
 }
