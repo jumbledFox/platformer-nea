@@ -45,31 +45,16 @@ impl Ui {
     pub fn mouse_pos() -> Option<Vec2> {
         let window_aspect = screen_width() / screen_height();
         let target_aspect = VIEW_SIZE.x / VIEW_SIZE.y;
-
-        let r = Self::render_target_rect();
-
-        let local = mouse_position_local();
-
-        // Localise the local position to be based on the render target
-        // I scrambled this together and it somehow works..
-        let m = if r.x == 0.0 {
-            vec2(
-                local.x,
-                local.y * target_aspect / window_aspect
-            )
-        } else {
-            vec2(
-                local.x * window_aspect / target_aspect,
-                local.y
-            )
+        // Get the local mouse position based on the render target (so -1.0 and 1.0 map to its bounds)
+        let local = mouse_position_local() * match window_aspect > target_aspect {
+            false => vec2(1.0, target_aspect / window_aspect),
+            true  => vec2(window_aspect / target_aspect, 1.0),
         };
-
-        if m.x < -1.0 || m.x > 1.0 || m.y < -1.0 || m.y > 1.0 {
-            None
-        } else {
-            Some((m / 2.0 + 0.5) * VIEW_SIZE)
+        // Only return a valid position if it's in the bounds of -1.0 and 1.0 on either axis
+        match local.x < -1.0 || local.x > 1.0 || local.y < -1.0 || local.y > 1.0 {
+            true  => None,
+            false => Some((local / 2.0 + 0.5) * VIEW_SIZE)
         }
-        // (mouse_position_local() / 2.0 + 0.5) * VIEW_SIZE
     }
 
     pub fn interacted(&self) -> bool {
