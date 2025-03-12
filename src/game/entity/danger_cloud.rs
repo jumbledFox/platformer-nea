@@ -29,12 +29,24 @@ impl Entity for DangerCloud {
     fn hitbox(&self) -> Rect {
         rect(self.pos - 2.0, vec2(12.0, 12.0))
     }
+    fn hurtbox(&self) -> Option<Rect> {
+        Some(Rect::new(8.0, 8.0, 8.0, 8.0).offset(self.pos))
+    }
+    fn pos(&self) -> Vec2 {
+        self.pos
+    }
+    fn vel(&self) -> Vec2 {
+        self.vel
+    }
     fn set_pos(&mut self, pos: Vec2) {
         self.pos = pos;
     }
-    fn set_vel(&mut self, _vel: macroquad::prelude::Vec2) { }
+    fn set_vel(&mut self, _vel: Vec2) { }
     fn should_destroy(&self) -> bool {
         self.time <= 0.0
+    }
+    fn can_hurt(&self) -> bool {
+        self.time / self.total_time > 0.65
     }
     fn physics_update(&mut self, _player: &Player, _others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, _level: &mut Level, _resources: &Resources) {
         self.pos += self.vel;

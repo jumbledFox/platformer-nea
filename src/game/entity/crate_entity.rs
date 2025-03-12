@@ -68,6 +68,12 @@ impl Entity for Crate {
     fn throw(&mut self, vel: Vec2) {
         self.vel = vel;
     }
+    fn pos(&self) -> Vec2 {
+        self.pos
+    }
+    fn vel(&self) -> Vec2 {
+        self.vel
+    }
     fn set_pos(&mut self, pos: Vec2) {
         self.pos = pos;
     }
@@ -128,7 +134,7 @@ impl Entity for Crate {
             let mut spawn_entity = |kind: EntityKind| {
                 let multiplier = match self.kind {
                     CrateKind::Key(_) => 0.7,
-                    CrateKind::Frog(_) => 0.6,
+                    CrateKind::Frog(_) => 1.0,
                     CrateKind::Chip(_) => 1.0,
                     CrateKind::Life => 0.7,
                 };

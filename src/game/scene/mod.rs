@@ -108,7 +108,7 @@ impl Scene {
         while self.physics_update_timer >= PHYSICS_STEP {
             self.particles.update(&self.camera);
 
-            self.player.physics_update(&mut self.level, resources);
+            self.player.physics_update(&mut self.entities, &mut self.level, resources);
 
             // Update all of the entities
             let mut others: Vec<&mut Box<dyn Entity>>;
@@ -124,6 +124,8 @@ impl Scene {
             }
             self.entity_spawner.spawn_entities(&mut self.entities);
             
+            self.player.hurt_check(&mut self.entities, &mut self.level, resources);
+
             // Remove all the entities that need to be destroyed
             // TODO: Soft remove all entities out of the screen with a spawn_pos id 
             for i in (0..self.entities.len()).rev() {

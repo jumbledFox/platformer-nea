@@ -58,7 +58,7 @@ async fn main() {
     );
     world_cam.render_target = Some(render_target.clone());
 
-    let mut debug = true;
+    let mut debug = false;
     let mut game_state: Box<dyn GameState> = Box::new(Editor::new(&resources));
 
     loop {

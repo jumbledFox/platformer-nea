@@ -4,7 +4,7 @@ use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_
 
 use crate::{level_pack_data::LevelPosition, resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect}};
 
-use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, Id}, level::{things::{Door, DoorKind}, tile::TileCollision, Level}, scene::{fader::Fader, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
+use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityKind, Id}, level::{things::{Door, DoorKind}, tile::TileCollision, Level}, scene::{fader::Fader, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.0);
@@ -86,6 +86,7 @@ pub struct Player {
     feet_powerup: Option<FeetPowerup>,
     holding: Option<Box<dyn Entity>>,
     prev_held: Option<(f32, Id)>,
+    invuln: Option<f32>,
     
     target_x_vel: f32,
     target_approach: f32,
@@ -120,6 +121,7 @@ impl Player {
             feet_powerup: None,
             holding: None,
             prev_held: None,
+            invuln: None,
 
             target_x_vel: 0.0,
             target_approach: 0.0,
@@ -449,7 +451,7 @@ impl Player {
         }
     }
 
-    pub fn physics_update(&mut self, level: &mut Level, resources: &Resources) {
+    pub fn physics_update(&mut self, entities: &mut Vec<Box<dyn Entity>>, level: &mut Level, resources: &Resources) {
         if let Some((t, _)) = &mut self.prev_held {
             *t -= 1.0 / 120.0;
         }
@@ -540,6 +542,65 @@ impl Player {
             let offset = vec2(0.0, 16.0 + if self.stepping { 1.0 } else { 0.0 });
             entity.set_pos(self.pos - offset + entity.hold_offset().unwrap_or_default());
         }
+        
+        // I spent hours stomping... KOOPAS....
+        // (stomping)
+        if self.invuln.is_none() {
+            'entities: for e in entities {
+                // Don't stomp entities we can't hurt
+                if !e.can_hurt() {
+                    continue;
+                }
+                // Don't stop entities if we're moving up relative to them
+                if self.vel.y < e.vel().y {
+                    continue;
+                }
+                // Get the stompbox and try and stomp them with each foot
+                let stompbox = match e.stompbox() {
+                    Some(s) => s,
+                    None => continue,
+                };
+                for p in [FOOT_L, FOOT_R] {
+                    if !stompbox.contains(self.pos + p) {
+                        continue;
+                    }
+                    if e.stomp(self.feet_powerup) {
+                        self.vel.y = self.vel.y.min(-1.5);
+                        break 'entities;
+                    }
+                }
+            }
+        }
+    }
+    
+    pub fn hurt_check(&mut self, entities: &mut Vec<Box<dyn Entity>>, _level: &mut Level, _resources: &Resources) {
+        // Update the timer
+        if let Some(t) = &mut self.invuln {
+            *t -= 1.0/120.0;
+            self.invuln = match *t <= 0.0 {
+                true  => None,
+                false => return,
+            };
+        }
+        for e in entities {
+            if !e.can_hurt() {
+                continue;
+            }
+            let hurtbox = match e.hurtbox() {
+                Some(h) => h,
+                None => continue,
+            };
+            // Hurt the player!!
+            for p in [SIDE_LT, SIDE_LB, SIDE_RT, SIDE_RB] {
+                if !hurtbox.contains(self.pos + p) { continue; }
+                // Make them invulnerable and launch them slightly away from the damage
+                self.invuln = Some(1.0);
+                self.jump(1.0);
+                self.vel.x = (self.vel.x + ((self.pos().x - e.pos().x).signum() * 0.5)).clamp(-self.run_speed_end, self.run_speed_end);
+                self.target_x_vel = self.vel.x;
+                return;
+            }
+        }
     }
 
     pub fn part_rect(part: PlayerPart) -> Rect {
@@ -571,6 +632,10 @@ impl Player {
     }
 
     pub fn draw(&self, camera_pos: Vec2, resources: &Resources, debug: bool) {
+        if self.invuln.is_some_and(|t| t % 0.1 >= 0.05) {
+            return;
+        }
+
         let holding = self.holding.is_some();
         let ladder = self.state == State::Climbing;
 

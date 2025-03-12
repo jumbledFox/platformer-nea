@@ -7,7 +7,7 @@ use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
 
 use crate::{level_pack_data::LevelPosition, resources::Resources};
 
-use super::{level::{tile::LockColor, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::Particles}};
+use super::{level::{tile::LockColor, Level}, player::{FeetPowerup, Player}, scene::{entity_spawner::EntitySpawner, particles::Particles}};
 
 pub mod crate_entity;
 pub mod chip;
@@ -26,11 +26,20 @@ pub trait Entity {
     fn id(&self) -> Id;
     fn kind(&self) -> EntityKind;
     fn hitbox(&self) -> Rect;
+    fn hurtbox(&self) -> Option<Rect> { None }
+    fn stompbox(&self) -> Option<Rect> { None }
     fn hold_offset(&self) -> Option<Vec2> { None }
+    fn pos(&self) -> Vec2;
+    fn vel(&self) -> Vec2;
     fn set_pos(&mut self, pos: Vec2);
     fn set_vel(&mut self, vel: Vec2);
+    // Hurting
+    fn can_hurt(&self) -> bool { false }
+    fn kill(&mut self) {}
+    fn stomp(&mut self, _power: Option<FeetPowerup>) -> bool { false }
     fn throw(&mut self, _vel: Vec2) { }
     fn hit_with_throwable(&mut self, _vel: Vec2) -> bool { false }
+    // Destroying
     fn should_destroy(&self) -> bool;
 
     fn update(&mut self, _resources: &Resources) {}

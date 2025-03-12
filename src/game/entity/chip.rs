@@ -59,6 +59,12 @@ impl Entity for Chip {
     fn hitbox(&self) -> Rect {
         Self::hitbox()
     }
+    fn pos(&self) -> Vec2 {
+        self.pos
+    }
+    fn vel(&self) -> Vec2 {
+        self.vel.unwrap_or_default()
+    }
     fn set_pos(&mut self, pos: Vec2) {
         self.pos = pos;
     }

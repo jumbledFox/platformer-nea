@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use macroquad::{color::{Color, GREEN, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range, shapes::draw_circle};
 
-use crate::{game::{collision::default_collision, level::Level, player::{Dir, Player}, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::approach_target};
+use crate::{game::{collision::default_collision, level::Level, player::{Dir, FeetPowerup, Player}, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::approach_target};
 
 use super::{Entity, EntityKind, Id};
 
@@ -95,6 +95,13 @@ impl Goat {
         let arm_x_offset = if dir == Dir::Left { 0.0 } else { -3.0 };
         resources.draw_rect(pos + offset + vec2(arm_x_offset, 6.0) - camera_pos, Rect::new(arm_x, 82.0, 17.0, 20.0), flip_x, color, resources.entity_atlas());
     }
+
+    fn hurt(&mut self) {
+        self.health -= 1;
+        self.state = State::Charge(0.5);
+        self.invuln = Some(1.0);
+        self.vel *= 1.5;
+    }
 }
 
 impl Entity for Goat {
@@ -107,6 +114,18 @@ impl Entity for Goat {
     fn hitbox(&self) -> Rect {
         Self::hitbox().offset(self.pos)
     }
+    fn hurtbox(&self) -> Option<Rect> {
+        Some(Rect::new(3.0, 2.0, 10.0, 30.0).offset(self.pos))
+    }
+    fn stompbox(&self) -> Option<Rect> {
+        Some(Rect::new(0.0, 0.0, 16.0, 12.0).offset(self.pos))
+    }
+    fn pos(&self) -> Vec2 {
+        self.pos
+    }
+    fn vel(&self) -> Vec2 {
+        self.vel
+    }
     fn set_pos(&mut self, pos: Vec2) {
         self.pos = pos;
     }
@@ -116,18 +135,35 @@ impl Entity for Goat {
     fn should_destroy(&self) -> bool {
         matches!(self.state, State::Dead(t) if t <= 0.0)
     }
+
+    fn can_hurt(&self) -> bool {
+        !(matches!(self.state, State::Dead(_)) || self.invuln.is_some())
+    }
+    fn kill(&mut self) {
+        if self.can_hurt() {
+            self.state = State::Dead(3.0);
+        }
+    }
+    fn stomp(&mut self, power: Option<FeetPowerup>) -> bool {
+        if !self.can_hurt() {
+            return false;
+        }
+        if power.is_none() && self.health != 0 {
+            self.hurt();
+        } else {
+            self.kill();
+        }
+        true
+    }
     fn hit_with_throwable(&mut self, vel: Vec2) -> bool {
-        if matches!(self.state, State::Dead(_)) || self.invuln.is_some() {
+        if !self.can_hurt() {
             return false;
         }
         self.vel = vec2(vel.x.clamp(-1.0, 1.0) / 2.0, -1.0);
         if self.health == 0 {
-            self.state = State::Dead(3.0);
+            self.kill();
         } else {
-            self.health -= 1;
-            self.state = State::Charge(0.5);
-            self.invuln = Some(1.0);
-            self.vel *= 1.5;
+            self.hurt();
         }
         true
     }
@@ -185,21 +221,22 @@ impl Entity for Goat {
                 if *spray_time <= 0.0 {
                     *spray_time = gen_range(1.0, 2.5);
 
-                    let (mut cloud_spawn, mut cloud_vel) = (vec2(11.0, 10.0), vec2(0.7, gen_range(0.0, 0.2) * dist_to_player.y.signum()));
+                    let (mut cloud_spawn, mut cloud_vel) = (vec2(11.0, 10.0), vec2(1.1, gen_range(0.0, 0.2) * dist_to_player.y.signum()));
                     if self.facing == Dir::Left {
                         cloud_spawn.x *= -1.0;
                         cloud_vel.x *= -1.0;
                     }
                     entity_spawner.add_entity(self.pos + cloud_spawn, cloud_vel, EntityKind::DangerCloud, None);
                 }
-
                 // Moving
                 self.target_x_vel = 0.5 * dist_to_player.x.signum();
                 // Jumping if a tile is in front
                 let jump_check_pos = self.pos + vec2(8.0 + 18.0 * if self.facing == Dir::Right { 1.0 } else { -1.0 }, 24.0);
-                let stop_check_pos = self.pos + vec2(8.0, -8.0);
+                let stop_check_pos_front = self.pos + vec2(8.0 + 18.0 * if self.facing == Dir::Right { 1.0 } else { -1.0 }, -8.0);
+                let stop_check_pos_top   = self.pos + vec2(8.0, -8.0);
                 if resources.tile_data_manager().data(level.tile_at_pos(jump_check_pos)).collision().is_solid()
-                && !resources.tile_data_manager().data(level.tile_at_pos(stop_check_pos)).collision().is_solid()
+                && !resources.tile_data_manager().data(level.tile_at_pos(stop_check_pos_top)).collision().is_solid()
+                && !resources.tile_data_manager().data(level.tile_at_pos(stop_check_pos_front)).collision().is_solid()
                 && !self.in_air {
                     self.vel.y = -1.7;
                     self.in_air = true;
@@ -257,11 +294,10 @@ impl Entity for Goat {
             Self::draw(self.step_anim > 0.5 || self.in_air || dead, self.facing, self.arm, self.pos, camera_pos, WHITE, resources);
         }
 
-        let jump_check_pos = self.pos + vec2(8.0 + if self.facing == Dir::Right { 16.0 } else { -16.0 }, 24.0) - camera_pos;
-        draw_circle(jump_check_pos.x, jump_check_pos.y, 1.0, GREEN);
-        let walk_check_pos = self.pos + vec2(8.0 + 7.0 * if self.facing == Dir::Right { 1.0 } else { -1.0 }, 40.0) - camera_pos;
-        draw_circle(walk_check_pos.x, walk_check_pos.y, 1.0, GREEN);
-
+        // let jump_check_pos = self.pos + vec2(8.0 + if self.facing == Dir::Right { 16.0 } else { -16.0 }, 24.0) - camera_pos;
+        // draw_circle(jump_check_pos.x, jump_check_pos.y, 1.0, GREEN);
+        // let walk_check_pos = self.pos + vec2(8.0 + 7.0 * if self.facing == Dir::Right { 1.0 } else { -1.0 }, 40.0) - camera_pos;
+        // draw_circle(walk_check_pos.x, walk_check_pos.y, 1.0, GREEN);
         // for i in [TOP, BOT_L, BOT_R, LEFT_TOP, RIGHT_TOP, LEFT_MID, RIGHT_MID, LEFT_BOT, RIGHT_BOT] {
         //     draw_circle(self.pos.x + i.x - camera_pos.x, self.pos.y + i.y - camera_pos.y, 1.0, GREEN);
         // }

@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{collision::default_collision, level::Level, player::Player, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::default_collision, level::Level, player::{FeetPowerup, Player}, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -84,6 +84,18 @@ impl Entity for Frog {
     fn hitbox(&self) -> Rect {
         Self::hitbox().offset(self.pos)
     }
+    fn hurtbox(&self) -> Option<Rect> {
+        Some(self.hitbox())
+    }
+    fn stompbox(&self) -> Option<Rect> {
+        Some(Rect::new(0.0, 6.0, 19.0, 8.0).offset(self.pos))
+    }
+    fn pos(&self) -> Vec2 {
+        self.pos
+    }
+    fn vel(&self) -> Vec2 {
+        self.vel
+    }
     fn set_pos(&mut self, pos: Vec2) {
         self.pos = pos;
     }
@@ -93,11 +105,25 @@ impl Entity for Frog {
     fn should_destroy(&self) -> bool {
         matches!(self.state, State::Dead(t) if t <= 0.0)
     }
-    fn hit_with_throwable(&mut self, vel: Vec2) -> bool {
-        if matches!(self.state, State::Dead(_)) || self.invuln.is_some() {
+
+    fn can_hurt(&self) -> bool {
+        !(matches!(self.state, State::Dead(_)) || self.invuln.is_some())
+    }
+    fn kill(&mut self) {
+        self.state = State::Dead(3.0);
+    }
+    fn stomp(&mut self, _power: Option<FeetPowerup>) -> bool {
+        if !self.can_hurt() {
             return false;
         }
-        self.state = State::Dead(3.0);
+        self.kill();
+        true
+    }
+    fn hit_with_throwable(&mut self, vel: Vec2) -> bool {
+        if !self.can_hurt() {
+            return false;
+        }
+        self.kill();
         self.vel = vec2(vel.x.clamp(-1.0, 1.0) / 2.0, -1.0);
         true
     }

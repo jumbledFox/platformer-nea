@@ -61,6 +61,8 @@ impl Entity for Key {
     fn throw(&mut self, vel: Vec2) {
         self.vel = vel;
     }
+    fn pos(&self) -> Vec2 { self.pos }
+    fn vel(&self) -> Vec2 { self.vel }
     fn set_pos(&mut self, pos: Vec2) { self.pos = pos; }
     fn set_vel(&mut self, vel: Vec2) { self.vel = vel; }
     fn should_destroy(&self) -> bool { false }
