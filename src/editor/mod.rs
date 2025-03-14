@@ -20,7 +20,9 @@ pub struct Editor {
     editor_menu: EditorMenu,
     level_view: LevelView,
     toast_manager: ToastManager,
-
+    
+    // I only need this so lives update when running the scene.............
+    lives: usize,
     instarun: bool,
 }
 
@@ -41,6 +43,7 @@ impl Editor {
             level_view: LevelView::new(resources),
             toast_manager: ToastManager::default(),
 
+            lives: 0,
             instarun: true,
         }
     }
@@ -56,6 +59,7 @@ impl GameState for Editor {
         if self.instarun {
             self.instarun = false;
             self.scene = Some(Scene::from_editor_level(&self.editor_level_pack.editor_level(), None));
+            self.lives = 1;
             resources.reset_tile_animation_timer();
         }
 
@@ -63,6 +67,7 @@ impl GameState for Editor {
         if let Some((pos, place)) = self.level_view.test_spawn_point() {
             if place {
                 self.scene = Some(Scene::from_editor_level(&self.editor_level_pack.editor_level(), Some(pos)));
+                self.lives = 1;
                 resources.reset_tile_animation_timer();
                 self.level_view.clear_test_spawn_point();
             }
@@ -73,7 +78,7 @@ impl GameState for Editor {
             self.scene = None;
         }
         if let Some(scene) = &mut self.scene {
-            scene.update(deltatime, resources);
+            scene.update(&mut self.lives, deltatime, resources);
             // If we're in the scene and tab or esc is pressed, exit on the next frame
             // We do this so scene isn't None when drawing it this frame
             if is_key_pressed(KeyCode::Tab) || is_key_pressed(KeyCode::Escape) {
@@ -107,7 +112,7 @@ impl GameState for Editor {
 
     fn draw(&self, _ui: &Ui, resources: &Resources, debug: bool) {
         if let Some(scene) = &self.scene {
-            scene.draw(0, resources, debug);
+            scene.draw(0, self.lives, resources, debug);
             Editor::draw_editor_logo(resources);
             return;
         }

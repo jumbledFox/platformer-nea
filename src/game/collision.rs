@@ -1,8 +1,8 @@
-use macroquad::math::{vec2, Rect, Vec2};
+use macroquad::math::{Rect, Vec2};
 
 use crate::resources::Resources;
 
-use super::{entity::{Entity, EntityKind}, level::{tile::{TileCollision, TileHitKind}, Level}};
+use super::{entity::{Entity, EntityKind}, level::{tile::{Tile, TileCollision, TileDir, TileHitKind}, Level}};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Side {
@@ -176,3 +176,23 @@ pub fn default_collision(
 
     (t, b, l, r, hit, hit_entity)
 }
+
+// Checking if hit spikes
+pub fn spike_check(
+    pos: Vec2,
+    tops:   &[Vec2],
+    bots:   &[Vec2],
+    lefts:  &[Vec2],
+    rights: &[Vec2],
+    level: &Level,
+) -> Option<TileDir> {
+    for (dir, points) in [(TileDir::Bottom, bots), (TileDir::Left, lefts), (TileDir::Right, rights), (TileDir::Top, tops)] {
+        for point in points {
+            if level.tile_at_pos(pos + *point) == Tile::Spikes(dir) {
+                return Some(dir);
+            }
+        }
+    }
+    None
+}
+

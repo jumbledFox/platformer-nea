@@ -2,9 +2,9 @@ use std::cmp::Ordering;
 
 use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, shapes::draw_circle};
 
-use crate::{level_pack_data::LevelPosition, resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect}};
+use crate::{game::collision::spike_check, level_pack_data::LevelPosition, resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect}};
 
-use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityKind, Id}, level::{things::{Door, DoorKind}, tile::TileCollision, Level}, scene::{fader::Fader, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
+use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityKind, Id}, level::{things::{Door, DoorKind}, tile::{TileCollision, TileDir}, Level}, scene::{fader::Fader, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.0);
@@ -77,6 +77,7 @@ pub struct Player {
     state: State,
     pos: Vec2,
     vel: Vec2,
+    chips: usize,
 
     // The direction the player is facing
     dir: Dir,
@@ -100,7 +101,7 @@ pub struct Player {
     prev_on_ladder: bool,
     nudging_l: bool,
     nudging_r: bool,
-
+    
     // Constants
     walk_speed: f32,
     run_speed_beg: f32,
@@ -115,6 +116,7 @@ impl Player {
             state: State::Standing,
             pos,
             vel: Vec2::ZERO,
+            chips: 0,
             dir: Dir::Right,
             move_dir: None,
             head_powerup: None,
@@ -153,6 +155,12 @@ impl Player {
     pub fn vel(&self) -> Vec2 {
         self.vel
     }
+    pub fn chips(&self) -> usize {
+        self.chips
+    }
+    pub fn give_chip(&mut self) {
+        self.chips += 1;
+    }
     pub fn head_powerup(&self) -> Option<HeadPowerup> {
         self.head_powerup
     }
@@ -165,6 +173,10 @@ impl Player {
 
     pub fn set_pos(&mut self, pos: Vec2) {
         self.pos = pos;
+    }
+
+    pub fn chip_hitbox(&self) -> Rect {
+        Rect::new(4.0, 1.0, 12.0, 14.0).offset(self.pos)
     }
 
     // Changing the state
@@ -460,15 +472,18 @@ impl Player {
         }
 
         if self.state != State::Climbing {
-            let gravity = match (self.state, is_key_down(KEY_JUMP)) {
-                (State::Jumping, true) => GRAVITY * 0.7,
-                _ => GRAVITY,
+            let gravity = match (self.feet_powerup, self.state, is_key_down(KEY_JUMP)) {
+                (Some(FeetPowerup::MoonShoes), State::Jumping, true) => GRAVITY * 0.65 * 0.7,
+                (Some(FeetPowerup::MoonShoes), _, _) => GRAVITY * 0.65,
+                (_, State::Jumping, true) => GRAVITY * 0.7,
+                _ => GRAVITY
             };
             self.vel.y = (self.vel.y + gravity).min(MAX_FALL_SPEED);
             self.step_anim = (self.step_anim + self.vel.x.abs() / 12.0).rem_euclid(1.0);
         } else {
             self.step_anim = (self.step_anim + self.vel.abs().max_element() / 20.0).rem_euclid(1.0);
         }
+
         self.pos += self.vel;
 
         approach_target(&mut self.vel.x, self.target_approach, self.target_x_vel);
@@ -565,6 +580,7 @@ impl Player {
                         continue;
                     }
                     if e.stomp(self.feet_powerup) {
+                        self.state = State::Jumping;
                         self.vel.y = self.vel.y.min(-1.5);
                         break 'entities;
                     }
@@ -572,8 +588,12 @@ impl Player {
             }
         }
     }
+
+    fn hurt(&mut self) {
+        self.invuln = Some(1.0);
+    }
     
-    pub fn hurt_check(&mut self, entities: &mut Vec<Box<dyn Entity>>, _level: &mut Level, _resources: &Resources) {
+    pub fn hurt_check(&mut self, entities: &mut Vec<Box<dyn Entity>>, level: &Level, _resources: &Resources) {
         // Update the timer
         if let Some(t) = &mut self.invuln {
             *t -= 1.0/120.0;
@@ -582,6 +602,8 @@ impl Player {
                 false => return,
             };
         }
+
+        // Entities
         for e in entities {
             if !e.can_hurt() {
                 continue;
@@ -592,13 +614,32 @@ impl Player {
             };
             // Hurt the player!!
             for p in [SIDE_LT, SIDE_LB, SIDE_RT, SIDE_RB] {
-                if !hurtbox.contains(self.pos + p) { continue; }
-                // Make them invulnerable and launch them slightly away from the damage
-                self.invuln = Some(1.0);
+                if hurtbox.contains(self.pos + p) {
+                    self.hurt();
+                    self.vel.x = (self.chip_hitbox().center().x - e.center().x).signum() * self.run_speed_end;
+                    self.target_x_vel = self.vel.x;
+                    self.jump(1.0);
+                    return;
+                }
+            }
+        }
+        // Spikes
+        if let Some(dir) = spike_check(self.pos, &[HEAD], &[FOOT_L, FOOT_R], &[SIDE_LB, SIDE_LT], &[SIDE_RB, SIDE_RT], level) {
+            self.hurt();
+            let side_vel = 0.5;
+            if dir == TileDir::Bottom {
+                self.jump(1.8);
+            } else if dir == TileDir::Top {
+                self.vel.y = 0.5;
+                self.state = State::Falling;
+            } else if dir == TileDir::Left {
+                self.vel.x = side_vel;
+                self.target_x_vel = side_vel;
                 self.jump(1.0);
-                self.vel.x = (self.vel.x + ((self.pos().x - e.pos().x).signum() * 0.5)).clamp(-self.run_speed_end, self.run_speed_end);
-                self.target_x_vel = self.vel.x;
-                return;
+            } else if dir == TileDir::Right {
+                self.vel.x = -side_vel;
+                self.target_x_vel = -side_vel;
+                self.jump(1.0);
             }
         }
     }

@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{collision::default_collision, level::Level, player::{FeetPowerup, Player}, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::{default_collision, spike_check}, level::{tile::TileDir, Level}, player::{FeetPowerup, Player}, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -173,6 +173,22 @@ impl Entity for Frog {
             }
         } else {
             self.state = State::Air;
+        }
+
+        // Spikes
+        if let Some(dir) = spike_check(self.pos, &[TOP], &[BOT_L, BOT_R], &[LEFT], &[RIGHT], level) {
+            if dir == TileDir::Bottom {
+                self.vel.y = -1.5;
+            } else if dir == TileDir::Top {
+                self.vel.y = 0.5;
+            } else if dir == TileDir::Left {
+                self.vel.y = -1.0;
+                self.vel.x = 0.5;
+            } else if dir == TileDir::Right {
+                self.vel.y = -1.0;
+                self.vel.x = -0.5;
+            }
+            self.kill();
         }
     }
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {

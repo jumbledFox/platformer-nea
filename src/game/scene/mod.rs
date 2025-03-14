@@ -26,7 +26,6 @@ pub const GRAVITY: f32 = 0.045;
 pub struct Scene {
     level: Level,
     timer: f32,
-    chips: usize,
 
     camera: Camera,
     player: Player,
@@ -50,7 +49,6 @@ impl Scene {
         Scene {
             level,
             timer: 0.0,
-            chips: 0,
 
             camera: Camera::new(player_spawn),
             player: Player::new(player_spawn),
@@ -64,7 +62,7 @@ impl Scene {
         }
     }
 
-    pub fn update(&mut self, deltatime: f32, resources: &mut Resources) {
+    pub fn update(&mut self, lives: &mut usize, deltatime: f32, resources: &mut Resources) {
         // See if we should add any entities
         if self.camera.should_update_entities() {
             for (&spawn_pos, &k) in self.level.entity_spawns().iter() {
@@ -127,16 +125,40 @@ impl Scene {
             self.player.hurt_check(&mut self.entities, &mut self.level, resources);
 
             // Remove all the entities that need to be destroyed
+            // Also collects chips / lives / powerups...
             // TODO: Soft remove all entities out of the screen with a spawn_pos id 
+            let mut disable_respawn = |id: Id| {
+                if let Id::Level(spawn_pos) = id {
+                    self.level.remove_entity_spawn(spawn_pos);
+                }
+            };
             for i in (0..self.entities.len()).rev() {
                 if self.entities[i].should_destroy() {
-                    if let Id::Level(spawn_pos) = self.entities[i].id() {
-                        self.level.remove_entity_spawn(spawn_pos);
-                    }
+                    disable_respawn(self.entities[i].id());
                     self.entities.remove(i);
+                    continue;
                 }
+                // TODO: Particles, letting flying crates and keys and stuff collect chips
+                // Collecting chips
+                if matches!(self.entities[i].kind(), EntityKind::Chip(_)) {
+                    if self.entities[i].hitbox().overlaps(&self.player.chip_hitbox()) {
+                        self.player.give_chip();
+                        disable_respawn(self.entities[i].id());
+                        self.entities.remove(i);
+                        continue;
+                    }
+                }
+                // Collecting lives
+                else if matches!(self.entities[i].kind(), EntityKind::Life(_)) {
+                    if self.entities[i].hitbox().overlaps(&self.player.chip_hitbox()) {
+                        disable_respawn(self.entities[i].id());
+                        self.entities.remove(i);
+                        *lives += 1;
+                        continue;
+                    }
+                }
+                // TODO: Collecting powerups...
             }
-
             self.physics_update_timer -= PHYSICS_STEP;
         }
 
@@ -149,7 +171,7 @@ impl Scene {
         self.level.update_if_should(resources);
     }
 
-    pub fn draw(&self, lives: usize, resources: &Resources, debug: bool) {
+    pub fn draw(&self, global_chips: usize, lives: usize, resources: &Resources, debug: bool) {
         let camera_pos = self.camera.pos();
 
         draw_rect(Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y), self.level.bg_col());
@@ -201,7 +223,7 @@ impl Scene {
         // bc41c7
         // Timer and points
         render_text(&format!("{:?}", self.timer.floor() as usize), WHITE,  vec2(305.0,  3.0), vec2(1.0, 1.0), Align::End, Font::Large, resources);
-        render_text(&format!("{:?}", self.chips), GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, Font::Large, resources);
+        render_text(&format!("{:?}", self.player.chips() + global_chips), GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, Font::Large, resources);
 
         if debug {
             render_text(&format!("pos: [{:8.3}, {:8.3}]", self.player.pos().x, self.player.pos().y), RED, vec2(10.0, 50.0), Vec2::ONE, Align::End, Font::Small, resources);

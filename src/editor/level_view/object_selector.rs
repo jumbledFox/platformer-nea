@@ -2,7 +2,7 @@
 
 use macroquad::{color::{Color, WHITE}, color_u8, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{game::{entity::{crate_entity::CrateKind, EntityKind}, level::{things::DoorKind, tile::{render_tile, BrickColor, CheckerBlockColor, LockColor, Tile, TileRenderLayer}, TileDrawKind, TileRenderData}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
+use crate::{game::{entity::{crate_entity::CrateKind, EntityKind}, level::{things::DoorKind, tile::{render_tile, BrickColor, CheckerBlockColor, LockColor, Tile, TileDir, TileRenderLayer}, TileDrawKind, TileRenderData}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
 
 const BG_COL: Color = color_u8!(255, 255, 255, 100);
 
@@ -66,7 +66,10 @@ impl ObjectSelector {
             Tile::StoneBlock,
             Tile::Glass,
             Tile::Block,
-            Tile::Spikes,
+            Tile::Spikes(TileDir::Bottom),
+            Tile::Spikes(TileDir::Left),
+            Tile::Spikes(TileDir::Top),
+            Tile::Spikes(TileDir::Right),
             Tile::Switch(false), Tile::SwitchBlockOff(true), Tile::SwitchBlockOn(false),
             Tile::Lava,
         ];

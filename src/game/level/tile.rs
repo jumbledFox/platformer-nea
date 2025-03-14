@@ -8,6 +8,13 @@ use super::{TileDrawKind, TileRenderData};
 
 pub const RAINBOW_LOCK_FRAME_DUR: f64 = 0.1;
 
+// Used only for the spikes, but I like my code being reusable, ya know?
+// (which is why it's not SpikeDir...)
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
+pub enum TileDir {
+    Top, Bottom, Left, Right
+}
+
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
 pub enum LockColor {
     Red, Green, Blue, Yellow, White, Black,
@@ -44,7 +51,7 @@ pub enum Tile {
 
     StoneBlock, Glass, Block,
 
-    Spikes,
+    Spikes(TileDir),
     
     Switch(bool), SwitchBlockOff(bool), SwitchBlockOn(bool),
     Lock(LockColor), LockBlock(LockColor),
@@ -62,6 +69,8 @@ pub enum Tile {
     Bricks(BrickColor),
 }
 
+// Some of these are in a weird order because I kept adding new tiles and new variations of tiles,
+// and I didn't want to have to remake my previous levels!
 impl From<Tile> for u8 {
     fn from(value: Tile) -> Self {
         match value {
@@ -83,7 +92,10 @@ impl From<Tile> for u8 {
             Tile::StoneBlock => 15,
             Tile::Glass => 16,
             Tile::Block => 17,
-            Tile::Spikes => 18,
+            Tile::Spikes(TileDir::Bottom) => 18,
+            Tile::Spikes(TileDir::Left)   => 49,
+            Tile::Spikes(TileDir::Top)    => 50,
+            Tile::Spikes(TileDir::Right)  => 51,
             Tile::Switch(_)         => 19,
             Tile::SwitchBlockOff(_) => 20,
             Tile::SwitchBlockOn(_)  => 21,
@@ -140,7 +152,10 @@ impl TryFrom<u8> for Tile {
             15 => Ok(Tile::StoneBlock),
             16 => Ok(Tile::Glass),
             17 => Ok(Tile::Block),
-            18 => Ok(Tile::Spikes),
+            18 => Ok(Tile::Spikes(TileDir::Bottom)),
+            49 => Ok(Tile::Spikes(TileDir::Left)),
+            50 => Ok(Tile::Spikes(TileDir::Top)),
+            51 => Ok(Tile::Spikes(TileDir::Right)),
             19 => Ok(Tile::Switch(false)),
             20 => Ok(Tile::SwitchBlockOff(true)),
             21 => Ok(Tile::SwitchBlockOn(false)),
@@ -190,13 +205,10 @@ impl Default for TileDataManager {
         let error = TileData::new("Error!".to_string(), Some(TileTexture::fixed(0, TileTextureConnection::None, false)), TileCollision::None);
         let mut data = HashMap::new();
 
-        // GRRRR HOW AM I GONNA DO DAMAGE!?!?!?!
-
         // Other stuff 
         data.insert(Tile::Empty,      TileData::new("Empty".to_owned(),       None, TileCollision::None));
         data.insert(Tile::Door, TileData::new("Door".to_owned(), Some(TileTexture::fixed(140, TileTextureConnection::Vertical(TileTextureConnectionKind::None), false)), TileCollision::None));
         data.insert(Tile::Lava, TileData::new("Lava".to_owned(), Some(TileTexture::animated(&[82, 82+16, 82+32, 82+48, 82+64, 82+80, 82+96, 82+112], 0.2, TileTextureConnection::Vertical(TileTextureConnectionKind::None), true)), TileCollision::None));
-        data.insert(Tile::Spikes, TileData::new("Spike".to_owned(), Some(TileTexture::fixed(3, TileTextureConnection::None, false)), TileCollision::solid(1.0, 0.0, TileHit::None, TileHit::None)));
         data.insert(Tile::Bridge, TileData::new("Bridge".to_owned(), Some(TileTexture::fixed(92, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::platform(1.0, 0.0)));
         data.insert(Tile::Rope,   TileData::new("Rope".to_owned(),   Some(TileTexture::fixed(76, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::None));
         data.insert(Tile::ShortGrass, TileData::new("Short Grass".to_owned(), Some(TileTexture::fixed(80, TileTextureConnection::None, true)), TileCollision::None));
@@ -204,6 +216,10 @@ impl Default for TileDataManager {
         data.insert(Tile::DeadShortGrass, TileData::new("Dead Short Grass".to_owned(), Some(TileTexture::fixed(96, TileTextureConnection::None, true)), TileCollision::None));
         data.insert(Tile::DeadTallGrass, TileData::new("Dead Tall Grass".to_owned(), Some(TileTexture::fixed(97, TileTextureConnection::None, true)), TileCollision::None));
         
+        // Spikes
+        for (i, dir) in [TileDir::Bottom, TileDir::Left, TileDir::Top, TileDir::Right].iter().enumerate() {
+            data.insert(Tile::Spikes(*dir), TileData::new(format!("{:?} Spikes", dir), Some(TileTexture::fixed(66+i, TileTextureConnection::None, false)), TileCollision::solid_default(false)));
+        }
         // Solid normal tiles
         for (tile, name, texture) in [
             (Tile::Grass, "Grass", TileTexture::fixed(6, TileTextureConnection::Both(TileTextureConnectionKind::Only(vec![Tile::Dirt])), false)),

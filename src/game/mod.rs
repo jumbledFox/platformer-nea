@@ -15,22 +15,22 @@ pub struct Game {
     // levels
     // player types
     scene: Scene,
-    chips: usize,
+    global_chips: usize,
     lives: usize,
 }
 
 impl Game {
     pub fn new() -> Self {
-        Self { scene: todo!(), chips: 0, lives: 3 }
+        Self { scene: todo!(), global_chips: 0, lives: 3 }
     }
 }
 
 impl GameState for Game {
     fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources) {
-        self.scene.update(deltatime, resources);
+        self.scene.update(&mut self.lives, deltatime, resources);
     }
 
-    fn draw(&self, ui: &Ui, resources: &Resources, debug: bool) {
-        self.scene.draw(self.lives, resources, debug);
+    fn draw(&self, _ui: &Ui, resources: &Resources, debug: bool) {
+        self.scene.draw(self.global_chips, self.lives, resources, debug);
     }
 }

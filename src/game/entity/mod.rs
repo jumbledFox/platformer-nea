@@ -23,25 +23,47 @@ pub enum Id {
 }
 
 pub trait Entity {
+    // General entity stuff
     fn id(&self) -> Id;
     fn kind(&self) -> EntityKind;
     fn hitbox(&self) -> Rect;
-    fn hurtbox(&self) -> Option<Rect> { None }
-    fn stompbox(&self) -> Option<Rect> { None }
-    fn hold_offset(&self) -> Option<Vec2> { None }
+    // Some entities won't be hurt or stomped
+    fn hurtbox(&self) -> Option<Rect> {
+        None
+    }
+    fn stompbox(&self) -> Option<Rect> {
+        None
+    }
     fn pos(&self) -> Vec2;
     fn vel(&self) -> Vec2;
     fn set_pos(&mut self, pos: Vec2);
     fn set_vel(&mut self, vel: Vec2);
+    fn center(&self) -> Vec2 {
+        self.hitbox().center()
+    }
+    
+    // Throwing / holding
+    fn hold_offset(&self) -> Option<Vec2> {
+        None
+    }
+    fn throw(&mut self, _vel: Vec2) {}
+
     // Hurting
     fn can_hurt(&self) -> bool { false }
+    fn dead(&self) -> bool { false }
     fn kill(&mut self) {}
-    fn stomp(&mut self, _power: Option<FeetPowerup>) -> bool { false }
-    fn throw(&mut self, _vel: Vec2) { }
-    fn hit_with_throwable(&mut self, _vel: Vec2) -> bool { false }
+    fn stomp(&mut self, _power: Option<FeetPowerup>) -> bool {
+        false
+    }
+    fn hit_with_throwable(&mut self, _vel: Vec2) -> bool {
+        false
+    }
+
     // Destroying
     fn should_destroy(&self) -> bool;
 
+    // Updating/drawing
+    // (idk if i need update? it's never really used... but good to have just in case i guess...) i might remove it...
     fn update(&mut self, _resources: &Resources) {}
     fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources);
     fn draw(&self, camera_pos: Vec2, resources: &Resources);

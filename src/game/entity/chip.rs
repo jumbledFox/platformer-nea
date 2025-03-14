@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}};
 
-use crate::{game::{collision::default_collision, scene::{GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::default_collision, player::Player, scene::{GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -24,7 +24,7 @@ impl Chip {
         Self { pos, vel, life, id }
     }
     pub fn hitbox() -> Rect {
-        Rect::new(-1.0, -1.0, 16.0, 14.0)
+        Rect::new(0.0, 0.0, 16.0, 14.0)
     }
     pub fn tile_offset() -> Vec2 {
         vec2(1.0, 2.0)
@@ -57,7 +57,7 @@ impl Entity for Chip {
         }
     }
     fn hitbox(&self) -> Rect {
-        Self::hitbox()
+        Self::hitbox().offset(self.pos)
     }
     fn pos(&self) -> Vec2 {
         self.pos
@@ -77,7 +77,7 @@ impl Entity for Chip {
         false
     }
 
-    fn physics_update(&mut self, _player: &crate::game::player::Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut crate::game::scene::entity_spawner::EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, resources: &Resources) {
+    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut crate::game::scene::entity_spawner::EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, resources: &Resources) {
         let mut vel = match self.vel {
             Some(v) => v,
             None => return,
