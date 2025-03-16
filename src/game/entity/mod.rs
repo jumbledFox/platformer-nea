@@ -38,9 +38,6 @@ pub trait Entity {
     fn vel(&self) -> Vec2;
     fn set_pos(&mut self, pos: Vec2);
     fn set_vel(&mut self, vel: Vec2);
-    fn center(&self) -> Vec2 {
-        self.hitbox().center()
-    }
     
     // Throwing / holding
     fn hold_offset(&self) -> Option<Vec2> {

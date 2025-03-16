@@ -166,6 +166,26 @@ impl Entity for Frog {
         let mut lefts  = [(LEFT, true, false)];
         let mut rights = [(RIGHT, true, false)];
         let (_, b, _, _, _, _) = default_collision(&mut self.pos, &mut self.vel, None, None, others, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
+
+        // Spikes
+        if self.invuln.is_none() {
+            if let Some(dir) = spike_check(self.pos, &[TOP], &[BOT_L, BOT_R], &[LEFT], &[RIGHT], level) {
+                if dir == TileDir::Bottom {
+                    self.vel.y = -1.5;
+                } else if dir == TileDir::Top {
+                    self.vel.y = 0.5;
+                } else if dir == TileDir::Left {
+                    self.vel.y = -1.0;
+                    self.vel.x = 0.5;
+                } else if dir == TileDir::Right {
+                    self.vel.y = -1.0;
+                    self.vel.x = -0.5;
+                }
+                self.kill();
+                return;
+            }
+        }
+
         if b {
             self.vel.x = 0.0;
             if !matches!(self.state, State::Waiting(_)) {
@@ -173,22 +193,6 @@ impl Entity for Frog {
             }
         } else {
             self.state = State::Air;
-        }
-
-        // Spikes
-        if let Some(dir) = spike_check(self.pos, &[TOP], &[BOT_L, BOT_R], &[LEFT], &[RIGHT], level) {
-            if dir == TileDir::Bottom {
-                self.vel.y = -1.5;
-            } else if dir == TileDir::Top {
-                self.vel.y = 0.5;
-            } else if dir == TileDir::Left {
-                self.vel.y = -1.0;
-                self.vel.x = 0.5;
-            } else if dir == TileDir::Right {
-                self.vel.y = -1.0;
-                self.vel.x = -0.5;
-            }
-            self.kill();
         }
     }
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {

@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use macroquad::{color::{Color, GREEN, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range, shapes::draw_circle};
 
-use crate::{game::{collision::default_collision, level::Level, player::{Dir, FeetPowerup, Player}, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::approach_target};
+use crate::{game::{collision::{default_collision, spike_check}, level::{tile::TileDir, Level}, player::{Dir, FeetPowerup, Player}, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::approach_target};
 
 use super::{Entity, EntityKind, Id};
 
@@ -75,19 +75,25 @@ impl Goat {
     }
 
     pub fn draw_editor(pos: Vec2, camera_pos: Vec2, color: Color, resources: &Resources) {
-        Self::draw(false, Dir::Left, Arm::Down, pos, camera_pos, color, resources);
+        Self::draw(false, false, Dir::Left, Arm::Down, pos, camera_pos, color, resources);
     }
     pub fn object_selector_rect() -> Rect {
         Rect::new(0.0, 0.0, 14.0, 32.0)
     }
 
-    fn draw(step: bool, dir: Dir, arm: Arm, pos: Vec2, camera_pos: Vec2, color: Color, resources: &Resources) {
+    fn draw(dead: bool, step: bool, dir: Dir, arm: Arm, pos: Vec2, camera_pos: Vec2, color: Color, resources: &Resources) {
+        let flip_x = dir == Dir::Right;
+        // If dead, just draw the dead sprite
+        if dead {
+            resources.draw_rect(pos - camera_pos, Rect::new(65.0, 82.0, 14.0, 32.0), flip_x, color, resources.entity_atlas());
+            return;
+        }
+        // Otherwise draw the body and arm
         let offset = match step {
             false => Vec2::ZERO,
             true => vec2(0.0, -1.0)
         };
         // Draw the body
-        let flip_x = dir == Dir::Right;
         let body_x = if step { 15.0 } else { 0.0 };
         resources.draw_rect(pos + offset - camera_pos, Rect::new(body_x, 82.0, 14.0, 32.0), flip_x, color, resources.entity_atlas());
         // Draw the arm
@@ -97,6 +103,9 @@ impl Goat {
     }
 
     fn hurt(&mut self) {
+        if self.health == 0 {
+            return self.kill();
+        }
         self.health -= 1;
         self.state = State::Charge(0.5);
         self.invuln = Some(1.0);
@@ -148,7 +157,7 @@ impl Entity for Goat {
         if !self.can_hurt() {
             return false;
         }
-        if power.is_none() && self.health != 0 {
+        if power.is_none() {
             self.hurt();
         } else {
             self.kill();
@@ -160,11 +169,7 @@ impl Entity for Goat {
             return false;
         }
         self.vel = vec2(vel.x.clamp(-1.0, 1.0) / 2.0, -1.0);
-        if self.health == 0 {
-            self.kill();
-        } else {
-            self.hurt();
-        }
+        self.hurt();
         true
     }
 
@@ -287,11 +292,31 @@ impl Entity for Goat {
         if self.vel.x == 0.0 {
             self.step_anim = 0.0;
         }
+
+        // Handle damage, only if not invulnerable
+        if self.invuln.is_some() {
+            return;
+        }
+        // Spikes
+        if let Some(dir) = spike_check(self.pos, &[TOP], &[BOT_L, BOT_R], &[LEFT_BOT, LEFT_MID, LEFT_TOP], &[RIGHT_BOT, RIGHT_MID, RIGHT_TOP], level) {
+            if dir == TileDir::Bottom {
+                self.vel.y = -1.5;
+            } else if dir == TileDir::Top {
+                self.vel.y = 0.5;
+            } else if dir == TileDir::Left {
+                self.vel.y = -1.0;
+                self.vel.x = 0.5;
+            } else if dir == TileDir::Right {
+                self.vel.y = -1.0;
+                self.vel.x = -0.5;
+            }
+            self.hurt();
+        }
     }
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {
         if self.invuln.is_none_or(|t| t % 0.1 < 0.05) {
             let dead = matches!(self.state, State::Dead(_));
-            Self::draw(self.step_anim > 0.5 || self.in_air || dead, self.facing, self.arm, self.pos, camera_pos, WHITE, resources);
+            Self::draw(dead, self.step_anim > 0.5 || self.in_air, self.facing, self.arm, self.pos, camera_pos, WHITE, resources);
         }
 
         // let jump_check_pos = self.pos + vec2(8.0 + if self.facing == Dir::Right { 16.0 } else { -16.0 }, 24.0) - camera_pos;

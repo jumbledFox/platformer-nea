@@ -2,7 +2,7 @@
 
 use macroquad::{color::{Color, WHITE}, input::is_key_pressed, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{collision::{default_collision, EntityHitKind}, level::{tile::{LockColor, TileHitKind}, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::{default_collision, spike_check, EntityHitKind}, level::{tile::{LockColor, TileHitKind}, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -108,6 +108,11 @@ impl Entity for Crate {
         let entity_hit = Some((EntityHitKind::AllButCrates, self.hitbox()));
         let (t, b, _, _, hit, hit_entity) = default_collision(&mut self.pos, &mut self.vel, Some(TileHitKind::Soft), entity_hit, others, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
         if b { self.vel.x = 0.0; }
+
+        // Spikes
+        if spike_check(self.pos, &[TOP], &[BOT_L, BOT_R], &[SIDE_LT, SIDE_LB], &[SIDE_RT, SIDE_RB], level).is_some() {
+            self.should_break = true;
+        }
 
         // If we collided and have been thrown... we need to be destroyed and release the entities inside! also hit switches and stuff...
         if self.should_break || hit || hit_entity {

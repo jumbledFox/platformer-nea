@@ -616,7 +616,7 @@ impl Player {
             for p in [SIDE_LT, SIDE_LB, SIDE_RT, SIDE_RB] {
                 if hurtbox.contains(self.pos + p) {
                     self.hurt();
-                    self.vel.x = (self.chip_hitbox().center().x - e.center().x).signum() * self.run_speed_end;
+                    self.vel.x = (self.chip_hitbox().center().x - hurtbox.center().x).signum() * self.run_speed_end;
                     self.target_x_vel = self.vel.x;
                     self.jump(1.0);
                     return;
