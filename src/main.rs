@@ -3,6 +3,7 @@ use std::{thread::sleep, time::Duration};
 use editor::Editor;
 use game::Game;
 use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{Color, BLACK, WHITE}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, screen_height, screen_width, Conf}};
+use menu::Menu;
 use resources::Resources;
 use ui::Ui;
 
@@ -10,8 +11,10 @@ pub mod util;
 pub mod resources;
 pub mod text_renderer;
 pub mod ui;
-
 pub mod level_pack_data;
+
+// The different game states
+pub mod menu;
 pub mod game;
 pub mod editor;
 
@@ -59,11 +62,13 @@ async fn main() {
     world_cam.render_target = Some(render_target.clone());
 
     let mut debug = false;
-    let mut game_state: Box<dyn GameState> = Box::new(Editor::new(&resources));
+    // let mut game_state: Box<dyn GameState> = Box::new(Editor::new(&resources));
+    let mut game_state: Box<dyn GameState> = Box::new(Menu::new(None));
 
     loop {
         ui.begin_frame();
-
+        
+        // Toggling debug mode
         if is_key_pressed(macroquad::input::KeyCode::Key0) {
             debug = !debug;
         }
@@ -75,7 +80,6 @@ async fn main() {
 
         // Draw to the render target
         set_camera(&world_cam);
-        // clear_background(Color::from_hex(0x6dcaff));
 
         game_state.draw(&ui, &resources, debug);
         ui.draw(&resources);

@@ -60,6 +60,7 @@ impl ObjectSelector {
             Tile::TallGrass,
             Tile::DeadShortGrass,
             Tile::DeadTallGrass,
+            Tile::Bush,
             Tile::Door,
             Tile::Ladder,
             Tile::Vine,

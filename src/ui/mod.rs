@@ -9,6 +9,7 @@ use crate::{resources::Resources, text_renderer::{render_text, text_size, Align,
 pub mod button;
 pub mod slider_u8;
 pub mod text_input;
+pub mod toast;
 
 // Makes sure two elements can't be interacted with at the same time, also handles tooltips
 pub struct Ui {

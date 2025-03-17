@@ -5,9 +5,9 @@ use macroquad::{color::{Color, ORANGE, PURPLE, WHITE}, color_u8, input::{is_key_
 use object_selector::{Object, ObjectSelector, ObjectOtherKind};
 use sign_popup::{SignPopup, SignPopupReturn};
 
-use crate::{game::level::{things::DoorKind, tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}, resources::Resources, ui::{button::Button, Ui}, util::draw_rect, VIEW_HEIGHT, VIEW_SIZE};
+use crate::{game::level::{things::DoorKind, tile::{render_tile, Tile, TileRenderLayer}, Level, TileDrawKind, TileRenderData}, resources::Resources, ui::{button::Button, toast::ToastManager, Ui}, util::draw_rect, VIEW_HEIGHT, VIEW_SIZE};
 
-use super::{editor_level::EditorLevel, editor_menu::{EditorMenu, HelpKind}, toast::ToastManager};
+use super::{editor_level::EditorLevel, editor_menu::{EditorMenu, HelpKind}};
 
 pub mod editor_camera;
 pub mod object_selector;

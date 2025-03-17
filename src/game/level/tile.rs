@@ -65,6 +65,7 @@ pub enum Tile {
     TallGrass,
     DeadShortGrass,
     DeadTallGrass,
+    Bush,
 
     Bricks(BrickColor),
 }
@@ -126,6 +127,7 @@ impl From<Tile> for u8 {
             Tile::Bricks(BrickColor::Tan)   => 46,
             Tile::Bricks(BrickColor::Blue)  => 47,
             Tile::Bricks(BrickColor::Green) => 48,
+            Tile::Bush => 52,
         }
     }
 }
@@ -186,6 +188,7 @@ impl TryFrom<u8> for Tile {
             46 => Ok(Tile::Bricks(BrickColor::Tan)),
             47 => Ok(Tile::Bricks(BrickColor::Blue)),
             48 => Ok(Tile::Bricks(BrickColor::Green)),
+            52 => Ok(Tile::Bush),
             _ => Err(())
         }
     }
@@ -215,6 +218,8 @@ impl Default for TileDataManager {
         data.insert(Tile::TallGrass, TileData::new("Tall Grass".to_owned(), Some(TileTexture::fixed(81, TileTextureConnection::None, true)), TileCollision::None));
         data.insert(Tile::DeadShortGrass, TileData::new("Dead Short Grass".to_owned(), Some(TileTexture::fixed(96, TileTextureConnection::None, true)), TileCollision::None));
         data.insert(Tile::DeadTallGrass, TileData::new("Dead Tall Grass".to_owned(), Some(TileTexture::fixed(97, TileTextureConnection::None, true)), TileCollision::None));
+        // President bush!
+        data.insert(Tile::Bush, TileData::new("Bush".to_owned(), Some(TileTexture::fixed(208, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), false)), TileCollision::None));
         
         // Spikes
         for (i, dir) in [TileDir::Bottom, TileDir::Left, TileDir::Top, TileDir::Right].iter().enumerate() {

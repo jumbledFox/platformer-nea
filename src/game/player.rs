@@ -184,6 +184,7 @@ impl Player {
         if self.state == state {
             return;
         }
+        let prev_state = self.state;
         self.state = state;
         match self.state {
             State::Standing => {
@@ -198,12 +199,13 @@ impl Player {
                 self.step_anim = 0.0;
                 self.vel = Vec2::ZERO;
             }
-            State::Falling => self.turned_mid_air = false,
+            State::Falling if prev_state != State::Jumping => self.turned_mid_air = false,
             State::Jumping => { 
                 self.target_x_vel = self.vel.x;
                 self.coyote_time = 10.0;
                 self.turned_mid_air = false;
             }
+            _ => {}
         }
     }
 
@@ -623,6 +625,7 @@ impl Player {
                 }
             }
         }
+
         // Spikes
         if let Some(dir) = spike_check(self.pos, &[HEAD], &[FOOT_L, FOOT_R], &[SIDE_LB, SIDE_LT], &[SIDE_RB, SIDE_RT], level) {
             self.hurt();

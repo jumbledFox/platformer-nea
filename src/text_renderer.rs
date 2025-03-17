@@ -46,7 +46,7 @@ impl Default for FontDataManager {
                 char_height: 9.0,
                 char_spacing: -1.0,
                 atlas_width: 13,
-                atlas_chars: String::from(" 0123456789:;abcdefghijklmnopqrstuvwxyz()[]<>!?.,\"'|\\/+-=*_'@£&🮤🮥🮧🮦↞↠▪"),
+                atlas_chars: String::from(" 0123456789:;abcdefghijklmnopqrstuvwxyz()[]<>!?.,\"'|\\/+-=*_'@£&🮤🮥🮧🮦↞↠▪🔄"),
                 atlas: Texture2D::from_file_with_format(include_bytes!("../res/font_small.png"), None),
             },
         }

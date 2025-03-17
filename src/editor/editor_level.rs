@@ -1,8 +1,8 @@
 use macroquad::{color::Color, math::{vec2, Vec2}};
 
-use crate::{game::{entity::EntityKind, level::{things::DoorKind, tile::{Tile, TileRenderLayer}, Level, TileRenderData}}, resources::Resources, VIEW_HEIGHT, VIEW_WIDTH};
+use crate::{game::{entity::EntityKind, level::{things::DoorKind, tile::{Tile, TileRenderLayer}, Level, TileRenderData}}, resources::Resources, ui::toast::ToastManager, VIEW_HEIGHT, VIEW_WIDTH};
 
-use super::{level_view::editor_camera::EditorCamera, toast::ToastManager};
+use super::{level_view::editor_camera::EditorCamera};
 
 const MIN_WIDTH:  usize = VIEW_WIDTH;
 const MIN_HEIGHT: usize = VIEW_HEIGHT;

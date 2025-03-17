@@ -2,7 +2,7 @@ use macroquad::{color::{Color, BLUE, RED}, math::{vec2, Rect, Vec2}};
 
 use crate::{resources::Resources, text_renderer::{render_text, text_size, Align, Font}, util::draw_rect, VIEW_SIZE};
 
-use super::editor_level::{MAX_CHECKPOINTS, MAX_DOORS, MAX_ENTITIES, MAX_SIGNS};
+use super::super::editor::editor_level::{MAX_CHECKPOINTS, MAX_DOORS, MAX_ENTITIES, MAX_SIGNS};
 
 pub enum ToastKind {
     Warning, Info,
@@ -22,6 +22,10 @@ pub struct ToastManager {
 impl ToastManager {
     pub fn add_toast(&mut self, text: String, kind: ToastKind) {
         self.toasts.push(Toast { text, kind, timer: 3.0 })
+    }
+
+    pub fn add_invalid_level_toast(&mut self) {
+        self.add_toast(format!("Invalid level pack file!"), ToastKind::Warning);
     }
 
     pub fn add_sign_limit_toast(&mut self) {

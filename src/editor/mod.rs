@@ -3,15 +3,13 @@ use editor_level_pack::EditorLevelPack;
 use editor_menu::EditorMenu;
 use level_view::LevelView;
 use macroquad::{color::Color, input::{is_key_pressed, KeyCode}, math::vec2};
-use toast::ToastManager;
 
-use crate::{game::scene::Scene, resources::Resources, text_renderer::{render_text, Align, Font}, ui::Ui, GameState};
+use crate::{game::scene::Scene, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{toast::ToastManager, Ui}, GameState};
 
 pub mod editor_level;
 pub mod editor_level_pack;
 pub mod editor_menu;
 pub mod level_view;
-pub mod toast;
 
 pub struct Editor {
     scene: Option<Scene>,

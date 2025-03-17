@@ -171,7 +171,7 @@ impl Scene {
         self.level.update_if_should(resources);
     }
 
-    pub fn draw(&self, global_chips: usize, lives: usize, resources: &Resources, debug: bool) {
+    pub fn draw(&self, chips: usize, lives: usize, resources: &Resources, debug: bool) {
         let camera_pos = self.camera.pos();
 
         draw_rect(Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y), self.level.bg_col());
@@ -220,10 +220,9 @@ impl Scene {
             render_powerup_text(name, col, powerup_y);
         }
 
-        // bc41c7
         // Timer and points
         render_text(&format!("{:?}", self.timer.floor() as usize), WHITE,  vec2(305.0,  3.0), vec2(1.0, 1.0), Align::End, Font::Large, resources);
-        render_text(&format!("{:?}", self.player.chips() + global_chips), GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, Font::Large, resources);
+        render_text(&format!("{:?}", self.player.chips() + chips), GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, Font::Large, resources);
 
         if debug {
             render_text(&format!("pos: [{:8.3}, {:8.3}]", self.player.pos().x, self.player.pos().y), RED, vec2(10.0, 50.0), Vec2::ONE, Align::End, Font::Small, resources);

@@ -194,7 +194,8 @@ impl EditorMenu {
             }
             if self.pack_popup_save.released() {
                 self.popup = PopupKind::None;
-
+                
+                // TODO: Better saving routine with toasts and a separate "file name" box that only takes in alphanumeric
                 let pack_data = LevelPackData::from_editor_level_pack(editor_level_pack);
                 let bytes = pack_data.to_bytes(resources);
                 let mut file = std::fs::OpenOptions::new()

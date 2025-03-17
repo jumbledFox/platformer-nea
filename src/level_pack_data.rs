@@ -113,7 +113,7 @@ impl LevelData {
                 .iter()
                 .map(|p| level_pos_to_pos(*p))
                 .collect(),
-                self.entities
+            self.entities
                 .iter()
                 .map(|(p, kind)| (level_pos_to_pos(*p), *kind))
                 .collect(),
