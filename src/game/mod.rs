@@ -35,7 +35,7 @@ impl Game {
 }
 
 impl GameState for Game {
-    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources) {
+    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources, next_state: &mut Option<Box<dyn GameState>>) {
         self.scene.update(&mut self.lives, deltatime, resources);
     }
 

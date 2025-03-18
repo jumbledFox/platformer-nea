@@ -4,7 +4,7 @@ use editor_menu::EditorMenu;
 use level_view::LevelView;
 use macroquad::{color::Color, input::{is_key_pressed, KeyCode}, math::vec2};
 
-use crate::{game::scene::Scene, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{toast::ToastManager, Ui}, GameState};
+use crate::{game::scene::Scene, level_pack_data::LevelPackData, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{toast::ToastManager, Ui}, GameState};
 
 pub mod editor_level;
 pub mod editor_level_pack;
@@ -25,13 +25,11 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn new(resources: &Resources) -> Self {
-        let bytes = include_bytes!("../../story.fox");
-        let level_pack_data = crate::level_pack_data::LevelPackData::from_bytes(bytes, resources).unwrap();
-        let mut editor_level_pack = level_pack_data.to_editor_level_pack();
-
-        // let mut editor_level_pack = EditorLevelPack::default();
-
+    pub fn new(level_pack_data: Option<LevelPackData>, resources: &Resources) -> Self {
+        let mut editor_level_pack = match level_pack_data {
+            Some(p) => p.to_editor_level_pack(),
+            None => EditorLevelPack::default(),
+        };
         editor_level_pack.editor_level_mut().update_if_should(resources);
         Self {
             scene: None,
@@ -42,7 +40,7 @@ impl Editor {
             toast_manager: ToastManager::default(),
 
             lives: 0,
-            instarun: true,
+            instarun: false,
         }
     }
 
@@ -52,7 +50,7 @@ impl Editor {
 }
 
 impl GameState for Editor {
-    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources) {
+    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources, next_state: &mut Option<Box<dyn GameState>>) {
         // for testing
         if self.instarun {
             self.instarun = false;

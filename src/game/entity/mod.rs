@@ -47,6 +47,7 @@ pub trait Entity {
 
     // Hurting
     fn can_hurt(&self) -> bool { false }
+    fn can_stomp(&self) -> bool { false }
     fn dead(&self) -> bool { false }
     fn kill(&mut self) {}
     fn stomp(&mut self, _power: Option<FeetPowerup>) -> bool {

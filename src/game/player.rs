@@ -562,32 +562,36 @@ impl Player {
         
         // I spent hours stomping... KOOPAS....
         // (stomping)
+        let mut stomped = false;
         if self.invuln.is_none() {
             'entities: for e in entities {
-                // Don't stomp entities we can't hurt
-                if !e.can_hurt() {
+                if !e.can_stomp() {
                     continue;
                 }
-                // Don't stop entities if we're moving up relative to them
-                if self.vel.y < e.vel().y {
-                    continue;
-                }
-                // Get the stompbox and try and stomp them with each foot
+                // Get the stompbox
                 let stompbox = match e.stompbox() {
                     Some(s) => s,
                     None => continue,
                 };
+                // Don't stop entities if we're moving up relative to them
+                if self.vel.y < e.vel().y {
+                    continue;
+                }
+                // Try and stomp them with each foot
                 for p in [FOOT_L, FOOT_R] {
                     if !stompbox.contains(self.pos + p) {
                         continue;
                     }
+                    stomped = true;
                     if e.stomp(self.feet_powerup) {
-                        self.state = State::Jumping;
-                        self.vel.y = self.vel.y.min(-1.5);
                         break 'entities;
                     }
                 }
             }
+        }
+        if stomped {
+            self.state = State::Jumping;
+            self.vel.y = self.vel.y.min(-1.5);
         }
     }
 

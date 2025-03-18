@@ -24,7 +24,10 @@ impl ToastManager {
         self.toasts.push(Toast { text, kind, timer: 3.0 })
     }
 
-    pub fn add_invalid_level_toast(&mut self) {
+    pub fn add_couldnt_pack_open_file(&mut self) {
+        self.add_toast(format!("Couldn't open pack file! (refresh?)"), ToastKind::Warning);
+    }
+    pub fn add_invalid_pack_toast(&mut self) {
         self.add_toast(format!("Invalid level pack file!"), ToastKind::Warning);
     }
 
@@ -54,8 +57,8 @@ impl ToastManager {
         let mut pos = vec2(VIEW_SIZE.x / 2.0, VIEW_SIZE.y - 20.0);
 
         for t in self.toasts.iter().rev() {
-            let size = text_size(&t.text, Vec2::ONE, Font::Small, resources) + 2.0;
-            let rect = Rect::new(pos.x - size.x / 2.0, pos.y - size.y / 2.0, size.x, size.y);
+            let size = text_size(&t.text, Vec2::ONE, Font::Small, resources) + 4.0;
+            let rect = Rect::new(pos.x - size.x / 2.0, pos.y - size.y / 2.0, size.x, size.y - 1.0);
 
             let mut color = match t.kind {
                 ToastKind::Info => BLUE,
@@ -64,8 +67,8 @@ impl ToastManager {
             color.a = (t.timer - 0.0).clamp(0.0, 1.0);
 
             draw_rect(rect, color);
-            render_text(&t.text, Color::new(1.0, 1.0, 1.0, color.a), rect.point() + 1.0, Vec2::ONE, Align::End, Font::Small, resources);
-            pos.y -= 12.0;
+            render_text(&t.text, Color::new(1.0, 1.0, 1.0, color.a), rect.point() + 2.0, Vec2::ONE, Align::End, Font::Small, resources);
+            pos.y -= rect.h + 1.0;
         }
     }
 }

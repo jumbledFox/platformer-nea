@@ -34,7 +34,7 @@ fn window_conf()-> Conf {
 }
 
 pub trait GameState {
-    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources);
+    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources, next_state: &mut Option<Box<dyn GameState>>);
     fn draw(&self, ui: &Ui, resources: &Resources, debug: bool);
 }
 
@@ -64,10 +64,11 @@ async fn main() {
     let mut debug = false;
     // let mut game_state: Box<dyn GameState> = Box::new(Editor::new(&resources));
     let mut game_state: Box<dyn GameState> = Box::new(Menu::new(None));
+    let mut next_state: Option<Box<dyn GameState>> = None;
 
     loop {
         ui.begin_frame();
-        
+
         // Toggling debug mode
         if is_key_pressed(macroquad::input::KeyCode::Key0) {
             debug = !debug;
@@ -76,17 +77,20 @@ async fn main() {
         // Update the game state
         let deltatime = get_frame_time();
         resources.update_tile_animation_timer(deltatime);
-        game_state.update(deltatime, &mut ui, &mut resources);
+        game_state.update(deltatime, &mut ui, &mut resources, &mut next_state);
+
+        if let Some(state) = next_state.take() {
+            game_state = state;
+            game_state.update(deltatime, &mut ui, &mut resources, &mut next_state);
+        }
 
         // Draw to the render target
         set_camera(&world_cam);
-
         game_state.draw(&ui, &resources, debug);
         ui.draw(&resources);
 
         // Draw the render target
         let r = Ui::render_target_rect();
-
         set_default_camera();
         clear_background(BLACK);
         draw_texture_ex(&render_target.texture, r.x, r.y, WHITE, DrawTextureParams {

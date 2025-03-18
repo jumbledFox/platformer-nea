@@ -109,6 +109,9 @@ impl Entity for Frog {
     fn can_hurt(&self) -> bool {
         !(matches!(self.state, State::Dead(_)) || self.invuln.is_some())
     }
+    fn can_stomp(&self) -> bool {
+        !matches!(self.state, State::Dead(_))
+    }
     fn kill(&mut self) {
         self.state = State::Dead(3.0);
     }

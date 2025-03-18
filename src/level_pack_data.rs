@@ -148,6 +148,13 @@ impl LevelData {
 }
 
 impl LevelPackData {
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    pub fn author(&self) -> &String {
+        &self.author
+    }
+
     pub fn from_editor_level_pack(value: &EditorLevelPack) -> Self {
         let mut levels: Vec<LevelData> = Vec::with_capacity(value.level_count());
         let mut worlds: Vec<String> = vec![];
