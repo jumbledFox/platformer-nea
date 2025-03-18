@@ -4,7 +4,7 @@ use std::io::Write;
 
 use macroquad::{color::{Color, BLACK, GRAY, WHITE}, color_u8, input::{clear_input_queue, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle};
 
-use crate::{level_pack_data::LevelPackData, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::Button, slider_u8::SliderU8, text_input::{TextInput, TEXT_INPUT_RECT}, Ui}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
+use crate::{level_pack_data::LevelPackData, menu::Menu, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::Button, slider_u8::SliderU8, text_input::{TextInput, TextInputKind, TEXT_INPUT_RECT}, toast::{ToastKind, ToastManager}, Ui}, util::{draw_rect, draw_rect_lines}, GameState, VIEW_SIZE};
 
 use super::{editor_level::{BG_CLOUD, BG_DESERT, BG_NIGHT, BG_SKY, BG_SUNSET}, editor_level_pack::EditorLevelPack, level_view::LevelView};
 
@@ -43,15 +43,18 @@ enum HelpScreen {
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 enum PopupKind {
-    None, Save, DeleteLevel,
+    None, Save, DeleteLevel, Exit,
 }
 
 pub struct EditorMenu {
     active: bool,
 
-    // The button to open the help screen
+    // The buttons along the top
     help_button: Button,
     save_button: Button,
+    exit_button: Button,
+
+    last_saved_file_name: String,
 
     // Manipulating the level pack
     pack_level_world_input: TextInput,
@@ -67,6 +70,7 @@ pub struct EditorMenu {
     // Could be done with structs n allat but this works juuuust fine :3
     popup: PopupKind,
     // Only shown on the save popup
+    pack_popup_file_name_input: TextInput,
     pack_popup_name_input: TextInput,
     pack_popup_author_input: TextInput,
     pack_popup_cancel: Button,
@@ -74,6 +78,9 @@ pub struct EditorMenu {
     // Shown on delete popup
     delete_popup_cancel: Button,
     delete_popup_delete: Button,
+    // Shown on exit popup
+    exit_popup_cancel: Button,
+    exit_popup_exit: Button,
 
     // The bg color sliders
     slider_r: SliderU8,
@@ -89,8 +96,8 @@ pub struct EditorMenu {
     help_button_close: Button,
 }
 
-impl Default for EditorMenu {
-    fn default() -> Self {
+impl EditorMenu {
+    pub fn new(last_saved_file_name: String) -> Self {
         let mut x = BG_COL_POS.x;
         let mut bg_col_preset = |col: (u8, u8, u8), name: &str| -> ((u8, u8, u8), Button) {
             let button = Button::new(Rect::new(x, BG_COL_POS.y + 52.0, 60.0, 12.0), Some(name.to_string()), None);
@@ -100,11 +107,14 @@ impl Default for EditorMenu {
         Self {
             active: true,
 
-            help_button: Button::new(Rect::new(5.0, 5.0, 54.0, 12.0), Some(String::from("Help!")), None),
-            save_button: Button::new(Rect::new(64.0, 5.0, 54.0, 12.0), Some(String::from("Save")), None),
+            help_button: Button::new(Rect::new(5.0 + 59.0 * 0.0, 5.0, 54.0, 12.0), Some(String::from("Help!")), None),
+            save_button: Button::new(Rect::new(5.0 + 59.0 * 1.0, 5.0, 54.0, 12.0), Some(String::from("Save")), None),
+            exit_button: Button::new(Rect::new(VIEW_SIZE.x - 5.0 - 54.0, 5.0, 54.0, 12.0), Some(String::from("Exit")), None),
 
-            pack_level_world_input: TextInput::new(PACK_EDIT_POS + vec2(53.0, 12.0)),
-            pack_level_name_input: TextInput::new(PACK_EDIT_POS + vec2(53.0, 26.0)),
+            last_saved_file_name,
+
+            pack_level_world_input: TextInput::new(PACK_EDIT_POS + vec2(53.0, 12.0), TextInputKind::All),
+            pack_level_name_input: TextInput::new(PACK_EDIT_POS + vec2(53.0, 26.0), TextInputKind::All),
             pack_add: Button::new(Rect::new(PACK_EDIT_POS.x, PACK_EDIT_POS.y + 42.0, 12.0, 12.0), Some(String::from("+")), Some(String::from("Insert new level"))),
             pack_del: Button::new(Rect::new(PACK_EDIT_POS.x + 100.0, PACK_EDIT_POS.y + 42.0, 53.0, 12.0), Some(String::from("Delete")), Some(String::from("Delete current level"))),
             pack_prev:       Button::new(Rect::new(PACK_EDIT_POS.x + 25.0, PACK_EDIT_POS.y + 42.0, 12.0, 12.0), Some(String::from("🮤")), Some(String::from("Previous level"))),
@@ -113,12 +123,15 @@ impl Default for EditorMenu {
             pack_shift_next: Button::new(Rect::new(PACK_EDIT_POS.x + 74.0, PACK_EDIT_POS.y + 42.0, 12.0, 12.0), Some(String::from("↠")), Some(String::from("Shift level forward"))),
 
             popup: PopupKind::None,
-            pack_popup_name_input:   TextInput::new(vec2((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0,  90.0)),
-            pack_popup_author_input: TextInput::new(vec2((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0, 105.0)),
-            pack_popup_cancel:   Button::new(Rect::new(VIEW_SIZE.x / 2.0 - 60.0, 120.0, 55.0, 12.0), Some(String::from("Cancel")), None),
-            pack_popup_save:     Button::new(Rect::new(VIEW_SIZE.x / 2.0 +  5.0, 120.0, 55.0, 12.0), Some(String::from("Save")), Some(String::from("Save pack to file"))),
+            pack_popup_file_name_input: TextInput::new(vec2((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0,  90.0), TextInputKind::FileName),
+            pack_popup_name_input:      TextInput::new(vec2((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0, 105.0), TextInputKind::All),
+            pack_popup_author_input:    TextInput::new(vec2((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0, 120.0), TextInputKind::All),
+            pack_popup_cancel:   Button::new(Rect::new(VIEW_SIZE.x / 2.0 - 60.0, 135.0, 55.0, 12.0), Some(String::from("Cancel")), None),
+            pack_popup_save:     Button::new(Rect::new(VIEW_SIZE.x / 2.0 +  5.0, 135.0, 55.0, 12.0), Some(String::from("Save")), Some(String::from("Save pack to file"))),
             delete_popup_cancel: Button::new(Rect::new(VIEW_SIZE.x / 2.0 - 60.0, 120.0, 55.0, 12.0), Some(String::from("Cancel")), None),
             delete_popup_delete: Button::new(Rect::new(VIEW_SIZE.x / 2.0 +  5.0, 120.0, 55.0, 12.0), Some(String::from("Delete")), Some(String::from("No going back!"))),
+            exit_popup_cancel: Button::new(Rect::new(VIEW_SIZE.x / 2.0 - 60.0, 120.0, 55.0, 12.0), Some(String::from("Cancel")), None),
+            exit_popup_exit:   Button::new(Rect::new(VIEW_SIZE.x / 2.0 +  5.0, 120.0, 55.0, 12.0), Some(String::from("Exit")), Some(String::from("No going back!"))),
 
             slider_r: SliderU8::new(0, 255, Rect::new(BG_COL_POS.x + 33.0, BG_COL_POS.y + 5.0, 256.0, 10.0)),
             slider_g: SliderU8::new(0, 255, Rect::new(BG_COL_POS.x + 33.0, BG_COL_POS.y + 20.0, 256.0, 10.0)),
@@ -132,9 +145,6 @@ impl Default for EditorMenu {
             help_button_close: Button::new(Rect::new(VIEW_SIZE.x / 2.0 - 54.0 / 2.0,  190.0, 54.0, 12.0), Some(String::from("Close")), None),
         }
     }
-}
-
-impl EditorMenu {
     pub fn active(&self) -> bool {
         self.active
     }
@@ -182,8 +192,18 @@ impl EditorMenu {
         }
     }
 
-    fn update_popup(&mut self, editor_level_pack: &mut EditorLevelPack, level_view: &mut LevelView, deltatime: f32, ui: &mut Ui, resources: &Resources) {
+    fn update_popup(
+        &mut self,
+        next_state: &mut Option<Box<dyn GameState>>,
+        editor_level_pack: &mut EditorLevelPack,
+        level_view: &mut LevelView,
+        toast_manager: &mut ToastManager,
+        deltatime: f32,
+        ui: &mut Ui,
+        resources: &Resources
+    ) {
         if self.popup == PopupKind::Save {
+            self.pack_popup_file_name_input.update(editor_level_pack.file_name_mut(), deltatime, ui, resources);
             self.pack_popup_name_input.update(editor_level_pack.name_mut(), deltatime, ui, resources);
             self.pack_popup_author_input.update(editor_level_pack.author_mut(), deltatime, ui, resources);
             self.pack_popup_cancel.update(ui);
@@ -192,21 +212,42 @@ impl EditorMenu {
             if self.pack_popup_cancel.released() {
                 self.popup = PopupKind::None;
             }
-            if self.pack_popup_save.released() {
-                self.popup = PopupKind::None;
-                
-                // TODO: Better saving routine with toasts and a separate "file name" box that only takes in alphanumeric
+            if self.pack_popup_save.released() {            
                 let pack_data = LevelPackData::from_editor_level_pack(editor_level_pack);
                 let bytes = pack_data.to_bytes(resources);
-                let mut file = std::fs::OpenOptions::new()
+                let file_name = pack_data.file_name().clone();
+
+                if file_name.is_empty() {
+                    toast_manager.add_toast("Can't leave file name blank!".to_string(), ToastKind::Warning);
+                    return;
+                }
+                // Create (or load) the file
+                let mut file = match std::fs::OpenOptions::new()
                     .create(true)
                     .write(true)
-                    .open(format!("{}.fox", editor_level_pack.name()))
-                    .unwrap();
-                file.set_len(0).unwrap();
-                file.write_all(&bytes).unwrap();
-
-                println!("saved to file...");
+                    .open(format!("{}.fox", file_name))
+                {
+                    Ok(f) => f,
+                    Err(e) => {
+                        toast_manager.add_toast(String::from("Error creating file?!"), ToastKind::Warning);
+                        toast_manager.add_toast(format!("{e}"), ToastKind::Warning);
+                        return;
+                    }
+                };
+                // Clear it (if the file was loaded rather than created!)
+                if let Err(e) = file.set_len(0) {
+                    toast_manager.add_toast(format!("{e}"), ToastKind::Warning);
+                    return;
+                }
+                // Write the level pack bytes
+                if let Err(e) = file.write_all(&bytes) {
+                    toast_manager.add_toast(String::from("Error writing bytes to file?!"), ToastKind::Warning);
+                    toast_manager.add_toast(format!("{e}"), ToastKind::Warning);
+                    return;
+                }
+                toast_manager.add_toast(format!("Saved pack to {}.fox", file_name), ToastKind::Info);
+                self.last_saved_file_name = file_name;
+                self.popup = PopupKind::None;
             }
         } else if self.popup == PopupKind::DeleteLevel {
             self.delete_popup_cancel.update(ui);
@@ -219,10 +260,29 @@ impl EditorMenu {
                 editor_level_pack.delete_level(resources);
                 level_view.reset_camera();
             }
+        } else if self.popup == PopupKind::Exit {
+            self.exit_popup_cancel.update(ui);
+            self.exit_popup_exit.update(ui);
+
+            if self.exit_popup_cancel.released() {
+                self.popup = PopupKind::None;
+            }
+            if self.exit_popup_exit.released() {
+                *next_state = Some(Box::new(Menu::new(Some(self.last_saved_file_name.clone()))));
+            }
         }
     }
 
-    pub fn update(&mut self, editor_level_pack: &mut EditorLevelPack, level_view: &mut LevelView, deltatime: f32, ui: &mut Ui, resources: &Resources) {
+    pub fn update(
+        &mut self,
+        next_state: &mut Option<Box<dyn GameState>>,
+        editor_level_pack: &mut EditorLevelPack,
+        level_view: &mut LevelView,
+        toast_manager: &mut ToastManager,
+        deltatime: f32,
+        ui: &mut Ui,
+        resources: &Resources
+    ) {
         // Update the help screen, and don't update anything else if it's still open
         if self.help_screen != HelpScreen::Closed {
             self.update_help_screen(ui);
@@ -233,7 +293,7 @@ impl EditorMenu {
 
         // Update the popup, and don't update anything else if it's still open
         if self.popup != PopupKind::None {
-            self.update_popup(editor_level_pack, level_view, deltatime, ui, resources);
+            self.update_popup(next_state, editor_level_pack, level_view, toast_manager, deltatime, ui, resources);
             if self.popup != PopupKind::None {
                 return;
             }
@@ -297,12 +357,16 @@ impl EditorMenu {
         // Update other buttons
         self.help_button.update(ui);
         self.save_button.update(ui);
+        self.exit_button.update(ui);
 
         if self.help_button.released() {
             self.help_screen = HelpScreen::OpenFromMenu;
         }
         if self.save_button.released() {
             self.popup = PopupKind::Save;
+        }
+        if self.exit_button.released() {
+            self.popup = PopupKind::Exit;
         }
     }
 
@@ -465,11 +529,12 @@ impl EditorMenu {
     fn draw_popup(&self, editor_level_pack: &EditorLevelPack, resources: &Resources) {
         draw_rect(Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y), BG_COL);
         if self.popup == PopupKind::Save {
-            let rect = Rect::new((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0 - 4.0, 77.0, TEXT_INPUT_RECT.w + 8.0, 58.0);
+            let rect = Rect::new((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0 - 4.0, 77.0, TEXT_INPUT_RECT.w + 8.0, 73.0);
             draw_rect(rect, GRAY);
             draw_rect_lines(rect, BLACK);
             render_text("Save level pack", WHITE, rect.point() + vec2(4.0, 3.0), Vec2::ONE, Align::End, Font::Small, resources);
-            self.pack_popup_name_input.draw(editor_level_pack.name(),   "Pack name", resources);
+            self.pack_popup_file_name_input.draw(editor_level_pack.file_name(),  "File name (without .fox)", resources);
+            self.pack_popup_name_input.draw(editor_level_pack.name(), "Pack name", resources);
             self.pack_popup_author_input.draw(editor_level_pack.author(), "Pack author", resources);
             self.pack_popup_save.draw(resources);
             self.pack_popup_cancel.draw(resources);
@@ -480,6 +545,14 @@ impl EditorMenu {
             render_text("delete level? (no undo!)", WHITE, rect.point() + vec2(4.0, 3.0), Vec2::ONE, Align::End, Font::Small, resources);
             self.delete_popup_cancel.draw(resources);
             self.delete_popup_delete.draw(resources);
+        } else if self.popup == PopupKind::Exit {
+            let rect = Rect::new((VIEW_SIZE.x - TEXT_INPUT_RECT.w) / 2.0 - 4.0, 97.0, TEXT_INPUT_RECT.w + 8.0, 38.0);
+            draw_rect(rect, GRAY);
+            draw_rect_lines(rect, BLACK);
+            render_text("Exit to the main menu?", WHITE, rect.point() + vec2(4.0,  3.0), Vec2::ONE, Align::End, Font::Small, resources);
+            render_text("(Remember to save!!)", WHITE, rect.point() + vec2(4.0, 13.0), Vec2::ONE, Align::End, Font::Small, resources);
+            self.exit_popup_cancel.draw(resources);
+            self.exit_popup_exit.draw(resources);
         }
     }
 
@@ -518,6 +591,7 @@ impl EditorMenu {
 
         self.help_button.draw(resources);
         self.save_button.draw(resources);
+        self.exit_button.draw(resources);
 
         // Draw the popup in front if it's active
         if self.popup != PopupKind::None {

@@ -15,6 +15,7 @@ pub const MAX_FIELD_LEN: usize = 24;
 // EditorLevelPack -> LevelPackData
 
 pub struct LevelPackData {
+    file_name: String,
     name: String,
     author: String,
     worlds: Vec<String>,
@@ -148,6 +149,9 @@ impl LevelData {
 }
 
 impl LevelPackData {
+    pub fn file_name(&self) -> &String {
+        &self.file_name
+    }
     pub fn name(&self) -> &String {
         &self.name
     }
@@ -171,8 +175,9 @@ impl LevelPackData {
         }
 
         Self {
-            name:   value.name().clone(),
-            author: value.author().clone(),
+            file_name: value.file_name().clone(),
+            name:      value.name().clone(),
+            author:    value.author().clone(),
             worlds,
             levels,
         }
@@ -192,7 +197,7 @@ impl LevelPackData {
             levels.push(level.to_editor_level(world_name));
         }
 
-        EditorLevelPack::new(self.name.clone(), self.author.clone(), levels)
+        EditorLevelPack::new(self.file_name.clone(), self.name.clone(), self.author.clone(), levels)
     }
 }
 
@@ -437,7 +442,7 @@ impl LevelPackData {
         bytes
     }
 
-    pub fn from_bytes(bytes: &[u8], resources: &Resources) -> Option<Self> {
+    pub fn from_bytes(file_name: String, bytes: &[u8], resources: &Resources) -> Option<Self> {
         // The cursor is where we are in 'bytes', makes it easier for me to decode i think :3
         // FUTURE ME HERE: the cursor makes this SO EASY!!!!! yippeeeeeeee
         let mut cursor = 0;
@@ -484,7 +489,7 @@ impl LevelPackData {
             return None;
         }
 
-        Some(Self { name, author, worlds, levels })
+        Some(Self { file_name, name, author, worlds, levels })
     }
 }
 

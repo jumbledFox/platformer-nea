@@ -6,6 +6,7 @@ use super::editor_level::EditorLevel;
 pub const MAX_LEVELS: usize = 99;
 
 pub struct EditorLevelPack {
+    file_name: String,
     name: String,
     author: String,
 
@@ -16,6 +17,7 @@ pub struct EditorLevelPack {
 impl Default for EditorLevelPack {
     fn default() -> Self {
         Self {
+            file_name: String::new(),
             name: String::new(),
             author: String::new(),
             levels: vec![EditorLevel::default()],
@@ -25,17 +27,22 @@ impl Default for EditorLevelPack {
 }
 
 impl EditorLevelPack {
-    pub fn new(name: String, author: String, levels: Vec<EditorLevel>) -> Self {
-        Self { name, author, levels, current: 0 }
+    pub fn new(file_name: String, name: String, author: String, levels: Vec<EditorLevel>) -> Self {
+        Self { file_name, name, author, levels, current: 0 }
     }
 
+    pub fn file_name(&self) -> &String {
+        &self.file_name
+    }
+    pub fn file_name_mut(&mut self) -> &mut String {
+        &mut self.file_name
+    }
     pub fn name(&self) -> &String {
         &self.name
     }
     pub fn name_mut(&mut self) -> &mut String {
         &mut self.name
     }
-
     pub fn author(&self) -> &String {
         &self.author
     }

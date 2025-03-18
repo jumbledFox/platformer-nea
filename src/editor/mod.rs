@@ -31,11 +31,12 @@ impl Editor {
             None => EditorLevelPack::default(),
         };
         editor_level_pack.editor_level_mut().update_if_should(resources);
+
         Self {
             scene: None,
             close_scene: false,
+            editor_menu: EditorMenu::new(editor_level_pack.file_name().clone()),
             editor_level_pack,
-            editor_menu: EditorMenu::default(),
             level_view: LevelView::new(resources),
             toast_manager: ToastManager::default(),
 
@@ -99,7 +100,7 @@ impl GameState for Editor {
         
         // If the menu is open, update that and don't update the view
         if self.editor_menu.active() {
-            self.editor_menu.update(&mut self.editor_level_pack, &mut self.level_view, deltatime, ui, &resources);
+            self.editor_menu.update(next_state, &mut self.editor_level_pack, &mut self.level_view, &mut self.toast_manager, deltatime, ui, &resources);
             return;
         }
 

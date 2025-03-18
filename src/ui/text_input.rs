@@ -13,20 +13,27 @@ pub const BACKSPACE_TIMER_OTHER: f32 = 0.035;
 
 pub const TEXT_INPUT_RECT: Rect = Rect { x: 0.0, y: 0.0, w: 8.0 * MAX_USER_STRING_LEN as f32 + 6.0, h: 12.0 };
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum TextInputKind {
+    All, FileName
+}
+
 pub struct TextInput {
     pos: Vec2,
     flash_timer:     f32,
     backspace_timer: Option<f32>,
     active: bool,
+    kind: TextInputKind,
 }
 
 impl TextInput {
-    pub fn new(pos: Vec2) -> Self {
+    pub fn new(pos: Vec2, kind: TextInputKind) -> Self {
         Self {
             pos,
             flash_timer: 0.0,
             backspace_timer: None,
-            active: false
+            active: false,
+            kind,
         }
     }
 
@@ -66,7 +73,10 @@ impl TextInput {
         
         if let Some(c) = get_char_pressed() {
             let c = c.to_ascii_lowercase();
-            if resources.font_data_manager().font_data(Font::Small).typable_char(c) {
+
+            if (self.kind == TextInputKind::All && resources.font_data_manager().font_data(Font::Small).typable_char(c))
+            || (self.kind == TextInputKind::FileName && (c.is_ascii_alphanumeric() ||  c == '_' || c == '-'))
+            {
                 self.backspace_timer = None;
                 if text.len() < MAX_USER_STRING_LEN {
                     text.push(c);
