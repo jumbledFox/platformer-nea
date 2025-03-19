@@ -2,7 +2,7 @@
 
 use macroquad::{color::{Color, WHITE}, input::is_key_pressed, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{collision::{default_collision, spike_check, EntityHitKind}, level::{tile::{LockColor, TileHitKind}, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::{default_collision, spike_check, EntityHitKind}, level::{tile::{LockColor, TileHitKind}, Level}, player::Player, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -14,8 +14,8 @@ const SIDE_RB: Vec2 = vec2(16.0, 14.0);
 const BOT_L:   Vec2 = vec2( 4.0, 16.0);
 const BOT_R:   Vec2 = vec2(12.0, 16.0);
 
-const FUSE_FIZZ: f32 = 3.0;
-const FUSE_EXPLODE: f32 = 5.0;
+const FUSE_FIZZ: f32 = 1.5;
+const FUSE_EXPLODE: f32 = 3.0;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CrateKind {
@@ -32,9 +32,14 @@ pub struct Crate {
     vel: Vec2,
     kind: CrateKind,
     hit: bool,
-    should_break: bool,
+    hit_non_tile: bool,
     // Used for explosive crates...
     fuse: Option<f32>,
+
+    // Kinda janky way of doing things but it WORKS
+    t: bool,
+    b: bool,
+    prev_vel: Vec2,
 }
 
 impl Crate {
@@ -45,18 +50,26 @@ impl Crate {
             vel,
             kind,
             hit: false,
-            should_break: false,
+            hit_non_tile: false,
             fuse: None,
+
+            t: false,
+            b: false,
+            prev_vel: Vec2::ZERO,
         }
     }
 
     pub fn draw(pos: Vec2, explosive: Option<f32>, camera_pos: Vec2, color: Color, resources: &Resources) {
         if let Some(fuse) = explosive {
+            // Yeah this is janky but it works!!!!
             let mut frame = if fuse == 0.0 { 0 }
             else if fuse < FUSE_FIZZ { 1 }
             else { 3 };
             if fuse.rem_euclid(0.2) > 0.1 {
                 frame += 1;
+            }
+            if fuse.rem_euclid(0.1) > 0.05 && fuse >= FUSE_FIZZ {
+                frame -= 2;
             }
 
             resources.draw_rect(pos - camera_pos - vec2(4.0, 8.0), Rect::new(160.0 + frame as f32 * 24.0, 112.0, 24.0, 24.0), false, false, color, resources.entity_atlas());
@@ -71,9 +84,8 @@ impl Crate {
     }
 
     pub fn break_crate(&mut self, t: bool, b: bool, prev_vel: Vec2, entity_spawner: &mut EntitySpawner, particles: &mut Particles) {
-        self.hit = true;
         // Velocities for all the items in the crate
-        let (y_min, y_max) = match (self.should_break, t, b) {
+        let (y_min, y_max) = match (self.hit_non_tile, t, b) {
             // If we hit the bottom of a tile, or we should break, launch entities upwards
             (true,  _,     _) |
             (_,     false, true)  => (-1.0, -0.4),
@@ -133,6 +145,10 @@ impl Crate {
             let vel = vec2(gen_range(vel_x.x, vel_x.y), gen_range(vel_y.x, vel_y.y));
             particles.add_particle(self.pos + offset, vel, ParticleKind::Crate(kind));
         }
+
+        if self.kind == CrateKind::Explosive {
+            entity_spawner.add_entity(self.hitbox().center(), Vec2::ZERO, EntityKind::Explosion, None);
+        }
     }
 
     pub fn update_fuse(&mut self) {
@@ -181,8 +197,12 @@ impl Entity for Crate {
     fn should_destroy(&self) -> bool {
         self.hit
     }
+    fn destroy(&mut self, entity_spawner: &mut EntitySpawner, particles: &mut Particles) {
+        self.break_crate(self.t, self.b, self.prev_vel, entity_spawner, particles);
+    }
     fn hit_with_throwable(&mut self, vel: Vec2) -> bool {
-        self.should_break = true;
+        self.hit = true;
+        self.hit_non_tile = true;
         self.vel = vel;
         true
     }
@@ -197,13 +217,13 @@ impl Entity for Crate {
         self.update_fuse();
     }
 
-    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, resources: &Resources) {
+    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
         self.update_fuse();
         
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
 
-        let prev_vel = self.vel;
+        self.prev_vel = self.vel;
 
         let mut tops   = [(TOP, false)];
         let mut bots   = [(BOT_L, false), (BOT_R, false)];
@@ -213,14 +233,16 @@ impl Entity for Crate {
         let (t, b, _, _, hit, hit_entity) = default_collision(&mut self.pos, &mut self.vel, Some(TileHitKind::Soft), entity_hit, others, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
         if b { self.vel.x = 0.0; }
 
+        self.t = t;
+        self.b = b;
+
+        self.hit |= hit || hit_entity;
         // Spikes
         if spike_check(self.pos, &[TOP], &[BOT_L, BOT_R], &[SIDE_LT, SIDE_LB], &[SIDE_RT, SIDE_RB], level).is_some() {
-            self.should_break = true;
-        }
-
-        // If we collided and have been thrown... we need to be destroyed and release the entities inside! also hit switches and stuff...
-        if self.should_break || hit || hit_entity {
-            self.break_crate(t, b, prev_vel, entity_spawner, particles);
+            if !self.hit {
+                self.hit_non_tile = true;
+            }
+            self.hit = true;
         }
     }
 

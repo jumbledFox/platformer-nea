@@ -1,4 +1,4 @@
-use macroquad::math::Vec2;
+use macroquad::{math::{vec2, Vec2}, rand::{gen_range, rand}};
 
 use crate::{level_pack_data::{pos_to_level_pos, LevelPosition}, VIEW_SIZE};
 
@@ -7,6 +7,11 @@ pub struct Camera {
 
     center_tile: LevelPosition,
     should_update_entities: bool,
+
+    shake_timer: f32,
+    shake_first: bool,
+    shake_offset: Vec2,
+    shake_damp: f32,
 }
 
 impl Camera {
@@ -14,7 +19,12 @@ impl Camera {
         Self {
             center: player_pos,
             center_tile: pos_to_level_pos(player_pos),
-            should_update_entities: true
+            should_update_entities: true,
+
+            shake_timer: 0.0,
+            shake_first: true,
+            shake_offset: Vec2::ZERO,
+            shake_damp: 0.0,
         }
     }
 
@@ -37,9 +47,32 @@ impl Camera {
         s
     }
 
+    pub fn shake(&mut self, amount: f32) {
+        self.shake_damp = amount;
+    }
+
     // Yeah this needs to be much better, it's temporary!!!!
-    pub fn update(&mut self, player_pos: Vec2) {
-        self.center = player_pos.max(VIEW_SIZE / 2.0);
+    pub fn update(&mut self, player_pos: Vec2, deltatime: f32) {
+        // Using this makes sure the shake always has some impact, and can never by chance be 0, or something too close to it
+        let shake_var = |low: f32, high: f32| {
+            gen_range(low, high) * if rand() % 2 == 0 { -1.0 } else { 1.0 }
+        };
+        if self.shake_timer >= 0.015 {
+            self.shake_timer = 0.0;
+
+            if self.shake_first {
+                self.shake_offset = vec2(shake_var(2.0, 5.0), shake_var(2.0, 4.0)) * self.shake_damp;
+            } else {
+                self.shake_offset *= -1.0;
+                self.shake_damp *= 0.7;
+                if self.shake_damp < 0.1 { self.shake_damp = 0.0; }
+            }
+            self.shake_first = !self.shake_first;
+        } else {
+            self.shake_timer += deltatime;
+        }
+
+        self.center = player_pos.max(VIEW_SIZE / 2.0) + self.shake_offset;
         
         let center_tile = pos_to_level_pos(self.center);
         if center_tile != self.center_tile {

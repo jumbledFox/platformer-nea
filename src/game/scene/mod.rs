@@ -118,7 +118,7 @@ impl Scene {
                     .iter_mut()
                     .chain(right.iter_mut())
                     .collect();
-                entity.physics_update(&self.player, &mut others, &mut self.entity_spawner, &mut self.particles, &mut self.level, resources);
+                entity.physics_update(&self.player, &mut others, &mut self.entity_spawner, &mut self.particles, &mut self.level, &mut self.camera, resources);
             }
             self.entity_spawner.spawn_entities(&mut self.entities);
             
@@ -135,6 +135,7 @@ impl Scene {
             for i in (0..self.entities.len()).rev() {
                 if self.entities[i].should_destroy() {
                     disable_respawn(self.entities[i].id());
+                    self.entities[i].destroy(&mut self.entity_spawner, &mut self.particles);
                     self.entities.remove(i);
                     continue;
                 }
@@ -165,7 +166,7 @@ impl Scene {
         // Sorting them every frame?! idk man...... it works..
         self.entities.sort_by(|e1, e2| e1.kind().cmp(&e2.kind()));
 
-        self.camera.update(self.player.pos());
+        self.camera.update(self.player.pos(), deltatime);
 
         self.level.update_bumped_tiles(deltatime);
         self.level.update_if_should(resources);

@@ -405,7 +405,6 @@ impl LevelData {
         let entities_len = get_byte(*cursor)?;
         *cursor += 1;
 
-        println!("e: {:?}", entities_len);
         for _ in 0..entities_len {
             let kind = get_byte(*cursor)?;
             let x = get_byte(*cursor+1)?;

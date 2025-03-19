@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use macroquad::{color::{Color, GREEN, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range, shapes::draw_circle};
 
-use crate::{game::{collision::{default_collision, spike_check}, level::{tile::TileDir, Level}, player::{Dir, FeetPowerup, Player}, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::approach_target};
+use crate::{game::{collision::{default_collision, spike_check}, level::{tile::TileDir, Level}, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::approach_target};
 
 use super::{Entity, EntityKind, Id};
 
@@ -179,7 +179,7 @@ impl Entity for Goat {
     fn update(&mut self, _resources: &Resources) {
 
     }
-    fn physics_update(&mut self, player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
+    fn physics_update(&mut self, player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
         let dist_to_player = player.pos() - self.pos + vec2(0.0, 16.0); 
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
 

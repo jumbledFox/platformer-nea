@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}};
 
-use crate::{game::{collision::{default_collision, EntityHitKind}, level::{tile::{LockColor, Tile, TileHitKind, RAINBOW_LOCK_FRAME_DUR}, Level}, player::Player, scene::{entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::{default_collision, EntityHitKind}, level::{tile::{LockColor, Tile, TileHitKind, RAINBOW_LOCK_FRAME_DUR}, Level}, player::Player, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -65,9 +65,11 @@ impl Entity for Key {
     fn vel(&self) -> Vec2 { self.vel }
     fn set_pos(&mut self, pos: Vec2) { self.pos = pos; }
     fn set_vel(&mut self, vel: Vec2) { self.vel = vel; }
-    fn should_destroy(&self) -> bool { false }
+    fn should_destroy(&self) -> bool {
+        false
+    }
 
-    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
+    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
         
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;

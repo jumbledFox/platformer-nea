@@ -7,7 +7,7 @@ use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
 
 use crate::{level_pack_data::LevelPosition, resources::Resources};
 
-use super::{level::{tile::LockColor, Level}, player::{FeetPowerup, Player}, scene::{entity_spawner::EntitySpawner, particles::Particles}};
+use super::{level::{tile::LockColor, Level}, player::{FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles}};
 
 pub mod crate_entity;
 pub mod chip;
@@ -15,6 +15,7 @@ pub mod key;
 pub mod frog;
 pub mod goat;
 pub mod danger_cloud;
+pub mod explosion;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Id {
@@ -61,11 +62,12 @@ pub trait Entity {
 
     // Destroying
     fn should_destroy(&self) -> bool;
+    fn destroy(&mut self, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles) {}
 
     // Updating/drawing
     // (idk if i need update? it's never really used... but good to have just in case i guess...) i might remove it...
     fn update(&mut self, _resources: &Resources) {}
-    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources);
+    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources);
     fn draw(&self, camera_pos: Vec2, resources: &Resources);
 }
 
@@ -79,6 +81,7 @@ pub enum EntityKind {
     Goat,
 
     DangerCloud,
+    Explosion,
 }
 
 impl Ord for EntityKind {
@@ -93,6 +96,7 @@ impl Ord for EntityKind {
                 EntityKind::Key(_) => 4,
 
                 EntityKind::DangerCloud => 5,
+                EntityKind::Explosion => 6,
             }
         }
         order(self).cmp(&order(other))
@@ -242,8 +246,9 @@ impl From<EntityKind> for u8 {
             EntityKind::Frog(_) => 19,
             EntityKind::Goat => 22,
 
-            // This shouldn't be saved!! it can't be placed!!
-            EntityKind::DangerCloud => 0,
+            // These shouldn't be saved!! they can't be placed!!
+            EntityKind::DangerCloud |
+            EntityKind::Explosion => 0,
         }
     }
 }
