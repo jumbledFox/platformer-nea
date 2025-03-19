@@ -459,7 +459,7 @@ pub fn render_tile(render_data: &TileRenderData, camera_pos: Vec2, render_layer:
     }
 
     // If the tile doesn't have a texture, don't render it
-    let texture = match resources.tile_data_manager().data(tile).texture() {
+    let texture = match resources.tile_data(tile).texture() {
         Some(t) => t,
         None => return,
     };

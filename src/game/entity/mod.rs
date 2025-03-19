@@ -43,6 +43,8 @@ pub trait Entity {
     fn hold_offset(&self) -> Option<Vec2> {
         None
     }
+    fn hold(&mut self) {}
+    fn hold_fixed_update(&mut self) {}
     fn throw(&mut self, _vel: Vec2) {}
 
     // Hurting
@@ -169,13 +171,18 @@ impl EntityKind {
         match self {
             // If it's a crate.. it's a bit more difficult!!
             EntityKind::Crate(kind) => {
-                Crate::draw(pos, camera_pos, color, resources);
+                let explosive = match kind {
+                    CrateKind::Explosive => Some(0.0),
+                    _ => None,
+                };
+                Crate::draw(pos, explosive, camera_pos, color, resources);
                 
                 // Position the object in the center of the crate...
                 let (selector_size, selector_offset) = match kind {
                     CrateKind::Chip(_) | CrateKind::Life => (Chip::object_selector_size(), Vec2::ZERO),
                     CrateKind::Frog(_) => (Frog::object_selector_rect().size(), Frog::object_selector_rect().point()),
                     CrateKind::Key(_)  => (Key::hitbox().size(), Vec2::ZERO),
+                    CrateKind::Explosive => (Vec2::ZERO, Vec2::ZERO),
                 };
                 let center = pos + 8.0 - (selector_size/2.0) + selector_offset;
                 // ... and make it semi-transparent
@@ -194,6 +201,7 @@ impl EntityKind {
                     },
                     CrateKind::Life => Chip::draw_editor(true, center, camera_pos, color, resources),
                     CrateKind::Key(key_color) => Key::draw_editor(*key_color, center, camera_pos, color, resources),
+                    CrateKind::Explosive => {}
                 }
             }
             EntityKind::Key(c) => Key::draw_editor(*c, pos, camera_pos, color, resources),
@@ -213,6 +221,7 @@ impl From<EntityKind> for u8 {
             EntityKind::Crate(CrateKind::Frog(true))  => 21,
             EntityKind::Crate(CrateKind::Chip(false)) => 15,
             EntityKind::Crate(CrateKind::Chip(true))  => 16,
+            EntityKind::Crate(CrateKind::Explosive)   => 23,
             EntityKind::Crate(CrateKind::Life) => 18,
             EntityKind::Crate(CrateKind::Key(LockColor::Red))     => 7,
             EntityKind::Crate(CrateKind::Key(LockColor::Green))   => 8,
@@ -248,6 +257,7 @@ impl TryFrom<u8> for EntityKind {
             15 => Ok(EntityKind::Crate(CrateKind::Chip(false))),
             16 => Ok(EntityKind::Crate(CrateKind::Chip(true))),
             18 => Ok(EntityKind::Crate(CrateKind::Life)),
+            23 => Ok(EntityKind::Crate(CrateKind::Explosive)),
              7 => Ok(EntityKind::Crate(CrateKind::Key(LockColor::Red))),
              8 => Ok(EntityKind::Crate(CrateKind::Key(LockColor::Green))),
              9 => Ok(EntityKind::Crate(CrateKind::Key(LockColor::Blue))),

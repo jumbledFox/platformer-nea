@@ -47,7 +47,7 @@ impl SignDisplay {
         draw_rectangle(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y, BG_COL);
         render_text("Press W to close sign", LIGHTGRAY, vec2(VIEW_SIZE.x/2.0, y), Vec2::ONE, Align::Mid, Font::Small, resources);
 
-        resources.draw_rect(vec2((VIEW_SIZE.x - 200.0)/2.0, y + 6.0), Rect::new(312.0, 0.0, 200.0, 50.0), false, WHITE, resources.entity_atlas());
+        resources.draw_rect(vec2((VIEW_SIZE.x - 200.0)/2.0, y + 6.0), Rect::new(312.0, 0.0, 200.0, 50.0), false, false, WHITE, resources.entity_atlas());
 
         for (i, line) in lines.iter().enumerate() {
             render_text(line, WHITE, vec2(VIEW_SIZE.x / 2.0, y + 14.0 + 12.0 * i as f32), Vec2::ONE, Align::Mid, Font::Small, resources);

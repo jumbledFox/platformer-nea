@@ -193,7 +193,7 @@ impl GameState for Menu {
         self.button_play.draw(resources);
         self.button_edit_cur.draw(resources);
         // Kinda a hacky way to add an image label to a button, but it's only done ONCE in the program! So meh...
-        resources.draw_rect(self.button_edit_cur.rect().point() + 2.0, Rect::new(416.0, 64.0, 12.0, 12.0), false, WHITE, resources.entity_atlas());
+        resources.draw_rect(self.button_edit_cur.rect().point() + 2.0, Rect::new(416.0, 64.0, 12.0, 12.0), false, false, WHITE, resources.entity_atlas());
         self.button_help.draw(resources);
         self.button_editor.draw(resources);
         self.button_credits.draw(resources);

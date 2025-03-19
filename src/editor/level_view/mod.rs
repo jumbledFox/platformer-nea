@@ -517,12 +517,12 @@ impl LevelView {
         if let Object::Other(ObjectOtherKind::Door(kind)) = self.selected_object {
             if let Some(pos) = editor_level.door_start() {
                 let rect = Rect::new(240.0, 16.0 * (2 + kind as u8) as f32, 16.0, 16.0);
-                resources.draw_rect(pos - camera_pos, rect, false, WHITE, resources.entity_atlas());
+                resources.draw_rect(pos - camera_pos, rect, false, false, WHITE, resources.entity_atlas());
             }
         }
         // Render checkpoints and spawn/finish
         for c in editor_level.checkpoints() {
-            resources.draw_rect(*c - camera_pos, Rect::new(224.0, 16.0, 16.0, 16.0), false, WHITE, resources.entity_atlas());
+            resources.draw_rect(*c - camera_pos, Rect::new(224.0, 16.0, 16.0, 16.0), false, false, WHITE, resources.entity_atlas());
         }
         Level::render_spawn_finish_debug(editor_level.spawn(), editor_level.finish(), camera_pos, resources);
 
@@ -549,10 +549,10 @@ impl LevelView {
                     false => ORANGE,
                 };
                 draw_outline(vec2(16.0, 16.0), color);
-                resources.draw_rect(pos + 2.0 - camera_pos, Rect::new(2.0, 4.0, 12.0, 11.0), false, WHITE, resources.player_atlas());
+                resources.draw_rect(pos + 2.0 - camera_pos, Rect::new(2.0, 4.0, 12.0, 11.0), false, false, WHITE, resources.player_atlas());
             }
             else if let Object::Tile(tile) = self.selected_object {
-                if resources.tile_data_manager().data(tile).texture().is_some() {
+                if resources.tile_data(tile).texture().is_some() {
                     draw_outline(vec2(16.0, 16.0), WHITE);
                     render_tile(&TileRenderData { tile, draw_kind: TileDrawKind::Single(0), pos}, camera_pos, TileRenderLayer::Foreground(false), resources);
                 }

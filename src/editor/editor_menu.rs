@@ -225,6 +225,7 @@ impl EditorMenu {
                 let mut file = match std::fs::OpenOptions::new()
                     .create(true)
                     .write(true)
+                    .truncate(true)
                     .open(format!("{}.fox", file_name))
                 {
                     Ok(f) => f,
@@ -234,11 +235,6 @@ impl EditorMenu {
                         return;
                     }
                 };
-                // Clear it (if the file was loaded rather than created!)
-                if let Err(e) = file.set_len(0) {
-                    toast_manager.add_toast(format!("{e}"), ToastKind::Warning);
-                    return;
-                }
                 // Write the level pack bytes
                 if let Err(e) = file.write_all(&bytes) {
                     toast_manager.add_toast(String::from("Error writing bytes to file?!"), ToastKind::Warning);

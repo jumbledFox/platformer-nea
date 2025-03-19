@@ -51,7 +51,7 @@ impl Particle {
             ParticleKind::Crate(CrateParticleKind::Diag1) |
             ParticleKind::Crate(CrateParticleKind::Diag2) => vec2(8.0, 8.0),
         };
-        resources.draw_rect(self.pos - camera_pos, rect(pos, size).offset(ATLAS_ORIGIN), false, WHITE, resources.entity_atlas());
+        resources.draw_rect(self.pos - camera_pos, rect(pos, size).offset(ATLAS_ORIGIN), false, false, WHITE, resources.entity_atlas());
     }
 }
 

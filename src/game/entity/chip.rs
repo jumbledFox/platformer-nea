@@ -42,7 +42,7 @@ impl Chip {
             false => Rect::new(176.0 + life as u8 as f32 * 16.0, 32.0, 16.0, 14.0),
             true  => Rect::new(176.0 + life as u8 as f32 * 16.0, 48.0, 14.0, 12.0),
         };
-        resources.draw_rect(pos - camera_pos, rect, false, color, resources.entity_atlas());
+        resources.draw_rect(pos - camera_pos, rect, false, false, color, resources.entity_atlas());
     }
 }
 

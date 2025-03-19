@@ -106,7 +106,7 @@ impl Scene {
         while self.physics_update_timer >= PHYSICS_STEP {
             self.particles.update(&self.camera);
 
-            self.player.physics_update(&mut self.entities, &mut self.level, resources);
+            self.player.physics_update(&mut self.entities, &mut self.entity_spawner, &mut self.particles, &mut self.level, resources);
 
             // Update all of the entities
             let mut others: Vec<&mut Box<dyn Entity>>;
@@ -197,7 +197,7 @@ impl Scene {
         render_text("- fox -",           ORANGE, vec2( 40.0,  8.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         render_text("*",                 WHITE,  vec2( 40.0, 24.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         render_text(&format!("{lives}"), WHITE,  vec2( 60.0, 24.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
-        resources.draw_rect(vec2(13.0, 16.0), Rect::new(192.0, 16.0, 16.0, 15.0), false, WHITE, resources.entity_atlas());
+        resources.draw_rect(vec2(13.0, 16.0), Rect::new(192.0, 16.0, 16.0, 15.0), false, false, WHITE, resources.entity_atlas());
         
         // Powerups
         let render_powerup_text = |text: &str, col: u32, y: f32| {

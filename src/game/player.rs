@@ -4,7 +4,7 @@ use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_
 
 use crate::{game::collision::spike_check, level_pack_data::LevelPosition, resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect}};
 
-use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityKind, Id}, level::{things::{Door, DoorKind}, tile::{TileCollision, TileDir}, Level}, scene::{fader::Fader, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
+use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityKind, Id}, level::{things::{Door, DoorKind}, tile::{TileCollision, TileDir}, Level}, scene::{entity_spawner::EntitySpawner, fader::Fader, particles::Particles, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.0);
@@ -313,7 +313,7 @@ impl Player {
     // Switching to climbing
     fn center_on_ladder(&self, level: &Level, resources: &Resources) -> bool {
         let center_tile = level.tile_at_pos(self.pos + CENTER);
-        matches!(resources.tile_data_manager().data(center_tile).collision(), TileCollision::Ladder)
+        matches!(resources.tile_data(center_tile).collision(), TileCollision::Ladder)
     }
     fn allow_climbing(&mut self, level: &Level, resources: &Resources) {
         if self.center_on_ladder(level, resources) && (is_key_pressed(KEY_UP) || (!self.prev_on_ladder && is_key_down(KEY_UP))) && self.holding.is_none() {
@@ -382,6 +382,7 @@ impl Player {
                     continue;
                 }
                 if entities[i].hitbox().overlaps(&grab_hitbox) {
+                    entities[i].hold();
                     self.holding = Some(entities.remove(i));
                     break;
                 }
@@ -390,17 +391,41 @@ impl Player {
         // Throwing the grabbed entity
         let can_throw = !is_key_down(KEY_GRAB)
         && !fader.fading()
-        && !resources.tile_data_manager().data(level.tile_at_pos(self.pos + HOLD_CHECK)).collision().is_solid();
+        && !resources.tile_data(level.tile_at_pos(self.pos + HOLD_CHECK)).collision().is_solid();
         if can_throw {
             if let Some(mut entity) = self.holding.take() {
-                let mut throw_vel = match (is_key_down(KEY_UP), is_key_down(KEY_DOWN)) {
-                    (true, _)  => vec2(self.vel.x.abs().clamp(0.0, 0.7), -2.4), // Holding up and not moving
-                    (_, true)  => vec2(0.0, 0.0), // Gently putting down
-                    _ => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.6, (-self.vel.x.abs() / 4.0).clamp(0.0, 0.4) - 0.6),
+                // Nudging the throwable left/right so it doesn't get stuck
+                let left_t_check = level.tile_at_pos(vec2(entity.hitbox().left(), entity.hitbox().top()));
+                let left_b_check = level.tile_at_pos(vec2(entity.hitbox().left(), entity.hitbox().bottom()));
+                let left_nudge = resources.tile_data(left_t_check).collision().is_solid()
+                ||               resources.tile_data(left_b_check).collision().is_solid();
+                if left_nudge {
+                    entity.set_pos(vec2((entity.pos().x / 16.0).ceil() * 16.0, entity.pos().y));
+                }
+                let right_t_check = level.tile_at_pos(vec2(entity.hitbox().right(), entity.hitbox().top()));
+                let right_b_check = level.tile_at_pos(vec2(entity.hitbox().right(), entity.hitbox().bottom()));
+                let right_nudge = resources.tile_data(right_t_check).collision().is_solid()
+                ||                resources.tile_data(right_b_check).collision().is_solid();
+                if right_nudge {
+                    entity.set_pos(vec2((entity.pos().x / 16.0).floor() * 16.0 - 0.5, entity.pos().y));
+                }
+                
+                // Throwing lower if the ceiling is there to stop it from hitting instantly
+                let top_l_check = level.tile_at_pos(vec2(entity.hitbox().left(),  entity.hitbox().top()));
+                let top_r_check = level.tile_at_pos(vec2(entity.hitbox().right(), entity.hitbox().top()));
+                let top_hit = resources.tile_data(top_l_check).collision().is_solid()
+                ||            resources.tile_data(top_r_check).collision().is_solid();
+
+                let mut throw_vel = match (is_key_down(KEY_UP), is_key_down(KEY_DOWN), top_hit) {
+                    (true, _, _)  => vec2(self.vel.x.abs().clamp(0.0, 0.7), -2.4), // Holding up and not moving
+                    (_, true, _)  => vec2(0.0, 0.0), // Gently putting down
+                    (_, _, false) => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.6, (-self.vel.x.abs() / 4.0).clamp(0.0, 0.4) - 0.6), // Throwing normally
+                    (_, _, true)  => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.7, 1.0), // Throwing lower
                 };
                 if self.dir == Dir::Left {
                     throw_vel.x *= -1.0;
                 }
+
                 throw_vel.y = (throw_vel.y + self.vel.y).clamp(-2.4, 0.0);
                 self.prev_held = Some((0.4, entity.id()));
                 entity.throw(throw_vel);
@@ -465,7 +490,7 @@ impl Player {
         }
     }
 
-    pub fn physics_update(&mut self, entities: &mut Vec<Box<dyn Entity>>, level: &mut Level, resources: &Resources) {
+    pub fn physics_update(&mut self, entities: &mut Vec<Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, resources: &Resources) {
         if let Some((t, _)) = &mut self.prev_held {
             *t -= 1.0 / 120.0;
         }
@@ -558,6 +583,13 @@ impl Player {
         if let Some(entity) = &mut self.holding {
             let offset = vec2(0.0, 16.0 + if self.stepping { 1.0 } else { 0.0 });
             entity.set_pos(self.pos - offset + entity.hold_offset().unwrap_or_default());
+            entity.hold_fixed_update();
+        }
+
+        if self.holding.as_ref().is_some_and(|e| e.should_destroy()) {
+            if let Some(entity) = self.holding.take() {
+                entities.push(entity);
+            }
         }
         
         // I spent hours stomping... KOOPAS....
@@ -720,7 +752,7 @@ impl Player {
                 PlayerPart::Body { .. } => 15.0,
                 PlayerPart::Feet { .. } => 18.0,
             };
-            resources.draw_rect(self.pos + vec2(0.0, y - y_offset) - camera_pos, Player::part_rect(part), flip_x, WHITE, resources.entity_atlas());
+            resources.draw_rect(self.pos + vec2(0.0, y - y_offset) - camera_pos, Player::part_rect(part), flip_x, false, WHITE, resources.entity_atlas());
         };
 
         // Draw the player!

@@ -83,6 +83,7 @@ impl ObjectSelector {
             (EntityKind::Frog(false), "Frog".to_string()),
             (EntityKind::Crate(CrateKind::Frog(false)), "Single-frog crate".to_string()),
             (EntityKind::Crate(CrateKind::Frog(true)), "Multi-frog crate".to_string()),
+            (EntityKind::Crate(CrateKind::Explosive), "Explosive crate".to_string()),
             (EntityKind::Goat, "Aerosol Kid".to_string()),
         ];
 
@@ -110,7 +111,7 @@ impl ObjectSelector {
         let mut x = 8.0;
         let mut y = TILES_Y + 12.0;
         for (i, t) in tiles.iter().enumerate() {
-            let button = Button::new(Rect::new(x, y, 16.0, 16.0), None, Some(resources.tile_data_manager().data(*t).name().clone()));
+            let button = Button::new(Rect::new(x, y, 16.0, 16.0), None, Some(resources.tile_data(*t).name().clone()));
             x += 20.0;
             if i % wrap == wrap-1 {
                 x = 8.0;

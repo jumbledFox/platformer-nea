@@ -1,6 +1,6 @@
 use macroquad::{color::Color, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
 
-use crate::{game::level::tile::TileDataManager, text_renderer::FontDataManager};
+use crate::{game::level::tile::{Tile, TileData, TileDataManager}, text_renderer::FontDataManager};
 
 const TILES_TEXTURE:  &[u8] = include_bytes!("../res/tiles.png");
 const PLAYER_TEXTURE: &[u8] = include_bytes!("../res/player.png");
@@ -37,6 +37,9 @@ impl Resources {
     pub fn font_data_manager(&self) -> &FontDataManager {
         &self.font_data_manager
     }
+    pub fn tile_data(&self, tile: Tile) -> &TileData {
+        self.tile_data_manager().data(tile)
+    }
 
     pub fn tiles_atlas(&self) -> &Texture2D {
         &self.tiles_atlas
@@ -64,10 +67,10 @@ impl Resources {
         self.should_update_anim_timer = should;
     }
 
-    pub fn draw_rect(&self, pos: Vec2, rect: Rect, flip_x: bool, color: Color, atlas: &Texture2D) {
+    pub fn draw_rect(&self, pos: Vec2, rect: Rect, flip_x: bool, flip_y: bool, color: Color, atlas: &Texture2D) {
         draw_texture_ex(atlas, pos.x.floor(), pos.y.floor(), color, DrawTextureParams {
             source: Some(rect),
-            flip_x,
+            flip_x, flip_y,
             ..Default::default()
         });
     }

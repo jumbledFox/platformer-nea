@@ -14,7 +14,7 @@ pub enum Side {
 
 fn get_col_at_point(pos: Vec2, point: Vec2, level: &Level, resources: &Resources) -> TileCollision {
     let t = level.tile_at_pos(pos + point);
-    *resources.tile_data_manager().data(t).collision()
+    *resources.tile_data(t).collision()
 }
 
 pub fn collision_left(pos: &mut Vec2, point: Vec2, push: bool, level: &Level, resources: &Resources) -> bool {

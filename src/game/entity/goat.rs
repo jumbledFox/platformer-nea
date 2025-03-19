@@ -85,7 +85,7 @@ impl Goat {
         let flip_x = dir == Dir::Right;
         // If dead, just draw the dead sprite
         if dead {
-            resources.draw_rect(pos - camera_pos, Rect::new(65.0, 82.0, 14.0, 32.0), flip_x, color, resources.entity_atlas());
+            resources.draw_rect(pos - camera_pos, Rect::new(65.0, 82.0, 14.0, 32.0), flip_x, false, color, resources.entity_atlas());
             return;
         }
         // Otherwise draw the body and arm
@@ -95,11 +95,11 @@ impl Goat {
         };
         // Draw the body
         let body_x = if step { 15.0 } else { 0.0 };
-        resources.draw_rect(pos + offset - camera_pos, Rect::new(body_x, 82.0, 14.0, 32.0), flip_x, color, resources.entity_atlas());
+        resources.draw_rect(pos + offset - camera_pos, Rect::new(body_x, 82.0, 14.0, 32.0), flip_x, false, color, resources.entity_atlas());
         // Draw the arm
         let arm_x = if arm == Arm::Down { 30.0 } else { 48.0 };
         let arm_x_offset = if dir == Dir::Left { 0.0 } else { -3.0 };
-        resources.draw_rect(pos + offset + vec2(arm_x_offset, 6.0) - camera_pos, Rect::new(arm_x, 82.0, 17.0, 20.0), flip_x, color, resources.entity_atlas());
+        resources.draw_rect(pos + offset + vec2(arm_x_offset, 6.0) - camera_pos, Rect::new(arm_x, 82.0, 17.0, 20.0), flip_x, false, color, resources.entity_atlas());
     }
 
     fn hurt(&mut self) {
@@ -209,8 +209,8 @@ impl Entity for Goat {
                 // Stop walking if there's no tile below, a wall in front, or the timer's stopped
                 let below_check_pos = self.pos + vec2(7.0 +  7.0 * if self.facing == Dir::Right { 1.0 } else { -1.0 }, 40.0);
                 let front_check_pos = self.pos + vec2(8.0 + 8.0 * if self.facing == Dir::Right { 1.0 } else { -1.0 }, 24.0);
-                let can_walk = resources.tile_data_manager().data(level.tile_at_pos(below_check_pos)).collision().is_solid()
-                &&            !resources.tile_data_manager().data(level.tile_at_pos(front_check_pos)).collision().is_solid();
+                let can_walk = resources.tile_data(level.tile_at_pos(below_check_pos)).collision().is_solid()
+                &&            !resources.tile_data(level.tile_at_pos(front_check_pos)).collision().is_solid();
 
                 if !can_walk || *t <= 0.0 {
                     self.state = State::Idle(gen_range(0.5, 1.0));
@@ -242,9 +242,9 @@ impl Entity for Goat {
                 let jump_check_pos = self.pos + vec2(8.0 + 18.0 * if self.facing == Dir::Right { 1.0 } else { -1.0 }, 24.0);
                 let stop_check_pos_front = self.pos + vec2(8.0 + 18.0 * if self.facing == Dir::Right { 1.0 } else { -1.0 }, -8.0);
                 let stop_check_pos_top   = self.pos + vec2(8.0, -8.0);
-                if resources.tile_data_manager().data(level.tile_at_pos(jump_check_pos)).collision().is_solid()
-                && !resources.tile_data_manager().data(level.tile_at_pos(stop_check_pos_top)).collision().is_solid()
-                && !resources.tile_data_manager().data(level.tile_at_pos(stop_check_pos_front)).collision().is_solid()
+                if resources.tile_data(level.tile_at_pos(jump_check_pos)).collision().is_solid()
+                && !resources.tile_data(level.tile_at_pos(stop_check_pos_top)).collision().is_solid()
+                && !resources.tile_data(level.tile_at_pos(stop_check_pos_front)).collision().is_solid()
                 && !self.in_air {
                     self.vel.y = -1.7;
                     self.in_air = true;

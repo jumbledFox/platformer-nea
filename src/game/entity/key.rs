@@ -41,7 +41,7 @@ impl Key {
             c @ _ => c as usize,
         };
         let rect = Rect::new(256.0, sprite as f32 * 14.0, 16.0, 14.0);
-        resources.draw_rect(pos - camera_pos, rect, false, color, resources.entity_atlas());
+        resources.draw_rect(pos - camera_pos, rect, false, false, color, resources.entity_atlas());
     }
 }
 
@@ -68,6 +68,7 @@ impl Entity for Key {
     fn should_destroy(&self) -> bool { false }
 
     fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, resources: &Resources) {
+        
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
         let prev_pos = self.pos;

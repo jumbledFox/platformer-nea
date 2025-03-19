@@ -164,7 +164,7 @@ impl Level {
         let y = pos.y.floor() as usize;
         let index = y * self.width + x;
 
-        let tile_data = resources.tile_data_manager().data(self.tiles[index]);
+        let tile_data = resources.tile_data(self.tiles[index]);
         
         if let TileCollision::Solid { friction: _, bounce: _, hit_soft, hit_hard } = &tile_data.collision() {
             let hit = match hit_kind {
@@ -258,11 +258,11 @@ impl Level {
 
     // Render spawn, finish, and checkpoints for debugging / in the editor
     pub fn render_finish(finish: Vec2, camera_pos: Vec2, resources: &Resources) {
-        resources.draw_rect(finish - camera_pos, Rect::new(224.0, 0.0, 16.0, 16.0), false, WHITE, resources.entity_atlas());
+        resources.draw_rect(finish - camera_pos, Rect::new(224.0, 0.0, 16.0, 16.0), false, false, WHITE, resources.entity_atlas());
     }
     pub fn render_spawn_finish_debug(spawn: Vec2, finish: Vec2, camera_pos: Vec2, resources: &Resources) {
-        resources.draw_rect(spawn  - camera_pos, Rect::new(208.0, 16.0, 16.0, 16.0), false, WHITE, resources.entity_atlas());
-        resources.draw_rect(finish - camera_pos, Rect::new(240.0, 16.0, 16.0, 16.0), false, WHITE, resources.entity_atlas());
+        resources.draw_rect(spawn  - camera_pos, Rect::new(208.0, 16.0, 16.0, 16.0), false, false, WHITE, resources.entity_atlas());
+        resources.draw_rect(finish - camera_pos, Rect::new(240.0, 16.0, 16.0, 16.0), false, false, WHITE, resources.entity_atlas());
     }
 
     pub fn render_checkpoints_sign(checkpoints: &Vec<Vec2>, checkpoint: Option<usize>, camera_pos: Vec2, resources: &Resources) {
@@ -273,13 +273,13 @@ impl Level {
                 true  => 176.0,
                 false => 192.0,
             };
-            resources.draw_rect(*c + vec2(0.0, bob_amount) - camera_pos, Rect::new(rect_x, 0.0, 16.0, 16.0), false, WHITE, resources.entity_atlas());
+            resources.draw_rect(*c + vec2(0.0, bob_amount) - camera_pos, Rect::new(rect_x, 0.0, 16.0, 16.0), false, false, WHITE, resources.entity_atlas());
         }
     }
 
     pub fn render_checkpoints_dirt(checkpoints: &Vec<Vec2>, camera_pos: Vec2, resources: &Resources) {
         for c in checkpoints {
-            resources.draw_rect(*c + vec2(0.0, 11.0) - camera_pos, Rect::new(208.0, 0.0, 16.0, 6.0), false, WHITE, resources.entity_atlas());
+            resources.draw_rect(*c + vec2(0.0, 11.0) - camera_pos, Rect::new(208.0, 0.0, 16.0, 6.0), false, false, WHITE, resources.entity_atlas());
         }
     }
 
@@ -299,13 +299,13 @@ impl Level {
             Rect::new(224.0, tex_y, 16.0, 16.0)
         );
 
-        resources.draw_rect(pos,  pos_tex,  false, WHITE, resources.entity_atlas());
-        resources.draw_rect(dest, dest_tex, false, WHITE, resources.entity_atlas());
+        resources.draw_rect(pos,  pos_tex,  false, false, WHITE, resources.entity_atlas());
+        resources.draw_rect(dest, dest_tex, false, false, WHITE, resources.entity_atlas());
         draw_line(pos.x + 8.0, pos.y + 8.0, dest.x + 8.0, dest.y + 8.0, 1.0, line_col);
     }
     // Renders a sign
     pub fn render_sign(pos: Vec2, camera_pos: Vec2, resources: &Resources) {
-        resources.draw_rect(pos - camera_pos, Rect::new(240.0, 0.0, 16.0, 16.0), false, WHITE, resources.entity_atlas());
+        resources.draw_rect(pos - camera_pos, Rect::new(240.0, 0.0, 16.0, 16.0), false, false, WHITE, resources.entity_atlas());
     }
     // Renders the alerts above signs if they haven't been read
     pub fn render_sign_read_alerts(signs: &Vec<Sign>, camera_pos: Vec2, resources: &Resources) {
@@ -423,7 +423,7 @@ impl Level {
 
         for (i, &tile) in tiles.iter().enumerate() {
             // Don't render the tile if it doesn't have a texture
-            let texture = match resources.tile_data_manager().data(tile).texture() {
+            let texture = match resources.tile_data(tile).texture() {
                 Some(t) => t,
                 None => continue,
             };
@@ -453,7 +453,7 @@ impl Level {
         // BUT I DON'T CARE GRRAAAAHHH!!!!
         for (i, &tile) in tiles_bg.iter().enumerate() {
             // Don't render the tile if it doesn't have a texture
-            let texture = match resources.tile_data_manager().data(tile).texture() {
+            let texture = match resources.tile_data(tile).texture() {
                 Some(t) => t,
                 None => continue,
             };

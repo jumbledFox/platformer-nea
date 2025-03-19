@@ -14,12 +14,16 @@ const SIDE_RB: Vec2 = vec2(16.0, 14.0);
 const BOT_L:   Vec2 = vec2( 4.0, 16.0);
 const BOT_R:   Vec2 = vec2(12.0, 16.0);
 
+const FUSE_FIZZ: f32 = 3.0;
+const FUSE_EXPLODE: f32 = 5.0;
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CrateKind {
     Frog(bool), // false for few, true for many
     Chip(bool), // ditto
     Life,
     Key(LockColor),
+    Explosive,
 }
 
 pub struct Crate {
@@ -29,6 +33,8 @@ pub struct Crate {
     kind: CrateKind,
     hit: bool,
     should_break: bool,
+    // Used for explosive crates...
+    fuse: Option<f32>,
 }
 
 impl Crate {
@@ -40,15 +46,102 @@ impl Crate {
             kind,
             hit: false,
             should_break: false,
+            fuse: None,
         }
     }
 
-    pub fn draw(pos: Vec2, camera_pos: Vec2, color: Color, resources: &Resources) {
-        resources.draw_rect(pos - camera_pos, Rect::new(160.0, 0.0, 16.0, 16.0), false, color, resources.entity_atlas());
+    pub fn draw(pos: Vec2, explosive: Option<f32>, camera_pos: Vec2, color: Color, resources: &Resources) {
+        if let Some(fuse) = explosive {
+            let mut frame = if fuse == 0.0 { 0 }
+            else if fuse < FUSE_FIZZ { 1 }
+            else { 3 };
+            if fuse.rem_euclid(0.2) > 0.1 {
+                frame += 1;
+            }
+
+            resources.draw_rect(pos - camera_pos - vec2(4.0, 8.0), Rect::new(160.0 + frame as f32 * 24.0, 112.0, 24.0, 24.0), false, false, color, resources.entity_atlas());
+
+        } else {
+            resources.draw_rect(pos - camera_pos, Rect::new(160.0, 0.0, 16.0, 16.0), false, false, color, resources.entity_atlas());
+        }
     }
 
     pub fn hitbox() -> Rect {
         Rect::new(0.0, 0.0, 16.0, 16.0)
+    }
+
+    pub fn break_crate(&mut self, t: bool, b: bool, prev_vel: Vec2, entity_spawner: &mut EntitySpawner, particles: &mut Particles) {
+        self.hit = true;
+        // Velocities for all the items in the crate
+        let (y_min, y_max) = match (self.should_break, t, b) {
+            // If we hit the bottom of a tile, or we should break, launch entities upwards
+            (true,  _,     _) |
+            (_,     false, true)  => (-1.0, -0.4),
+            // If we hit the top, launch them sliiightly upwards
+            (false, true,  false) => (-0.1,  0.0),
+            // If we hit the side (not top/bottom) launch in all directions vertically
+            (_,     _,     _)     => (-1.0,  1.0),
+        };
+        let (x_min, x_max) = match (t || b, prev_vel.x.abs() > 0.5, prev_vel.x > 0.0) {
+            // Hitting top/bottom
+            (true, true, true)  => ( 0.1,  1.0),
+            (true, true, false) => (-1.0, -0.1),
+            (true, false, _)    => (-0.5,  0.5),
+            // Hitting sides
+            (false, _, true)  => (-1.0, -0.5),
+            (false, _, false) => ( 0.5,  1.0),
+        };
+        let mut spawn_entity = |kind: EntityKind| {
+            let multiplier = match self.kind {
+                CrateKind::Key(_) => 0.7,
+                CrateKind::Frog(_) => 1.0,
+                CrateKind::Chip(_) => 1.0,
+                CrateKind::Life => 0.7,
+                CrateKind::Explosive => 0.0,
+            };
+            let vel = vec2(gen_range(x_min, x_max), gen_range(y_min, y_max)) * multiplier;
+            entity_spawner.add_entity(self.pos + vec2(0.0, 1.0), vel, kind, None);
+        };
+        match self.kind {
+            CrateKind::Key(color)  => spawn_entity(EntityKind::Key(color)),
+            CrateKind::Frog(false) => spawn_entity(EntityKind::Frog(true)),
+            CrateKind::Frog(true)  => for _ in 0..gen_range(2, 3) { spawn_entity(EntityKind::Frog(true)) },
+            CrateKind::Chip(false) => spawn_entity(EntityKind::Chip(true)),
+            CrateKind::Chip(true)  => for _ in 0..gen_range(2, 4) { spawn_entity(EntityKind::Chip(true)) },
+            CrateKind::Life => {
+                spawn_entity(EntityKind::Life(true));
+                for _ in 0..gen_range(2, 4) { spawn_entity(EntityKind::Chip(true)) }
+            },
+            CrateKind::Explosive => {}
+        }
+
+        // Very ugly code... but it works!
+        for (kind, offset, vel_x, vel_y) in [
+            (CrateParticleKind::Tl, vec2(0.0, 0.0), vec2(-1.0, -0.5), vec2(-1.0, -0.5)),
+            (CrateParticleKind::Tr, vec2(8.0, 0.0), vec2( 0.5,  1.0), vec2(-1.0, -0.5)),
+            (CrateParticleKind::Bl, vec2(0.0, 5.0), vec2(-1.0, -0.5), vec2(-0.5, -0.5)),
+            (CrateParticleKind::Br, vec2(5.0, 5.0), vec2( 0.5,  1.0), vec2(-0.5, -0.5)),
+            (CrateParticleKind::Straight1, vec2(2.0, 5.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
+            (CrateParticleKind::Straight1, vec2(5.0, 7.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
+            (CrateParticleKind::Straight2, vec2(7.0, 9.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
+            (CrateParticleKind::Straight2, vec2(9.0, 2.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
+            (CrateParticleKind::Diag1, vec2( 2.0,  0.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
+            (CrateParticleKind::Diag1, vec2( 5.0,  5.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
+            (CrateParticleKind::Diag2, vec2( 7.0,  2.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
+            (CrateParticleKind::Diag2, vec2(13.0, 13.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
+        ] {
+            let vel = vec2(gen_range(vel_x.x, vel_x.y), gen_range(vel_y.x, vel_y.y));
+            particles.add_particle(self.pos + offset, vel, ParticleKind::Crate(kind));
+        }
+    }
+
+    pub fn update_fuse(&mut self) {
+        if let Some(t) = &mut self.fuse {
+            *t += 1.0 / 120.0;
+            if *t > FUSE_EXPLODE {
+                self.hit = true;
+            }
+        }
     }
 }
 
@@ -64,6 +157,11 @@ impl Entity for Crate {
     }
     fn hold_offset(&self) -> Option<Vec2> {
         Some(Vec2::ZERO)
+    }
+    fn hold(&mut self) {
+        if self.kind == CrateKind::Explosive {
+            self.fuse = Some(0.0);
+        }
     }
     fn throw(&mut self, vel: Vec2) {
         self.vel = vel;
@@ -95,7 +193,13 @@ impl Entity for Crate {
         }
     }
 
+    fn hold_fixed_update(&mut self) {
+        self.update_fuse();
+    }
+
     fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, resources: &Resources) {
+        self.update_fuse();
+        
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
 
@@ -116,70 +220,15 @@ impl Entity for Crate {
 
         // If we collided and have been thrown... we need to be destroyed and release the entities inside! also hit switches and stuff...
         if self.should_break || hit || hit_entity {
-            self.hit = true;
-            // Velocities for all the items in the crate
-            let (y_min, y_max) = match (self.should_break, t, b) {
-                // If we hit the bottom of a tile, or we should break, launch entities upwards
-                (true,  _,     _) |
-                (_,     false, true)  => (-1.0, -0.4),
-                // If we hit the top, launch them sliiightly upwards
-                (false, true,  false) => (-0.1,  0.0),
-                // If we hit the side (not top/bottom) launch in all directions vertically
-                (_,     _,     _)     => (-1.0,  1.0),
-            };
-            let (x_min, x_max) = match (t || b, prev_vel.x.abs() > 0.5, prev_vel.x > 0.0) {
-                // Hitting top/bottom
-                (true, true, true)  => ( 0.1,  1.0),
-                (true, true, false) => (-1.0, -0.1),
-                (true, false, _)    => (-0.5,  0.5),
-                // Hitting sides
-                (false, _, true)  => (-1.0, -0.5),
-                (false, _, false) => ( 0.5,  1.0),
-            };
-            let mut spawn_entity = |kind: EntityKind| {
-                let multiplier = match self.kind {
-                    CrateKind::Key(_) => 0.7,
-                    CrateKind::Frog(_) => 1.0,
-                    CrateKind::Chip(_) => 1.0,
-                    CrateKind::Life => 0.7,
-                };
-                let vel = vec2(gen_range(x_min, x_max), gen_range(y_min, y_max)) * multiplier;
-                entity_spawner.add_entity(self.pos + vec2(0.0, 1.0), vel, kind, None);
-            };
-            match self.kind {
-                CrateKind::Key(color)  => spawn_entity(EntityKind::Key(color)),
-                CrateKind::Frog(false) => spawn_entity(EntityKind::Frog(true)),
-                CrateKind::Frog(true)  => for _ in 0..gen_range(2, 3) { spawn_entity(EntityKind::Frog(true)) },
-                CrateKind::Chip(false) => spawn_entity(EntityKind::Chip(true)),
-                CrateKind::Chip(true)  => for _ in 0..gen_range(2, 4) { spawn_entity(EntityKind::Chip(true)) },
-                CrateKind::Life => {
-                    spawn_entity(EntityKind::Life(true));
-                    for _ in 0..gen_range(2, 4) { spawn_entity(EntityKind::Chip(true)) }
-                },
-            }
-
-            // Very ugly code... but it works!
-            for (kind, offset, vel_x, vel_y) in [
-                (CrateParticleKind::Tl, vec2(0.0, 0.0), vec2(-1.0, -0.5), vec2(-1.0, -0.5)),
-                (CrateParticleKind::Tr, vec2(8.0, 0.0), vec2( 0.5,  1.0), vec2(-1.0, -0.5)),
-                (CrateParticleKind::Bl, vec2(0.0, 5.0), vec2(-1.0, -0.5), vec2(-0.5, -0.5)),
-                (CrateParticleKind::Br, vec2(5.0, 5.0), vec2( 0.5,  1.0), vec2(-0.5, -0.5)),
-                (CrateParticleKind::Straight1, vec2(2.0, 5.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
-                (CrateParticleKind::Straight1, vec2(5.0, 7.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
-                (CrateParticleKind::Straight2, vec2(7.0, 9.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
-                (CrateParticleKind::Straight2, vec2(9.0, 2.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
-                (CrateParticleKind::Diag1, vec2( 2.0,  0.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
-                (CrateParticleKind::Diag1, vec2( 5.0,  5.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
-                (CrateParticleKind::Diag2, vec2( 7.0,  2.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
-                (CrateParticleKind::Diag2, vec2(13.0, 13.0), vec2(-1.5,  1.5), vec2(-1.0, -0.5)),
-            ] {
-                let vel = vec2(gen_range(vel_x.x, vel_x.y), gen_range(vel_y.x, vel_y.y));
-                particles.add_particle(self.pos + offset, vel, ParticleKind::Crate(kind));
-            }
+            self.break_crate(t, b, prev_vel, entity_spawner, particles);
         }
     }
 
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {
-        Self::draw(self.pos, camera_pos, WHITE, resources);
+        let explosive = match self.kind {
+            CrateKind::Explosive => Some(self.fuse.unwrap_or(0.0)),
+            _ => None,
+        };
+        Self::draw(self.pos, explosive, camera_pos, WHITE, resources);
     }
 }
