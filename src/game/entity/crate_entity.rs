@@ -178,6 +178,9 @@ impl Entity for Crate {
         Some(Vec2::ZERO)
     }
     fn hold(&mut self) {
+        if self.fuse.is_some() {
+            return;
+        }
         if self.kind == CrateKind::Explosive {
             self.fuse = Some(0.0);
         }

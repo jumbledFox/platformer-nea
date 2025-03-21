@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, shapes::draw_circle};
 
-use crate::{game::collision::spike_check, level_pack_data::LevelPosition, resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect}};
+use crate::{game::collision::spike_check, level_pack_data::LevelPosition, resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect, draw_rect_lines}};
 
 use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityKind, Id}, level::{things::{Door, DoorKind}, tile::{TileCollision, TileDir}, Level}, scene::{entity_spawner::EntitySpawner, fader::Fader, particles::Particles, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
 
@@ -384,7 +384,13 @@ impl Player {
 
         // Grabbing entities
         if is_key_pressed(KEY_GRAB) && self.holding.is_none() && self.state != State::Climbing {
-            let grab_hitbox = Rect::new(3.0, -6.0, 16.0-6.0, 16.0+6.0).offset(self.pos);
+            // Put the grab hitbox on the correct side
+            let grab_hitbox_x = match self.last_dir_pressed == Some(Dir::Right)
+            || self.dir == Dir::Right && self.last_dir_pressed.is_none() {
+                false => 3.0,
+                true  => 8.0,
+            };
+            let grab_hitbox = Rect::new(grab_hitbox_x, -6.0, 5.0, 22.0).offset(self.pos);
             for i in (0..entities.len()).rev() {
                 if entities[i].hold_offset().is_none()
                 || self.prev_held.is_some_and(|(_, id)| id == entities[i].id())
@@ -428,11 +434,12 @@ impl Player {
                 let top_hit = resources.tile_data(top_l_check).collision().is_solid()
                 ||            resources.tile_data(top_r_check).collision().is_solid();
 
-                let mut throw_vel = match (is_key_down(KEY_UP), is_key_down(KEY_DOWN) && entity.can_drop(), top_hit) {
-                    (true, _, _)  => vec2(self.vel.x.abs().clamp(0.0, 0.7), -2.4), // Holding up and not moving
-                    (_, true, _)  => vec2(0.0, 0.0), // Gently putting down
-                    (_, _, false) => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.6, (-self.vel.x.abs() / 4.0).clamp(0.0, 0.4) - 0.6), // Throwing normally
-                    (_, _, true)  => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.7, 1.0), // Throwing lower
+                let mut throw_vel = match (is_key_down(KEY_UP), is_key_down(KEY_DOWN), entity.can_drop(), top_hit) {
+                    (true, _, _, _)  => vec2(self.vel.x.abs().clamp(0.0, 0.8), -2.4), // Holding up
+                    (_, true, true,  _)  => vec2(0.0, 0.0), // Gently putting down
+                    (_, true, false, _)  => vec2(self.vel.x.signum() * 0.4, -0.5), // Gently throwing (if can't drop)
+                    (_, _, _, false) => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.6, (-self.vel.x.abs() / 4.0).clamp(0.0, 0.4) - 0.6), // Throwing normally
+                    (_, _, _, true)  => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.7, 1.0), // Throwing lower
                 };
                 if self.last_dir_pressed == Some(Dir::Left)
                 || self.dir == Dir::Left && self.last_dir_pressed.is_none() {
@@ -607,6 +614,13 @@ impl Player {
         
         // I spent hours stomping... KOOPAS....
         // (stomping / kicking)
+        let relative_dir = |center_x: f32| -> Dir {
+            match (self.pos.x + CENTER.x).total_cmp(&center_x) {
+                Ordering::Greater => Dir::Right,
+                Ordering::Less    => Dir::Left,
+                Ordering::Equal => self.last_dir_pressed.unwrap_or(self.dir),
+            }
+        };
         let mut stomped = false;
         'entities: for e in entities.iter_mut() {
             // Don't stop entities if we're moving up relative to them and we're not invuln
@@ -618,17 +632,14 @@ impl Player {
                             continue;
                         }
                         stomped = true;
-                        let dir = match e.hitbox().center().x > CENTER.x + self.pos.x {
-                            true  => Dir::Left,
-                            false => Dir::Right,
-                        };
-                        if e.stomp(self.feet_powerup, dir) {
-                            println!("BROKE! stomped {:?}", e.kind());
+                        if e.stomp(self.feet_powerup, relative_dir(e.hitbox().center().x)) {
+                            // println!("BROKE! stomped {:?}", e.kind());
                             break 'entities;
                         }
                     }
                 }
             }
+            // Kicking
             if e.can_kick() {
                 if let Some(kickbox) = e.kickbox() {
                     // Try and kick them with each side
@@ -637,13 +648,26 @@ impl Player {
                             continue;
                         }
                         if e.kick(self.feet_powerup, dir) {
-                            println!("BROKE! kicked {:?}", e.kind());
+                            // println!("BROKE! kicked {:?}", e.kind());
                             break 'entities;
                         }
                     }
                 }
             }
         }
+        // Headbutt
+        for e in entities.iter_mut() {
+            if e.can_headbutt() && self.vel.y < e.vel().y && self.invuln.is_none() {
+                if let Some(headbuttbox) = e.headbuttbox() {
+                    // Try and headbutt them
+                    if headbuttbox.contains(self.pos + HEAD) {
+                        // println!("haedbut {:?}", e.kind());
+                        e.headbutt(self.head_powerup, e.hitbox().center().x - (self.pos.x + CENTER.x));
+                    }
+                }
+            }
+        }
+
         if stomped {
             self.state = State::Jumping;
             self.vel.y = self.vel.y.min(-1.5);
@@ -806,5 +830,13 @@ impl Player {
             let pos = (self.pos + point - camera_pos).floor();
             draw_circle(pos.x, pos.y, 1.0, col);
         }
+
+        let grab_hitbox_x = match self.last_dir_pressed == Some(Dir::Right)
+            || self.dir == Dir::Right && self.last_dir_pressed.is_none() {
+                false => 3.0,
+                true  => 8.0,
+            };
+        let grab_hitbox = Rect::new(grab_hitbox_x, -6.0, 5.0, 22.0).offset(self.pos);
+        draw_rect_lines(grab_hitbox.offset(-camera_pos), GREEN);
     }
 }

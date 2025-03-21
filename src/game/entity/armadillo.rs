@@ -19,7 +19,7 @@ enum State {
     Walking,
     Jumping,
     Falling,
-    Squished(usize, f32), // Frame number and wake-up timer
+    Squished(usize, f32, f32), // Frame number, wake-up timer, and wake-up time (for resetting)
     Spinning(usize), // Frame number for spinning animation
     Dead(f32),
 }
@@ -78,8 +78,8 @@ impl Armadillo {
             State::Walking => (0, 0.0),
             State::Jumping => (2, 0.0),
             State::Falling => (3, 0.0),
-            State::Squished(frame, t) if t <= 1.0 => (4 + frame, [1.0, -1.0][(t % 0.1 > 0.05) as usize]),
-            State::Squished(frame, _) |
+            State::Squished(frame, t, _) if t <= 1.0 => (4 + frame, [1.0, -1.0][(t % 0.1 > 0.05) as usize]),
+            State::Squished(frame, ..) |
             State::Spinning(frame) => (4 + frame, 0.0),
             State::Dead(_) => (8, 0.0),
         };
@@ -97,7 +97,12 @@ impl Armadillo {
         self.dir = dir;
     }
     fn wait_and_wake(&mut self) {
-        if let State::Squished(frame, t) = &mut self.state {
+        if let State::Squished(frame, t, t_max) = &mut self.state {
+            // TODO: Reset the timer if in air
+            if self.in_air {
+                *t = *t_max;
+                return;
+            }
             *t -= 1.0/120.0;
             if *t > 0.0 {
                 return;
@@ -132,14 +137,17 @@ impl Entity for Armadillo {
         Some(Rect::new(2.0, 2.0, 23.0, 5.0).offset(self.pos))
     }
     fn kickbox(&self) -> Option<Rect> {
-        Some(Rect::new(2.0, 5.0, 23.0, 9.0).offset(self.pos))
+        Some(Rect::new(5.0, 7.0, 17.0, 7.0).offset(self.pos))
+    }
+    fn headbuttbox(&self) -> Option<Rect> {
+        Some(Rect::new(3.0, 7.0, 21.0, 5.0).offset(self.pos))
     }
     fn holdbox(&self) -> Option<Rect> {
         Some(Rect::new(-6.0, 0.0, 36.0, 14.0).offset(self.pos))
     }
     fn hold_offset(&self) -> Option<Vec2> {
         match self.state {
-            State::Squished(_, _) => Some(vec2(-5.0, 2.0)),
+            State::Squished(..) => Some(vec2(-5.0, 2.0)),
             _ => None,
         }
     }
@@ -149,9 +157,11 @@ impl Entity for Armadillo {
     }
     fn throw(&mut self, vel: Vec2) {
         self.vel = vel;
-        if vel.x != 0.0 {
-            self.dir = if vel.x > 0.0 { Dir::Right } else { Dir::Left };
-            if let State::Squished(frame, _) = self.state {
+        self.speed = vel.x.abs();
+        self.in_air = true;
+        self.dir = if vel.x > 0.0 { Dir::Right } else { Dir::Left };
+        if vel.x > 0.5 {
+            if let State::Squished(frame, ..) = self.state {
                 self.start_spin(frame, self.dir);
             }
         }
@@ -180,8 +190,11 @@ impl Entity for Armadillo {
     fn can_stomp(&self) -> bool {
         !matches!(self.state, State::Dead(_))
     }
+    fn can_headbutt(&self) -> bool {
+        matches!(self.state, State::Squished(..))
+    }
     fn can_kick(&self) -> bool {
-        matches!(self.state, State::Squished(_, _))
+        matches!(self.state, State::Squished(..))
     }
 
     fn hit_with_throwable(&mut self, _vel: Vec2) -> bool {
@@ -200,7 +213,7 @@ impl Entity for Armadillo {
 
     fn stomp(&mut self, power: Option<FeetPowerup>, dir: Dir) -> bool {
         if power == None {
-            if let State::Squished(frame, _) = self.state {
+            if let State::Squished(frame, ..) = self.state {
                 self.start_spin(frame, dir.flipped());
             } else {
                 let frame = match (self.state, self.dir) {
@@ -208,15 +221,32 @@ impl Entity for Armadillo {
                     (_, Dir::Left)  => 0,
                     (_, Dir::Right) => 2,
                 };
-                self.state = State::Squished(frame, gen_range(6.0, 8.0))
+                let wake_up_time = gen_range(6.0, 8.0);
+                self.state = State::Squished(frame, wake_up_time, wake_up_time);
             }
         } else {
             self.hit();
         }
         true
     }
+    fn headbutt(&mut self, _power: Option<crate::game::player::HeadPowerup>, diff: f32) -> bool {
+        self.vel.y = -1.5;
+        let frame = match self.state {
+            State::Squished(frame, ..) => frame,
+            _ => 0,
+        };
+        let dir = match diff.total_cmp(&0.0) {
+            Ordering::Less    => Dir::Left,
+            Ordering::Greater => Dir::Right,
+            Ordering::Equal   => self.dir,
+        };
+        self.start_spin(frame, dir);
+        // self.speed = (diff / 16.0).abs().clamp(0.0, 1.0);
+        
+        true
+    }
     fn kick(&mut self, _power: Option<FeetPowerup>, dir: Dir) -> bool {
-        if let State::Squished(frame, _) = self.state {
+        if let State::Squished(frame, ..) = self.state {
             self.start_spin(frame, dir);
             return true;
         };
@@ -228,11 +258,14 @@ impl Entity for Armadillo {
     }
 
     fn physics_update(&mut self, _player: &mut crate::game::player::Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut crate::game::scene::entity_spawner::EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, camera: &mut Camera, resources: &Resources) {
-        self.speed = match self.state {
-            State::Spinning(_) => 1.0,
-            State::Squished(..) => 0.0,
-            _ => 0.25,
-        };
+        if matches!(self.state, State::Walking | State::Jumping | State::Falling) {
+            self.speed = 0.25;
+        } else if matches!(self.state, State::Spinning(_)) {
+            self.speed = 1.0;
+        } else if matches!(self.state, State::Squished(..)) && !self.in_air {
+            self.speed = 0.0;
+        }
+        
         self.vel.x = match self.dir {
             Dir::Left => -self.speed,
             Dir::Right => self.speed,
@@ -269,7 +302,7 @@ impl Entity for Armadillo {
         let mut lefts  = [(SIDE_LT, true, false), (SIDE_LB, false, false)];
         let mut rights = [(SIDE_RT, true, false), (SIDE_RB, false, false)];
         let (tile_hit, entity_hit) = match self.state {
-            State::Spinning(_) => (
+            State::Spinning(_) | State::Squished(..) => (
                 Some(TileHitKind::Soft),
                 Some((EntityHitKind::All, self.hitbox(), 1.0, false, false)),
             ),
@@ -287,7 +320,7 @@ impl Entity for Armadillo {
             _=> 0.5,
         };
         // Coming to a stop when squished (not spinning) and hitting the floor
-        if b && matches!(self.state, State::Squished(_, _)) {
+        if b && matches!(self.state, State::Squished(..)) {
             self.vel.x = 0.0;
         }
         // Bouncing off walls when spinning or walking
@@ -308,5 +341,6 @@ impl Entity for Armadillo {
             return;
         }
         Self::draw(self.state, self.step_anim > 0.5, self.dir == Dir::Right, self.pos, camera_pos, WHITE, resources);
+        // draw_rect_lines(self.headbuttbox().unwrap(), BLUE);
     }
 }

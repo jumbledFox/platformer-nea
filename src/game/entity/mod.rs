@@ -8,7 +8,7 @@ use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
 
 use crate::{level_pack_data::LevelPosition, resources::Resources};
 
-use super::{level::{tile::LockColor, Level}, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles}};
+use super::{level::{tile::LockColor, Level}, player::{Dir, FeetPowerup, HeadPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles}};
 
 pub mod crate_entity;
 pub mod chip;
@@ -40,6 +40,9 @@ pub trait Entity {
     fn kickbox(&self) -> Option<Rect> {
         None
     }
+    fn headbuttbox(&self) -> Option<Rect> {
+        None
+    }
 
     fn pos(&self) -> Vec2;
     fn vel(&self) -> Vec2;
@@ -64,6 +67,7 @@ pub trait Entity {
     fn can_hurt(&self) -> bool { false }
     fn can_stomp(&self) -> bool { false }
     fn can_kick(&self) -> bool { false }
+    fn can_headbutt(&self) -> bool { false }
     fn dead(&self) -> bool { false }
     fn kill(&mut self) {}
     fn hit(&mut self) {}
@@ -71,6 +75,9 @@ pub trait Entity {
         false
     }
     fn kick(&mut self, _power: Option<FeetPowerup>, _dir: Dir) -> bool {
+        false
+    }
+    fn headbutt(&mut self, _power: Option<HeadPowerup>, _diff: f32) -> bool {
         false
     }
     fn hit_with_throwable(&mut self, _vel: Vec2) -> bool {
