@@ -58,7 +58,7 @@ impl Scene {
 
             fader: Fader::default(),
             sign_display: SignDisplay::default(),
-            physics_update_timer: 0.0,
+            physics_update_timer: PHYSICS_STEP,
         }
     }
 
@@ -118,7 +118,7 @@ impl Scene {
                     .iter_mut()
                     .chain(right.iter_mut())
                     .collect();
-                entity.physics_update(&self.player, &mut others, &mut self.entity_spawner, &mut self.particles, &mut self.level, &mut self.camera, resources);
+                entity.physics_update(&mut self.player, &mut others, &mut self.entity_spawner, &mut self.particles, &mut self.level, &mut self.camera, resources);
             }
             self.entity_spawner.spawn_entities(&mut self.entities);
             
@@ -160,13 +160,14 @@ impl Scene {
                 }
                 // TODO: Collecting powerups...
             }
+            self.level.fixed_update();
             self.physics_update_timer -= PHYSICS_STEP;
+
+            // Sorting them every frame?! idk man...... it works..
+            self.entities.sort_by(|e1, e2| e1.kind().cmp(&e2.kind()));
+
+            self.camera.update(self.player.pos(), deltatime);
         }
-
-        // Sorting them every frame?! idk man...... it works..
-        self.entities.sort_by(|e1, e2| e1.kind().cmp(&e2.kind()));
-
-        self.camera.update(self.player.pos(), deltatime);
 
         self.level.update_bumped_tiles(deltatime);
         self.level.update_if_should(resources);

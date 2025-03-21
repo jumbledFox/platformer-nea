@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{collision::{default_collision, spike_check}, level::{tile::TileDir, Level}, player::{FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::{default_collision, spike_check}, level::{tile::TileDir, Level}, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -115,7 +115,12 @@ impl Entity for Frog {
     fn kill(&mut self) {
         self.state = State::Dead(3.0);
     }
-    fn stomp(&mut self, _power: Option<FeetPowerup>) -> bool {
+    fn hit(&mut self) {
+        if self.can_hurt() {
+            self.kill();
+        }
+    }
+    fn stomp(&mut self, _power: Option<FeetPowerup>, _dir: Dir) -> bool {
         if !self.can_hurt() {
             return false;
         }
@@ -135,7 +140,7 @@ impl Entity for Frog {
 
     }
 
-    fn physics_update(&mut self, player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
+    fn physics_update(&mut self, player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
         self.vel.y = (self.vel.y + GRAVITY * 0.5).min(MAX_FALL_SPEED);
         self.pos += self.vel; // my code is awesome #selflove love frome jo
 

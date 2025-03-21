@@ -77,7 +77,7 @@ impl Entity for Chip {
         false
     }
 
-    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut crate::game::scene::entity_spawner::EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, _camera: &mut Camera, resources: &Resources) {
+    fn physics_update(&mut self, _player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut crate::game::scene::entity_spawner::EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, _camera: &mut Camera, resources: &Resources) {
         let mut vel = match self.vel {
             Some(v) => v,
             None => return,

@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 
-use macroquad::{color::{Color, GREEN, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range, shapes::draw_circle};
+use macroquad::{color::{Color, GREEN, RED, WHITE}, math::{vec2, Rect, Vec2}, rand::{gen_range, rand}, shapes::draw_circle};
 
-use crate::{game::{collision::{default_collision, spike_check}, level::{tile::TileDir, Level}, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::approach_target};
+use crate::{game::{collision::{default_collision, spike_check}, level::{tile::TileDir, Level}, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::{approach_target, draw_rect}};
 
 use super::{Entity, EntityKind, Id};
 
@@ -55,10 +55,10 @@ impl Goat {
             pos,
             vel,
             target_x_vel: vel.x,
-            state: State::Idle(0.5),
+            state: State::Idle(gen_range(0.5, 1.0)),
             in_air: true,
-            facing: Dir::Left,
-            next_facing: Dir::Left,
+            facing:      if rand() % 2 == 0 { Dir::Left } else { Dir::Right },
+            next_facing: if rand() % 2 == 0 { Dir::Left } else { Dir::Right },
             invuln: None,
             health: 1,
 
@@ -100,16 +100,6 @@ impl Goat {
         let arm_x = if arm == Arm::Down { 30.0 } else { 48.0 };
         let arm_x_offset = if dir == Dir::Left { 0.0 } else { -3.0 };
         resources.draw_rect(pos + offset + vec2(arm_x_offset, 6.0) - camera_pos, Rect::new(arm_x, 82.0, 17.0, 20.0), flip_x, false, color, resources.entity_atlas());
-    }
-
-    fn hurt(&mut self) {
-        if self.health == 0 {
-            return self.kill();
-        }
-        self.health -= 1;
-        self.state = State::Charge(0.5);
-        self.invuln = Some(1.0);
-        self.vel *= 1.5;
     }
 }
 
@@ -156,12 +146,24 @@ impl Entity for Goat {
             self.state = State::Dead(3.0);
         }
     }
-    fn stomp(&mut self, power: Option<FeetPowerup>) -> bool {
+    fn hit(&mut self) {
+        if !self.can_hurt() {
+            return;
+        }
+        if self.health == 0 {
+            return self.kill();
+        }
+        self.health -= 1;
+        self.state = State::Charge(0.5);
+        self.invuln = Some(1.0);
+        self.vel *= 1.5;
+    }
+    fn stomp(&mut self, power: Option<FeetPowerup>,  _dir: Dir) -> bool {
         if !self.can_hurt() {
             return false;
         }
         if power.is_none() {
-            self.hurt();
+            self.hit();
         } else {
             self.kill();
         }
@@ -172,14 +174,14 @@ impl Entity for Goat {
             return false;
         }
         self.vel = vec2(vel.x.clamp(-1.0, 1.0) / 2.0, -1.0);
-        self.hurt();
+        self.hit();
         true
     }
 
     fn update(&mut self, _resources: &Resources) {
 
     }
-    fn physics_update(&mut self, player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
+    fn physics_update(&mut self, player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
         let dist_to_player = player.pos() - self.pos + vec2(0.0, 16.0); 
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
 
@@ -260,11 +262,11 @@ impl Entity for Goat {
 
         // Only charge if the distance to the player is close enough
         if let State::Charge(_) = self.state {
-            if dist_to_player.x.abs() > 16.0 * 8.0 || dist_to_player.y.abs() > 16.0 * 5.0 {
+            if dist_to_player.x.abs() > 16.0 * 8.0 || dist_to_player.y.abs() > 16.0 * 4.0 {
                 self.state = State::Idle(gen_range(0.5, 1.0));
             }
         } else {
-            if dist_to_player.x.abs() <= 16.0 * 4.0 && dist_to_player.y.abs() <= 16.0 * 4.0 {
+            if dist_to_player.x.abs() <= 16.0 * 4.0 && dist_to_player.y.abs() <= 16.0 * 3.0 {
                 self.step_anim = 0.5;
                 self.state = State::Charge(0.5);
             }
@@ -313,7 +315,7 @@ impl Entity for Goat {
                 self.vel.y = -1.0;
                 self.vel.x = -0.5;
             }
-            self.hurt();
+            self.hit();
         }
     }
     fn draw(&self, camera_pos: Vec2, resources: &Resources) {
@@ -321,7 +323,6 @@ impl Entity for Goat {
             let dead = matches!(self.state, State::Dead(_));
             Self::draw(dead, self.step_anim > 0.5 || self.in_air, self.facing, self.arm, self.pos, camera_pos, WHITE, resources);
         }
-
         // let jump_check_pos = self.pos + vec2(8.0 + if self.facing == Dir::Right { 16.0 } else { -16.0 }, 24.0) - camera_pos;
         // draw_circle(jump_check_pos.x, jump_check_pos.y, 1.0, GREEN);
         // let walk_check_pos = self.pos + vec2(8.0 + 7.0 * if self.facing == Dir::Right { 1.0 } else { -1.0 }, 40.0) - camera_pos;

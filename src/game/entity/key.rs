@@ -55,6 +55,9 @@ impl Entity for Key {
     fn hitbox(&self) -> Rect {
         Self::hitbox().offset(self.pos)
     }
+    fn holdbox(&self) -> Option<Rect> {
+        Some(self.hitbox())
+    }
     fn hold_offset(&self) -> Option<Vec2> {
         Some(vec2(0.0, 3.0))
     }
@@ -69,7 +72,7 @@ impl Entity for Key {
         false
     }
 
-    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
+    fn physics_update(&mut self, _player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
         
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
@@ -79,7 +82,7 @@ impl Entity for Key {
         let mut bots   = [(BOT_L, false), (BOT_M, false), (BOT_R, false)];
         let mut lefts  = [(SIDE_LT, true, false), (SIDE_LB, true, false)];
         let mut rights = [(SIDE_RT, true, false), (SIDE_RB, true, false)];
-        let entity_hit = Some((EntityHitKind::All, self.hitbox()));
+        let entity_hit = Some((EntityHitKind::All, self.hitbox(), 1.5, true, true));
         let (t, b, l, r, _, _) = default_collision(&mut self.pos, &mut self.vel, Some(TileHitKind::Soft), entity_hit, others, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
         if b { self.vel.x = 0.0; }
 

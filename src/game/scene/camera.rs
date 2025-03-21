@@ -8,6 +8,7 @@ pub struct Camera {
     center_tile: LevelPosition,
     should_update_entities: bool,
 
+    shook: bool,
     shake_timer: f32,
     shake_first: bool,
     shake_offset: Vec2,
@@ -21,6 +22,7 @@ impl Camera {
             center_tile: pos_to_level_pos(player_pos),
             should_update_entities: true,
 
+            shook: false,
             shake_timer: 0.0,
             shake_first: true,
             shake_offset: Vec2::ZERO,
@@ -49,10 +51,16 @@ impl Camera {
 
     pub fn shake(&mut self, amount: f32) {
         self.shake_damp = amount;
+        self.shook = true;
+    }
+
+    pub fn shook(&self) -> bool {
+        self.shook
     }
 
     // Yeah this needs to be much better, it's temporary!!!!
     pub fn update(&mut self, player_pos: Vec2, deltatime: f32) {
+        self.shook = false;
         // Using this makes sure the shake always has some impact, and can never by chance be 0, or something too close to it
         let shake_var = |low: f32, high: f32| {
             gen_range(low, high) * if rand() % 2 == 0 { -1.0 } else { 1.0 }

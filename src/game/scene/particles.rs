@@ -98,10 +98,15 @@ impl Particle {
                 self.timer.rem_euclid(0.2) > 0.1,
                 (self.timer + 0.05).rem_euclid(0.2) > 0.1,
             ),
-            _ => (false, false)
+            ParticleKind::Crate(_) => (false, false),
+            _ => (self.flip_x, self.flip_y),
         };
 
-        resources.draw_rect(self.pos - camera_pos, rect(pos, size).offset(ATLAS_ORIGIN), flip_x, flip_y, Color::new(1.0, 1.0, 1.0, alpha), resources.entity_atlas());
+        let draw_pos = match self.kind {
+            _ => self.pos - size / 2.0
+        };
+
+        resources.draw_rect(draw_pos - camera_pos, rect(pos, size).offset(ATLAS_ORIGIN), flip_x, flip_y, Color::new(1.0, 1.0, 1.0, alpha), resources.entity_atlas());
     }
 
     pub fn should_remove(&self) -> bool {

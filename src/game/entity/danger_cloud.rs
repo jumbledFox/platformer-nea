@@ -48,7 +48,7 @@ impl Entity for DangerCloud {
     fn can_hurt(&self) -> bool {
         self.time / self.total_time > 0.65
     }
-    fn physics_update(&mut self, _player: &Player, _others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, _level: &mut Level, _camera: &mut Camera, _resources: &Resources) {
+    fn physics_update(&mut self, _player: &mut Player, _others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, _level: &mut Level, _camera: &mut Camera, _resources: &Resources) {
         self.pos += self.vel;
         self.time -= 1.0 / 120.0;
     }

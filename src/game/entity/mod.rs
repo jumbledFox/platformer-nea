@@ -1,3 +1,4 @@
+use armadillo::Armadillo;
 use chip::Chip;
 use crate_entity::{Crate, CrateKind};
 use frog::Frog;
@@ -7,13 +8,14 @@ use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
 
 use crate::{level_pack_data::LevelPosition, resources::Resources};
 
-use super::{level::{tile::LockColor, Level}, player::{FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles}};
+use super::{level::{tile::LockColor, Level}, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles}};
 
 pub mod crate_entity;
 pub mod chip;
 pub mod key;
 pub mod frog;
 pub mod goat;
+pub mod armadillo;
 pub mod danger_cloud;
 pub mod explosion;
 
@@ -35,25 +37,40 @@ pub trait Entity {
     fn stompbox(&self) -> Option<Rect> {
         None
     }
+    fn kickbox(&self) -> Option<Rect> {
+        None
+    }
+
     fn pos(&self) -> Vec2;
     fn vel(&self) -> Vec2;
     fn set_pos(&mut self, pos: Vec2);
     fn set_vel(&mut self, vel: Vec2);
     
     // Throwing / holding
+    fn holdbox(&self) -> Option<Rect> {
+        None
+    }
     fn hold_offset(&self) -> Option<Vec2> {
         None
     }
     fn hold(&mut self) {}
     fn hold_fixed_update(&mut self) {}
     fn throw(&mut self, _vel: Vec2) {}
+    fn throw_push_out(&self) -> bool { false }
+    fn can_drop(&self) -> bool { true }
+    fn should_throw(&self) -> bool { false }
 
     // Hurting
     fn can_hurt(&self) -> bool { false }
     fn can_stomp(&self) -> bool { false }
+    fn can_kick(&self) -> bool { false }
     fn dead(&self) -> bool { false }
     fn kill(&mut self) {}
-    fn stomp(&mut self, _power: Option<FeetPowerup>) -> bool {
+    fn hit(&mut self) {}
+    fn stomp(&mut self, _power: Option<FeetPowerup>, _dir: Dir) -> bool {
+        false
+    }
+    fn kick(&mut self, _power: Option<FeetPowerup>, _dir: Dir) -> bool {
         false
     }
     fn hit_with_throwable(&mut self, _vel: Vec2) -> bool {
@@ -67,7 +84,7 @@ pub trait Entity {
     // Updating/drawing
     // (idk if i need update? it's never really used... but good to have just in case i guess...) i might remove it...
     fn update(&mut self, _resources: &Resources) {}
-    fn physics_update(&mut self, _player: &Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources);
+    fn physics_update(&mut self, _player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources);
     fn draw(&self, camera_pos: Vec2, resources: &Resources);
 }
 
@@ -79,6 +96,7 @@ pub enum EntityKind {
     Life(bool),
     Frog(bool),
     Goat,
+    Armadillo(bool),
 
     DangerCloud,
     Explosion,
@@ -88,15 +106,17 @@ impl Ord for EntityKind {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         fn order(kind: &EntityKind) -> u8 {
             match kind {
-                EntityKind::Crate(_) => 0,
-                EntityKind::Chip(_)  => 1,
-                EntityKind::Life(_)  => 2,
+                // Explosion is ordered first so that shakes can be detected by armadillos
+                EntityKind::Explosion => 0,
+                EntityKind::Crate(_) => 1,
+                EntityKind::Chip(_)  => 2,
+                EntityKind::Life(_)  => 3,
                 EntityKind::Goat |
-                EntityKind::Frog(_) => 3,
-                EntityKind::Key(_) => 4,
+                EntityKind::Armadillo(_) |
+                EntityKind::Frog(_) => 4,
+                EntityKind::Key(_) => 5,
 
-                EntityKind::DangerCloud => 5,
-                EntityKind::Explosion => 6,
+                EntityKind::DangerCloud => 6,
             }
         }
         order(self).cmp(&order(other))
@@ -117,6 +137,7 @@ impl EntityKind {
             Self::Chip(_) | Self::Life(_) => Chip::hitbox(),
             Self::Frog(_) => Frog::hitbox(),
             Self::Goat => Goat::hitbox(),
+            Self::Armadillo(_) => Armadillo::hitbox(),
 
             _ => Rect::default(),
         }
@@ -130,6 +151,7 @@ impl EntityKind {
             Self::Chip(_) | Self::Life(_) => Chip::tile_offset(),
             Self::Frog(_) => Frog::tile_offset(),
             Self::Goat => Goat::tile_offset(),
+            Self::Armadillo(_) => Armadillo::tile_offset(),
 
             _ => Vec2::ZERO,
         }
@@ -145,6 +167,7 @@ impl EntityKind {
             
             Self::Frog(_) => Frog::object_selector_rect().point(),
             Self::Goat => Goat::object_selector_rect().point(),
+            Self::Armadillo(_) => Armadillo::object_selector_rect().point(),
 
             _ => Vec2::ZERO,
         }
@@ -157,6 +180,7 @@ impl EntityKind {
             Self::Chip(_) | Self::Life(_) => Chip::object_selector_size(),
             Self::Frog(_) => Frog::object_selector_rect().size(),
             Self::Goat => Goat::object_selector_rect().size(),
+            Self::Armadillo(_) => Armadillo::object_selector_rect().size(),
 
             _ => Vec2::ZERO,
         }
@@ -213,6 +237,7 @@ impl EntityKind {
             EntityKind::Life(_) => Chip::draw_editor(true, pos, camera_pos, color, resources),
             EntityKind::Frog(_) => Frog::draw_editor(pos, camera_pos, color, resources),
             EntityKind::Goat => Goat::draw_editor(pos, camera_pos, color, resources),
+            EntityKind::Armadillo(_) => Armadillo::draw_editor(pos, camera_pos, color, resources),
             _ => {}
         }
     }
@@ -245,6 +270,7 @@ impl From<EntityKind> for u8 {
             EntityKind::Life(_) => 17,
             EntityKind::Frog(_) => 19,
             EntityKind::Goat => 22,
+            EntityKind::Armadillo(_) => 24,
 
             // These shouldn't be saved!! they can't be placed!!
             EntityKind::DangerCloud |
@@ -281,6 +307,7 @@ impl TryFrom<u8> for EntityKind {
             17 => Ok(EntityKind::Life(false)),
             19 => Ok(EntityKind::Frog(false)),
             22 => Ok(EntityKind::Goat),
+            24 => Ok(EntityKind::Armadillo(false)),
             _ => Err(())
         }
     }

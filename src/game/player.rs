@@ -52,11 +52,11 @@ impl Dir {
 }
 
 // Powerups
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum HeadPowerup {
     Helmet,
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum FeetPowerup {
     Boots, MoonShoes,
 }
@@ -83,6 +83,7 @@ pub struct Player {
     dir: Dir,
     // The direction the player is moving (if any)
     move_dir: Option<Dir>,
+    last_dir_pressed: Option<Dir>,
     head_powerup: Option<HeadPowerup>,
     feet_powerup: Option<FeetPowerup>,
     holding: Option<Box<dyn Entity>>,
@@ -119,6 +120,7 @@ impl Player {
             chips: 0,
             dir: Dir::Right,
             move_dir: None,
+            last_dir_pressed: Some(Dir::Right),
             head_powerup: None,
             feet_powerup: None,
             holding: None,
@@ -348,6 +350,14 @@ impl Player {
         if self.move_dir != prev_move_dir && self.move_dir != None {
             self.turned_mid_air = true;
         }
+
+        if is_key_pressed(KEY_LEFT)  { self.last_dir_pressed = Some(Dir::Left); }
+        if is_key_pressed(KEY_RIGHT) { self.last_dir_pressed = Some(Dir::Right); }
+
+        if self.last_dir_pressed == Some(Dir::Left)  && !is_key_down(KEY_LEFT)
+        || self.last_dir_pressed == Some(Dir::Right) && !is_key_down(KEY_RIGHT) {
+            self.last_dir_pressed = None;
+        }
     }
 
     pub fn update(&mut self, entities: &mut Vec<Box<dyn Entity>>, fader: &mut Fader, sign_display: &mut SignDisplay, level: &mut Level, resources: &Resources) {
@@ -381,7 +391,7 @@ impl Player {
                 {
                     continue;
                 }
-                if entities[i].hitbox().overlaps(&grab_hitbox) {
+                if entities[i].holdbox().is_some_and(|h| h.overlaps(&grab_hitbox)) {
                     entities[i].hold();
                     self.holding = Some(entities.remove(i));
                     break;
@@ -394,20 +404,22 @@ impl Player {
         && !resources.tile_data(level.tile_at_pos(self.pos + HOLD_CHECK)).collision().is_solid();
         if can_throw {
             if let Some(mut entity) = self.holding.take() {
-                // Nudging the throwable left/right so it doesn't get stuck
-                let left_t_check = level.tile_at_pos(vec2(entity.hitbox().left(), entity.hitbox().top()));
-                let left_b_check = level.tile_at_pos(vec2(entity.hitbox().left(), entity.hitbox().bottom()));
-                let left_nudge = resources.tile_data(left_t_check).collision().is_solid()
-                ||               resources.tile_data(left_b_check).collision().is_solid();
-                if left_nudge {
-                    entity.set_pos(vec2((entity.pos().x / 16.0).ceil() * 16.0, entity.pos().y));
-                }
-                let right_t_check = level.tile_at_pos(vec2(entity.hitbox().right(), entity.hitbox().top()));
-                let right_b_check = level.tile_at_pos(vec2(entity.hitbox().right(), entity.hitbox().bottom()));
-                let right_nudge = resources.tile_data(right_t_check).collision().is_solid()
-                ||                resources.tile_data(right_b_check).collision().is_solid();
-                if right_nudge {
-                    entity.set_pos(vec2((entity.pos().x / 16.0).floor() * 16.0 - 0.5, entity.pos().y));
+                if entity.throw_push_out() {
+                    // Nudging the throwable left/right so it doesn't get stuck
+                    let left_t_check = level.tile_at_pos(vec2(entity.hitbox().left(), entity.hitbox().top()));
+                    let left_b_check = level.tile_at_pos(vec2(entity.hitbox().left(), entity.hitbox().bottom()));
+                    let left_nudge = resources.tile_data(left_t_check).collision().is_solid()
+                    ||               resources.tile_data(left_b_check).collision().is_solid();
+                    if left_nudge {
+                        entity.set_pos(vec2((entity.pos().x / 16.0).ceil() * 16.0, entity.pos().y));
+                    }
+                    let right_t_check = level.tile_at_pos(vec2(entity.hitbox().right(), entity.hitbox().top()));
+                    let right_b_check = level.tile_at_pos(vec2(entity.hitbox().right(), entity.hitbox().bottom()));
+                    let right_nudge = resources.tile_data(right_t_check).collision().is_solid()
+                    ||                resources.tile_data(right_b_check).collision().is_solid();
+                    if right_nudge {
+                        entity.set_pos(vec2((entity.pos().x / 16.0).floor() * 16.0 - 0.5, entity.pos().y));
+                    }
                 }
                 
                 // Throwing lower if the ceiling is there to stop it from hitting instantly
@@ -416,13 +428,14 @@ impl Player {
                 let top_hit = resources.tile_data(top_l_check).collision().is_solid()
                 ||            resources.tile_data(top_r_check).collision().is_solid();
 
-                let mut throw_vel = match (is_key_down(KEY_UP), is_key_down(KEY_DOWN), top_hit) {
+                let mut throw_vel = match (is_key_down(KEY_UP), is_key_down(KEY_DOWN) && entity.can_drop(), top_hit) {
                     (true, _, _)  => vec2(self.vel.x.abs().clamp(0.0, 0.7), -2.4), // Holding up and not moving
                     (_, true, _)  => vec2(0.0, 0.0), // Gently putting down
                     (_, _, false) => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.6, (-self.vel.x.abs() / 4.0).clamp(0.0, 0.4) - 0.6), // Throwing normally
                     (_, _, true)  => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.7, 1.0), // Throwing lower
                 };
-                if self.dir == Dir::Left {
+                if self.last_dir_pressed == Some(Dir::Left)
+                || self.dir == Dir::Left && self.last_dir_pressed.is_none() {
                     throw_vel.x *= -1.0;
                 }
 
@@ -586,37 +599,47 @@ impl Player {
             entity.hold_fixed_update();
         }
 
-        if self.holding.as_ref().is_some_and(|e| e.should_destroy()) {
+        if self.holding.as_ref().is_some_and(|e| e.should_throw()) {
             if let Some(entity) = self.holding.take() {
                 entities.push(entity);
             }
         }
         
         // I spent hours stomping... KOOPAS....
-        // (stomping)
+        // (stomping / kicking)
         let mut stomped = false;
-        if self.invuln.is_none() {
-            'entities: for e in entities {
-                if !e.can_stomp() {
-                    continue;
-                }
-                // Get the stompbox
-                let stompbox = match e.stompbox() {
-                    Some(s) => s,
-                    None => continue,
-                };
-                // Don't stop entities if we're moving up relative to them
-                if self.vel.y < e.vel().y {
-                    continue;
-                }
-                // Try and stomp them with each foot
-                for p in [FOOT_L, FOOT_R] {
-                    if !stompbox.contains(self.pos + p) {
-                        continue;
+        'entities: for e in entities.iter_mut() {
+            // Don't stop entities if we're moving up relative to them and we're not invuln
+            if e.can_stomp() && self.vel.y >= e.vel().y && self.invuln.is_none() {
+                if let Some(stompbox) = e.stompbox() {
+                    // Try and stomp them with each foot
+                    for p in [FOOT_L, FOOT_R] {
+                        if !stompbox.contains(self.pos + p) {
+                            continue;
+                        }
+                        stomped = true;
+                        let dir = match e.hitbox().center().x > CENTER.x + self.pos.x {
+                            true  => Dir::Left,
+                            false => Dir::Right,
+                        };
+                        if e.stomp(self.feet_powerup, dir) {
+                            println!("BROKE! stomped {:?}", e.kind());
+                            break 'entities;
+                        }
                     }
-                    stomped = true;
-                    if e.stomp(self.feet_powerup) {
-                        break 'entities;
+                }
+            }
+            if e.can_kick() {
+                if let Some(kickbox) = e.kickbox() {
+                    // Try and kick them with each side
+                    for (p, dir) in [(SIDE_LB, Dir::Left), (SIDE_RB, Dir::Right)] {
+                        if !kickbox.contains(self.pos + p) {
+                            continue;
+                        }
+                        if e.kick(self.feet_powerup, dir) {
+                            println!("BROKE! kicked {:?}", e.kind());
+                            break 'entities;
+                        }
                     }
                 }
             }
@@ -627,7 +650,7 @@ impl Player {
         }
     }
 
-    fn hurt(&mut self) {
+    pub fn hurt(&mut self) {
         self.invuln = Some(1.0);
     }
     

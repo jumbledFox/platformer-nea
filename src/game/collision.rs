@@ -70,6 +70,7 @@ pub fn collision_top(pos: &mut Vec2, point: Vec2, level: &Level, resources: &Res
 pub enum EntityHitKind {
     All,
     AllButCrates,
+    AllButCratesNoDamage,
 }
 
 // Some nice default collision
@@ -77,7 +78,7 @@ pub fn default_collision(
     pos: &mut Vec2,
     vel: &mut Vec2,
     tile_hit_kind: Option<TileHitKind>,
-    entity_hit: Option<(EntityHitKind, Rect)>,
+    entity_hit: Option<(EntityHitKind, Rect, f32, bool, bool)>,
     others: &mut Vec<&mut Box<dyn Entity>>,
     tops:   &mut[(Vec2, bool)],
     bots:   &mut[(Vec2, bool)],
@@ -158,18 +159,26 @@ pub fn default_collision(
     // Hitting other entities
     // TODO: Make hitting score points, perhaps some kind of 'score' struct that keeps track of airbourne ids and their hit count?
     let mut hit_entity = false;
-    if let Some((entity_hit_kind, hitbox)) = entity_hit {
-        if vel.length_squared() >= 1.5 {
+    if let Some((entity_hit_kind, hitbox, min_vel, clamp_x_vel, bounce)) = entity_hit {
+        if vel.length_squared() >= min_vel {
             for e in others {
                 if e.hitbox().overlaps(&hitbox)
-                && ((entity_hit_kind == EntityHitKind::All) || (entity_hit_kind == EntityHitKind::AllButCrates && !matches!(e.kind(), EntityKind::Crate(_))))
+                && ((entity_hit_kind == EntityHitKind::All) || (entity_hit_kind != EntityHitKind::All && !matches!(e.kind(), EntityKind::Crate(_))))
                 {
-                    hit_entity |= e.hit_with_throwable(prev_vel);
+                    if entity_hit_kind == EntityHitKind::AllButCratesNoDamage {
+                        hit_entity = true;
+                    } else {
+                        hit_entity |= e.hit_with_throwable(prev_vel);
+                    }
                 }
             }
             if hit_entity {
-                vel.y = vel.y.min(-1.0);
-                vel.x *= 0.75;
+                if bounce {
+                    vel.y = vel.y.min(-1.0);
+                }
+                if clamp_x_vel {
+                    vel.x *= 0.75;
+                }
             }
         }
     }

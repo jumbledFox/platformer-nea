@@ -28,6 +28,8 @@ pub struct Level {
     tiles_bg: Vec<Tile>,
     bumped_tiles: Vec<BumpedTile>,
 
+    new_on_off_state: Option<bool>,
+
     spawn:  Vec2,
     finish: Vec2,
     checkpoints: Vec<Vec2>,
@@ -71,6 +73,7 @@ impl Level {
             spawn, finish,
             checkpoints, signs, doors,
             bumped_tiles: vec![],
+            new_on_off_state: None,
             checkpoint: None,
             entity_spawns,
             should_update_render_data: true,
@@ -110,14 +113,7 @@ impl Level {
 
     // Switch blocks - sets the state of all switch tiles in the level and the background
     fn set_switch_state(&mut self, enabled: bool) {
-        for t in self.tiles.iter_mut().chain(self.tiles_bg.iter_mut()) {
-            match t {
-                Tile::Switch(state) |
-                Tile::SwitchBlockOn(state)  => *state =  enabled,
-                Tile::SwitchBlockOff(state) => *state = !enabled,
-                _ => {}
-            }
-        }
+        self.new_on_off_state = Some(enabled);
     }
 
     // Lock blocks - removes all of the specified colour and spawns particles
@@ -139,17 +135,17 @@ impl Level {
     }
 
     fn bump_tile(&mut self, index: usize) {
-        let tile = self.tiles[index];
-
         // If the tile is a switching tile, switch all of them!
-        match tile {
-            Tile::Switch(enabled) => self.set_switch_state(!enabled),
-            _ => {}
-        }
+        let tile = match self.tiles[index] {
+            Tile::Switch(enabled) => { 
+                self.set_switch_state(!enabled);
+                Tile::Switch(!enabled)
+            },
+            _ => self.tiles[index]
+        };
 
         self.bumped_tiles.push(BumpedTile {
-            // set_switch_state may modify 'tile' so we can't reuse it and should get it again.
-            tile: self.tiles[index],
+            tile,
             index,
             timer: 0.0
         });
@@ -218,6 +214,19 @@ impl Level {
         let index = y * self.width + x;
 
         self.tiles[index]
+    }
+
+    pub fn fixed_update(&mut self) {
+        if let Some(enabled) = self.new_on_off_state.take() {
+            for t in self.tiles.iter_mut().chain(self.tiles_bg.iter_mut()) {
+                match t {
+                    Tile::Switch(state) |
+                    Tile::SwitchBlockOn(state)  => *state =  enabled,
+                    Tile::SwitchBlockOff(state) => *state = !enabled,
+                    _ => {}
+                }
+            }
+        }
     }
 
     // If we should update the tiles, do it!

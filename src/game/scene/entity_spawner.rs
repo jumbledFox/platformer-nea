@@ -1,6 +1,6 @@
 use macroquad::math::Vec2;
 
-use crate::{game::entity::{chip::Chip, crate_entity::Crate, danger_cloud::DangerCloud, explosion::Explosion, frog::Frog, goat::Goat, key::Key, Entity, EntityKind, Id}, level_pack_data::LevelPosition};
+use crate::{game::entity::{armadillo::Armadillo, chip::Chip, crate_entity::Crate, danger_cloud::DangerCloud, explosion::Explosion, frog::Frog, goat::Goat, key::Key, Entity, EntityKind, Id}, level_pack_data::LevelPosition};
 
 struct EntityToSpawn {
     pos: Vec2,
@@ -45,6 +45,7 @@ impl EntitySpawner {
                 EntityKind::Life(gravity) => Box::new(Chip::new(true,  e.pos, if gravity { Some(e.vel) } else { None }, id)),
                 EntityKind::Frog(invuln) => Box::new(Frog::new(e.pos, e.vel, invuln, id)),
                 EntityKind::Goat => Box::new(Goat::new(e.pos, e.vel, id)),
+                EntityKind::Armadillo(invuln) => Box::new(Armadillo::new(e.pos, e.vel, invuln, id)),
                 EntityKind::DangerCloud => Box::new(DangerCloud::new(e.pos, e.vel, id)),
                 EntityKind::Explosion => Box::new(Explosion::new(e.pos, id))
             };
