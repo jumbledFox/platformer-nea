@@ -2,7 +2,7 @@ use macroquad::math::{Rect, Vec2};
 
 use crate::resources::Resources;
 
-use super::{entity::{Entity, EntityKind}, level::{tile::{Tile, TileCollision, TileDir, TileHitKind}, Level}};
+use super::{entity::{Entity, EntityKind}, level::{tile::{Tile, TileCollision, TileDir, TileHitKind}, Level}, scene::particles::Particles};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Side {
@@ -84,6 +84,7 @@ pub fn default_collision(
     bots:   &mut[(Vec2, bool)],
     lefts:  &mut[(Vec2, bool, bool)],
     rights: &mut[(Vec2, bool, bool)],
+    particles: &mut Particles,
     level: &mut Level,
     resources: &Resources,
 ) -> (bool, bool, bool, bool, bool, bool) {
@@ -140,7 +141,7 @@ pub fn default_collision(
     if hit {
         if let Some(tile_hit_kind) = tile_hit_kind {
             let mut hit_tile = |point: Vec2| {
-                level.hit_tile_at_pos(prev_pos + point, tile_hit_kind, resources);
+                level.hit_tile_at_pos(prev_pos + point, tile_hit_kind, particles, resources);
             };
             // Top
             if prev_vel.y < 0.0 {

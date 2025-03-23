@@ -2,9 +2,9 @@
 
 use macroquad::{color::{Color, WHITE}, input::is_key_pressed, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{collision::{default_collision, spike_check, EntityHitKind}, level::{tile::{LockColor, TileHitKind}, Level}, player::{HeadPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::{default_collision, spike_check, EntityHitKind}, level::{tile::{LockColor, TileHitKind}, Level}, player::{HeadPowerup, Player, PowerupKind}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
-use super::{chip::Chip, frog::Frog, key::Key, Entity, EntityKind, Id};
+use super::{chip::Chip, frog::Frog, key::Key, powerup::Powerup, Entity, EntityKind, Id};
 
 const TOP:     Vec2 = vec2( 8.0,  0.0);
 const SIDE_LT: Vec2 = vec2( 0.0,  2.0);
@@ -21,6 +21,7 @@ const FUSE_EXPLODE: f32 = 3.0;
 pub enum CrateKind {
     Frog(bool), // false for few, true for many
     Chip(bool), // ditto
+    Powerup(PowerupKind),
     Life,
     Key(LockColor),
     Explosive,
@@ -83,12 +84,13 @@ impl Crate {
         let (selector_size, selector_offset) = match kind {
             CrateKind::Chip(_) | CrateKind::Life => (Chip::object_selector_size(), Vec2::ZERO),
             CrateKind::Frog(_) => (Frog::object_selector_rect().size(), Frog::object_selector_rect().point()),
+            CrateKind::Powerup(_) => (Powerup::hitbox().size(), Vec2::ZERO),
             CrateKind::Key(_)  => (Key::hitbox().size(), Vec2::ZERO),
             CrateKind::Explosive => (Vec2::ZERO, Vec2::ZERO),
         };
-        let center = (pos.ceil() + 8.0 - (selector_size/2.0) + selector_offset).ceil();
+        let center = (pos.floor() + 8.0 - (selector_size/2.0) + selector_offset).ceil();
         // ... and make it semi-transparent
-        let color = Color::new(1.0, 1.0, 1.0, 0.6);
+        let color = Color::new(1.0, 1.0, 1.0, 0.8);
         // Draw the object, or if there are multiple, draw multiple.
         match kind {
             CrateKind::Frog(false) => Frog::draw_editor(center - 1.0, camera_pos, color, resources),
@@ -96,12 +98,13 @@ impl Crate {
                 Frog::draw_editor(center - vec2( 1.0, 3.0), camera_pos, color, resources);
                 Frog::draw_editor(center - vec2( 1.0, 0.0), camera_pos, color, resources);
             },
-            CrateKind::Chip(false) => Chip::draw_editor(false, center, camera_pos, color, resources),
+            CrateKind::Powerup(kind) => Powerup::draw_editor(false, kind, pos - vec2(1.0, 0.0), camera_pos, color, resources),
+            CrateKind::Chip(false) => Chip::draw_editor(false, false, center + 1.0, camera_pos, color, resources),
             CrateKind::Chip(true) => { 
-                Chip::draw_editor(false, center - vec2(1.0, 1.0), camera_pos, color, resources);
-                Chip::draw_editor(false, center + vec2(1.0, 1.0), camera_pos, color, resources);
+                Chip::draw_editor(false, false, center + vec2(0.0, 0.0), camera_pos, color, resources);
+                Chip::draw_editor(false, false, center + vec2(2.0, 2.0), camera_pos, color, resources);
             },
-            CrateKind::Life => Chip::draw_editor(true, center, camera_pos, color, resources),
+            CrateKind::Life => Chip::draw_editor(false, true, center + 1.0, camera_pos, color, resources),
             CrateKind::Key(key_color) => Key::draw_editor(key_color, center, camera_pos, color, resources),
             CrateKind::Explosive => {}
         }
@@ -133,11 +136,12 @@ impl Crate {
         };
         let mut spawn_entity = |kind: EntityKind| {
             let multiplier = match self.kind {
-                CrateKind::Key(_) => 0.7,
-                CrateKind::Frog(_) => 1.0,
-                CrateKind::Chip(_) => 1.0,
-                CrateKind::Life => 0.7,
-                CrateKind::Explosive => 0.0,
+                CrateKind::Key(_)     => 0.7,
+                CrateKind::Frog(_)    => 1.0,
+                CrateKind::Powerup(_) => 0.7,
+                CrateKind::Chip(_)    => 1.0,
+                CrateKind::Life       => 0.7,
+                CrateKind::Explosive  => 0.0,
             };
             let vel = vec2(gen_range(x_min, x_max), gen_range(y_min, y_max)) * multiplier;
             entity_spawner.add_entity(self.pos + vec2(0.0, 1.0), vel, kind, None);
@@ -146,6 +150,10 @@ impl Crate {
             CrateKind::Key(color)  => spawn_entity(EntityKind::Key(color)),
             CrateKind::Frog(false) => spawn_entity(EntityKind::Frog(true)),
             CrateKind::Frog(true)  => for _ in 0..gen_range(2, 3) { spawn_entity(EntityKind::Frog(true)) },
+            CrateKind::Powerup(kind) => {
+                for _ in 0..gen_range(2, 4) { spawn_entity(EntityKind::Chip(true)); }
+                spawn_entity(EntityKind::Powerup(kind, true, false));
+            }
             CrateKind::Chip(false) => spawn_entity(EntityKind::Chip(true)),
             CrateKind::Chip(true)  => for _ in 0..gen_range(2, 4) { spawn_entity(EntityKind::Chip(true)) },
             CrateKind::Life => {
@@ -260,7 +268,7 @@ impl Entity for Crate {
         self.update_fuse();
     }
 
-    fn physics_update(&mut self, _player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
+    fn physics_update(&mut self, _player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
         self.update_fuse();
         
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
@@ -282,7 +290,7 @@ impl Entity for Crate {
                 Some((EntityHitKind::AllButCrates, self.hitbox(), 1.5, true, true))
             ),
         };
-        let (t, b, _, _, hit, hit_entity) = default_collision(&mut self.pos, &mut self.vel, tile_hit, entity_hit, others, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
+        let (t, b, _, _, hit, hit_entity) = default_collision(&mut self.pos, &mut self.vel, tile_hit, entity_hit, others, &mut tops, &mut bots, &mut lefts, &mut rights, particles, level, resources);
         if b { self.vel.x = 0.0; }
 
         self.t = t;
@@ -304,7 +312,7 @@ impl Entity for Crate {
             _ => None,
         };
         let kind = match player.head_powerup() {
-            Some(HeadPowerup::XraySpecs) => Some(self.kind),
+            Some(HeadPowerup::XrayGoggles) => Some(self.kind),
             _ => None,
         };
         Self::draw(kind, self.pos, explosive, camera_pos, WHITE, resources);

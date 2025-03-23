@@ -127,7 +127,7 @@ impl Entity for Armadillo {
         EntityKind::Armadillo(self.invuln.is_some(), matches!(self.state, State::Spinning(_)))
     }
     fn hitbox(&self) -> Rect {
-        Rect::new(5.0, 2.0, 17.0, 12.0).offset(self.pos)
+        Rect::new(4.0, 2.0, 19.0, 12.0).offset(self.pos)
     }
     fn hurtbox(&self) -> Option<Rect> {
         match self.state {
@@ -149,21 +149,20 @@ impl Entity for Armadillo {
     }
     fn hold_offset(&self) -> Option<Vec2> {
         match self.state {
-            State::Squished(..) => Some(vec2(-5.0, 2.0)),
+            State::Squished(..) => Some(vec2(-6.0, 2.0)),
             _ => None,
         }
     }
     fn throw(&mut self, vel: Vec2) {
         self.vel = vel;
-        self.speed = vel.x.abs();
         self.in_air = true;
         self.dir = if vel.x > 0.0 { Dir::Right } else { Dir::Left };
         if vel.x.abs() > 0.0 {
             if let State::Squished(frame, ..) = self.state {
                 self.state = State::Spinning(frame);
-                self.speed = 1.0;
             }
         }
+        self.invuln = Some(0.5)
     }
     fn should_throw(&self) -> bool {
         !matches!(self.state, State::Squished(..))
@@ -222,7 +221,14 @@ impl Entity for Armadillo {
         self.wait_and_wake();
     }
 
-    fn physics_update(&mut self, _player: &mut crate::game::player::Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut crate::game::scene::entity_spawner::EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, camera: &mut Camera, resources: &Resources) {
+    fn physics_update(&mut self, _player: &mut crate::game::player::Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut crate::game::scene::entity_spawner::EntitySpawner, particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, camera: &mut Camera, resources: &Resources) {
+        if let Some(t) = &mut self.invuln {
+            *t -= 1.0 / 120.0;
+            if *t <= 0.0 {
+                self.invuln = None;
+            }
+        }
+
         if matches!(self.state, State::Walking | State::Jumping | State::Falling) {
             self.speed = 0.25;
         } else if matches!(self.state, State::Spinning(_)) {
@@ -277,7 +283,7 @@ impl Entity for Armadillo {
             ),
             _ => (None, None),
         };
-        let (_, b, l, r, _, _) = default_collision(&mut self.pos, &mut self.vel, tile_hit, entity_hit, others, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
+        let (_, b, l, r, _, _) = default_collision(&mut self.pos, &mut self.vel, tile_hit, entity_hit, others, &mut tops, &mut bots, &mut lefts, &mut rights, particles, level, resources);
         self.in_air = !b;
         if self.in_air && !matches!(self.state, State::Spinning(_) | State::Squished(..)) {
             self.state = State::Falling;
@@ -306,10 +312,10 @@ impl Entity for Armadillo {
 
     fn draw(&self, _player: &Player, camera_pos: Vec2, resources: &Resources) {
         // draw_rect_lines(self.hitbox().offset(-camera_pos), BLUE);
-        if !self.invuln.is_none_or(|t| t % 0.1 < 0.05) {
+        if !self.invuln.is_none_or(|t| t % 0.1 < 0.05) && !matches!(self.state, State::Spinning(..)) {
             return;
         }
         Self::draw(self.state, self.step_anim > 0.5, self.dir == Dir::Right, self.pos, camera_pos, WHITE, resources);
-        // draw_rect_lines(self.headbuttbox().unwrap(), BLUE);
+        // draw_rect_lines(self.hitbox().offset(-camera_pos), BLUE);
     }
 }

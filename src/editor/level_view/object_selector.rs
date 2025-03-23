@@ -2,13 +2,13 @@
 
 use macroquad::{color::{Color, WHITE}, color_u8, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{game::{entity::{crate_entity::CrateKind, EntityKind}, level::{things::DoorKind, tile::{render_tile, BrickColor, CheckerBlockColor, LockColor, Tile, TileDir, TileRenderLayer}, TileDrawKind, TileRenderData}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
+use crate::{game::{entity::{crate_entity::CrateKind, EntityKind}, level::{things::DoorKind, tile::{render_tile, BrickColor, CheckerBlockColor, LockColor, Tile, TileDir, TileRenderLayer}, TileDrawKind, TileRenderData}, player::{FeetPowerup, HeadPowerup, PowerupKind}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
 
-const BG_COL: Color = color_u8!(255, 255, 255, 100);
+const BG_COL: Color = color_u8!(255, 255, 255, 150);
 
-const TILES_Y: f32 = 14.0;
-const ENTITIES_Y: f32 = 86.0;
-const OTHERS_Y: f32 = 170.0;
+const TILES_Y: f32 = 4.0;
+const ENTITIES_Y: f32 = 96.0;
+const OTHERS_Y: f32 = 180.0;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Object {
@@ -80,6 +80,16 @@ impl ObjectSelector {
             (EntityKind::Crate(CrateKind::Chip(true)), "Large chip crate".to_string()),
             (EntityKind::Life(false), "Life".to_string()),
             (EntityKind::Crate(CrateKind::Life), "Life crate".to_string()),
+            (EntityKind::Powerup(PowerupKind::Head(HeadPowerup::Helmet),      false, false), "Helmet".to_string()),
+            (EntityKind::Powerup(PowerupKind::Head(HeadPowerup::XrayGoggles), false, false), "X-Ray Goggles".to_string()),
+            (EntityKind::Powerup(PowerupKind::Feet(FeetPowerup::Boots),       false, false), "Boots".to_string()),
+            (EntityKind::Powerup(PowerupKind::Feet(FeetPowerup::MoonShoes),   false, false), "Moon Shoes".to_string()),
+            (EntityKind::Powerup(PowerupKind::Feet(FeetPowerup::Skirt),       false, false), "Skirt".to_string()),
+            (EntityKind::Crate(CrateKind::Powerup(PowerupKind::Head(HeadPowerup::Helmet))),      "Helmet crate".to_string()),
+            (EntityKind::Crate(CrateKind::Powerup(PowerupKind::Head(HeadPowerup::XrayGoggles))), "X-Ray Goggles crate".to_string()),
+            (EntityKind::Crate(CrateKind::Powerup(PowerupKind::Feet(FeetPowerup::Boots))),       "Boots crate".to_string()),
+            (EntityKind::Crate(CrateKind::Powerup(PowerupKind::Feet(FeetPowerup::MoonShoes))),   "Moon Shoes crate".to_string()),
+            (EntityKind::Crate(CrateKind::Powerup(PowerupKind::Feet(FeetPowerup::Skirt))),       "Skirt crate".to_string()),
             (EntityKind::Frog(false), "Frog".to_string()),
             (EntityKind::Crate(CrateKind::Frog(false)), "Single-frog crate".to_string()),
             (EntityKind::Crate(CrateKind::Frog(true)), "Multi-frog crate".to_string()),
@@ -125,7 +135,7 @@ impl ObjectSelector {
         // Add all of the entities
         let mut x = 8.0;
         let mut y_index = 0;
-        let y_centers = [20.0, 40.0];
+        let y_centers = [20.0, 45.0, 70.0];
 
         for (e, n) in entities {
             let size = e.object_selector_size();

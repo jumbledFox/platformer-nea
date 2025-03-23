@@ -1,6 +1,6 @@
 use macroquad::math::Vec2;
 
-use crate::{game::entity::{armadillo::Armadillo, chip::Chip, crate_entity::Crate, danger_cloud::DangerCloud, explosion::Explosion, frog::Frog, goat::Goat, key::Key, Entity, EntityKind, Id}, level_pack_data::LevelPosition};
+use crate::{game::entity::{armadillo::Armadillo, chip::Chip, crate_entity::Crate, danger_cloud::DangerCloud, explosion::Explosion, frog::Frog, goat::Goat, key::Key, powerup::Powerup, Entity, EntityKind, Id}, level_pack_data::LevelPosition};
 
 struct EntityToSpawn {
     pos: Vec2,
@@ -41,6 +41,7 @@ impl EntitySpawner {
             let entity: Box<dyn Entity> = match e.kind {
                 EntityKind::Crate(kind) => Box::new(Crate::new(kind, e.pos, e.vel, id)),
                 EntityKind::Key(color)  => Box::new(Key::new(color, e.pos, e.vel, id)),
+                EntityKind::Powerup(kind, gravity, invuln) => Box::new(Powerup::new(kind, invuln, e.pos, if gravity { Some(e.vel) } else { None }, id)),
                 EntityKind::Chip(gravity) => Box::new(Chip::new(false, e.pos, if gravity { Some(e.vel) } else { None }, id)),
                 EntityKind::Life(gravity) => Box::new(Chip::new(true,  e.pos, if gravity { Some(e.vel) } else { None }, id)),
                 EntityKind::Frog(invuln) => Box::new(Frog::new(e.pos, e.vel, invuln, id)),

@@ -162,10 +162,10 @@ impl Entity for Goat {
         if !self.can_hurt() {
             return false;
         }
-        if power.is_none() {
-            self.hit();
-        } else {
+        if power == Some(FeetPowerup::Boots) || power == Some(FeetPowerup::MoonShoes) {
             self.kill();
+        } else {
+            self.hit();
         }
         true
     }
@@ -181,7 +181,7 @@ impl Entity for Goat {
     fn update(&mut self, _resources: &Resources) {
 
     }
-    fn physics_update(&mut self, player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
+    fn physics_update(&mut self, player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
         let dist_to_player = player.pos() - self.pos + vec2(0.0, 16.0); 
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
 
@@ -290,7 +290,7 @@ impl Entity for Goat {
         let mut bots   = [(BOT_L, false), (BOT_R, false)];
         let mut lefts  = [(LEFT_BOT,  true, false), (LEFT_MID,  true, false), (LEFT_TOP,  true, false)];
         let mut rights = [(RIGHT_BOT, true, false), (RIGHT_MID, true, false), (RIGHT_TOP, true, false)];
-        let (_, b, _, _, _, _) = default_collision(&mut self.pos, &mut self.vel, None, None, others, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
+        let (_, b, _, _, _, _) = default_collision(&mut self.pos, &mut self.vel, None, None, others, &mut tops, &mut bots, &mut lefts, &mut rights, particles, level, resources);
         self.in_air = !b;
 
         self.step_anim = (self.step_anim + self.vel.x.abs() / 12.0).rem_euclid(1.0);

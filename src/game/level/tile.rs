@@ -212,12 +212,14 @@ impl Default for TileDataManager {
         data.insert(Tile::Empty,      TileData::new("Empty".to_owned(),       None, TileCollision::None));
         data.insert(Tile::Door, TileData::new("Door".to_owned(), Some(TileTexture::fixed(140, TileTextureConnection::Vertical(TileTextureConnectionKind::None), false)), TileCollision::None));
         data.insert(Tile::Lava, TileData::new("Lava".to_owned(), Some(TileTexture::animated(&[82, 82+16, 82+32, 82+48, 82+64, 82+80, 82+96, 82+112], 0.2, TileTextureConnection::Vertical(TileTextureConnectionKind::None), true)), TileCollision::None));
-        data.insert(Tile::Bridge, TileData::new("Bridge".to_owned(), Some(TileTexture::fixed(92, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::platform(1.0, 0.0)));
+        data.insert(Tile::Bridge, TileData::new("Bridge".to_owned(), Some(TileTexture::fixed(92, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::Platform));
         data.insert(Tile::Rope,   TileData::new("Rope".to_owned(),   Some(TileTexture::fixed(76, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::None));
         data.insert(Tile::ShortGrass, TileData::new("Short Grass".to_owned(), Some(TileTexture::fixed(80, TileTextureConnection::None, true)), TileCollision::None));
         data.insert(Tile::TallGrass, TileData::new("Tall Grass".to_owned(), Some(TileTexture::fixed(81, TileTextureConnection::None, true)), TileCollision::None));
         data.insert(Tile::DeadShortGrass, TileData::new("Dead Short Grass".to_owned(), Some(TileTexture::fixed(96, TileTextureConnection::None, true)), TileCollision::None));
         data.insert(Tile::DeadTallGrass, TileData::new("Dead Tall Grass".to_owned(), Some(TileTexture::fixed(97, TileTextureConnection::None, true)), TileCollision::None));
+        data.insert(Tile::StoneBlock, TileData::new("Stone Block".to_owned(), Some(TileTexture::fixed(2, TileTextureConnection::None, false)), TileCollision::solid(TileHit::None, TileHit::Replace { new: Tile::Empty } )));
+        
         // President bush!
         data.insert(Tile::Bush, TileData::new("Bush".to_owned(), Some(TileTexture::fixed(208, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), false)), TileCollision::None));
         
@@ -238,12 +240,13 @@ impl Default for TileDataManager {
             (Tile::CheckerBlock(CheckerBlockColor::Purple), "Purple Checker Block", TileTexture::fixed(102, TileTextureConnection::Both(TileTextureConnectionKind::None), false)),
             (Tile::Cloud, "Cloud", TileTexture::fixed(38, TileTextureConnection::Both(TileTextureConnectionKind::None), false)),
             (Tile::Sand, "Sand", TileTexture::fixed(150, TileTextureConnection::Both(TileTextureConnectionKind::None), false)),
-            (Tile::StoneBlock, "Stone Block", TileTexture::fixed(2, TileTextureConnection::None, false)),
             (Tile::Glass, "Glass", TileTexture::fixed(4, TileTextureConnection::None, false)),
             (Tile::Block, "Block", TileTexture::fixed(5, TileTextureConnection::None, false)),
         ] {
             data.insert(tile, TileData::new(name.to_owned(), Some(texture), TileCollision::solid_default(false)));
         }
+
+
         // Bricks
         for (y, color) in [(2, BrickColor::Gray), (3, BrickColor::Tan), (11, BrickColor::Blue), (12, BrickColor::Green)] {
             data.insert(Tile::Bricks(color), TileData::new(format!("{:?} bricks", color), Some(TileTexture::fixed(12+y*16, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), false)), TileCollision::solid_default(false)));
@@ -256,8 +259,8 @@ impl Default for TileDataManager {
         data.insert(Tile::SwitchBlockOn(false),  TileData::new("Switch Block On".to_owned(),  Some(TileTexture::fixed(20, TileTextureConnection::None, false)), TileCollision::None));
         data.insert(Tile::SwitchBlockOn(true),   TileData::new_default("Switch Block On".to_owned(),  21, false));
         // Platforms
-        data.insert(Tile::WoodenPlatform, TileData::new("Wooden Platform".to_owned(), Some(TileTexture::fixed(156, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::platform(1.0, 0.0)));
-        data.insert(Tile::MetalPlatform, TileData::new("Metal Platform".to_owned(), Some(TileTexture::fixed(172, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::platform(1.0, 0.0)));
+        data.insert(Tile::WoodenPlatform, TileData::new("Wooden Platform".to_owned(), Some(TileTexture::fixed(156, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::Platform));
+        data.insert(Tile::MetalPlatform, TileData::new("Metal Platform".to_owned(), Some(TileTexture::fixed(172, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), true)), TileCollision::Platform));
         // Ladders
         data.insert(Tile::Ladder, TileData::new("Ladder".to_owned(), Some(TileTexture::fixed(108, TileTextureConnection::Vertical(TileTextureConnectionKind::None), false)), TileCollision::Ladder));
         data.insert(Tile::Vine, TileData::new("Vine".to_owned(), Some(TileTexture::fixed(64, TileTextureConnection::None, false)), TileCollision::Ladder));
@@ -391,16 +394,10 @@ pub enum TileHit {
 #[derive(Clone, Copy)]
 pub enum TileCollision {
     None,
-    Platform {
-        friction: f32,
-        bounce: f32,
-    },
+    Platform,
     Solid {
-        friction: f32,
-        bounce: f32,
         hit_soft: TileHit,
         hit_hard: TileHit ,
-        // damage ??
     },
     Ladder,
 }
@@ -411,11 +408,8 @@ pub enum TileHitKind {
 }
 
 impl TileCollision {
-    pub const fn platform(friction: f32, bounce: f32) -> Self {
-        Self::Platform { friction, bounce }
-    }
-    pub const fn solid(friction: f32, bounce: f32, hit_soft: TileHit, hit_hard: TileHit) -> Self {
-        Self::Solid { friction, bounce, hit_soft, hit_hard }
+    pub const fn solid(hit_soft: TileHit, hit_hard: TileHit) -> Self {
+        Self::Solid { hit_soft, hit_hard }
     }
 
     pub const fn solid_default(bump: bool) -> Self {
@@ -424,8 +418,6 @@ impl TileCollision {
             true  => TileHit::Bump,
         };
         Self::Solid {
-            friction: 1.0,
-            bounce: 0.0,
             hit_soft: hit,
             hit_hard: hit,
         }

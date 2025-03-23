@@ -8,7 +8,7 @@ use tile::{render_tile, LockColor, Tile, TileCollision, TileHit, TileHitKind, Ti
 
 use crate::{level_pack_data::LevelPosition, resources::Resources, text_renderer::{render_text, Align, Font}};
 
-use super::entity::EntityKind;
+use super::{entity::EntityKind, scene::particles::Particles};
 
 pub mod tile;
 pub mod things;
@@ -113,7 +113,6 @@ impl Level {
 
     // Switch blocks - sets the state of all switch tiles in the level and the background
     fn set_switch_state(&mut self, enabled: bool) {
-        println!("new state: {:?}", enabled);
         self.new_on_off_state = Some(enabled);
     }
 
@@ -152,7 +151,7 @@ impl Level {
         });
     }
 
-    pub fn hit_tile_at_pos(&mut self, pos: Vec2, hit_kind: TileHitKind, resources: &Resources) {
+    pub fn hit_tile_at_pos(&mut self, pos: Vec2, hit_kind: TileHitKind, particles: &mut Particles, resources: &Resources) {
         let pos = pos / 16.0;
         if pos.x < 0.0 || pos.x >= self.width as f32 || pos.y < 0.0 || pos.y >= self.height as f32 {
             return;
@@ -163,7 +162,7 @@ impl Level {
 
         let tile_data = resources.tile_data(self.tiles[index]);
         
-        if let TileCollision::Solid { friction: _, bounce: _, hit_soft, hit_hard } = &tile_data.collision() {
+        if let TileCollision::Solid { hit_soft, hit_hard } = &tile_data.collision() {
             let hit = match hit_kind {
                 TileHitKind::Soft => hit_soft,
                 TileHitKind::Hard => hit_hard,
@@ -174,8 +173,10 @@ impl Level {
                 self.bump_tile(index);
                 self.should_update_render_data = true;
             } else if let TileHit::Replace { new } = hit {
+                if self.tiles[index] == Tile::StoneBlock {
+                    particles.add_stone_block(pos.floor() * 16.0 + 8.0);
+                }
                 self.tiles[index] = *new;
-                // TODO: Particles...
                 self.should_update_render_data = true;
             }
         }
@@ -220,7 +221,6 @@ impl Level {
 
     pub fn fixed_update(&mut self) {
         if let Some(enabled) = self.new_on_off_state.take() {
-            println!("UPDATE: {:?}", enabled);
             for t in self.tiles.iter_mut().chain(self.tiles_bg.iter_mut()) {
                 match t {
                     Tile::Switch(state) |

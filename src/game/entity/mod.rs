@@ -5,12 +5,14 @@ use frog::Frog;
 use goat::Goat;
 use key::Key;
 use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
+use powerup::Powerup;
 
 use crate::{level_pack_data::LevelPosition, resources::Resources};
 
-use super::{level::{tile::LockColor, Level}, player::{Dir, FeetPowerup, HeadPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles}};
+use super::{level::{tile::LockColor, Level}, player::{Dir, FeetPowerup, HeadPowerup, Player, PowerupKind}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles}};
 
 pub mod crate_entity;
+pub mod powerup;
 pub mod chip;
 pub mod key;
 pub mod frog;
@@ -94,6 +96,7 @@ pub trait Entity {
 pub enum EntityKind {
     Crate(CrateKind),
     Key(LockColor),
+    Powerup(PowerupKind, bool, bool), // gravity, invuln
     Chip(bool),
     Life(bool),
     Frog(bool),
@@ -109,16 +112,16 @@ impl Ord for EntityKind {
         fn order(kind: &EntityKind) -> u8 {
             match kind {
                 // Explosion is ordered first so that shakes can be detected by armadillos
-                EntityKind::Explosion => 0,
-                EntityKind::Crate(_) => 1,
-                EntityKind::Chip(_)  => 2,
-                EntityKind::Life(_)  => 3,
+                EntityKind::Explosion   => 0,
+                EntityKind::DangerCloud => 1,
+                EntityKind::Crate(_) => 2,
+                EntityKind::Chip(_)  => 3,
+                EntityKind::Life(_)  => 4,
                 EntityKind::Goat |
                 EntityKind::Armadillo(..) |
-                EntityKind::Frog(_) => 4,
-                EntityKind::Key(_) => 5,
-
-                EntityKind::DangerCloud => 6,
+                EntityKind::Frog(_) => 5,
+                EntityKind::Key(_)  => 6,
+                EntityKind::Powerup(..)  => 7,
             }
         }
         order(self).cmp(&order(other))
@@ -131,25 +134,13 @@ impl PartialOrd for EntityKind {
 }
 
 impl EntityKind {
-    // The hitbox of the entity
-    pub fn hitbox(&self) -> Rect {
-        match self {
-            Self::Crate(_) => Crate::hitbox(),
-            Self::Key(_) => Key::hitbox(),
-            Self::Chip(_) | Self::Life(_) => Chip::hitbox(),
-            Self::Frog(_) => Frog::hitbox(),
-            Self::Goat => Goat::hitbox(),
-            Self::Armadillo(..) => Armadillo::hitbox(),
-
-            _ => Rect::default(),
-        }
-    }
     // The offset of this entity when it's being spawned into the level and displayed in the view 
     pub fn tile_offset(&self) -> Vec2 {
         match self {
             // Crates have no offset
             Self::Crate(_)=> Vec2::ZERO,
             Self::Key(_) => Key::tile_offset(),
+            Self::Powerup(..) => Powerup::tile_offset(),
             Self::Chip(_) | Self::Life(_) => Chip::tile_offset(),
             Self::Frog(_) => Frog::tile_offset(),
             Self::Goat => Goat::tile_offset(),
@@ -164,6 +155,7 @@ impl EntityKind {
             // Crates have no offset
             Self::Crate(_) => Vec2::ZERO,
             // Most things don't...
+            Self::Powerup(..) |
             Self::Key(_) |
             Self::Chip(_) | Self::Life(_) => Vec2::ZERO,
             
@@ -179,6 +171,7 @@ impl EntityKind {
         match self {
             Self::Crate(_) => Crate::hitbox().size(),
             Self::Key(_) => Key::hitbox().size(),
+            Self::Powerup(..) => Powerup::hitbox().size(),
             Self::Chip(_) | Self::Life(_) => Chip::object_selector_size(),
             Self::Frog(_) => Frog::object_selector_rect().size(),
             Self::Goat => Goat::object_selector_rect().size(),
@@ -202,8 +195,9 @@ impl EntityKind {
             // If it's a crate.. it's a bit more difficult!!
             EntityKind::Crate(kind) => Crate::draw(Some(*kind), pos, if *kind == CrateKind::Explosive { Some(0.0) } else { None }, camera_pos, color, resources),
             EntityKind::Key(c) => Key::draw_editor(*c, pos, camera_pos, color, resources),
-            EntityKind::Chip(_) => Chip::draw_editor(false, pos, camera_pos, color, resources),
-            EntityKind::Life(_) => Chip::draw_editor(true, pos, camera_pos, color, resources),
+            EntityKind::Powerup(kind, ..) => Powerup::draw_editor(true, *kind, pos, camera_pos, color, resources),
+            EntityKind::Chip(_) => Chip::draw_editor(true, false, pos, camera_pos, color, resources),
+            EntityKind::Life(_) => Chip::draw_editor(true, true, pos, camera_pos, color, resources),
             EntityKind::Frog(_) => Frog::draw_editor(pos, camera_pos, color, resources),
             EntityKind::Goat => Goat::draw_editor(pos, camera_pos, color, resources),
             EntityKind::Armadillo(_, false) => Armadillo::draw_editor(pos, None, camera_pos, color, resources),
@@ -236,6 +230,16 @@ impl From<EntityKind> for u8 {
             EntityKind::Key(LockColor::White)   => 4,
             EntityKind::Key(LockColor::Black)   => 5,
             EntityKind::Key(LockColor::Rainbow) => 6,
+            EntityKind::Powerup(PowerupKind::Head(HeadPowerup::Helmet), ..)      => 26,
+            EntityKind::Powerup(PowerupKind::Head(HeadPowerup::XrayGoggles), ..) => 27,
+            EntityKind::Powerup(PowerupKind::Feet(FeetPowerup::Boots), ..)       => 28,
+            EntityKind::Powerup(PowerupKind::Feet(FeetPowerup::MoonShoes), ..)   => 29,
+            EntityKind::Powerup(PowerupKind::Feet(FeetPowerup::Skirt), ..)       => 30,
+            EntityKind::Crate(CrateKind::Powerup(PowerupKind::Head(HeadPowerup::Helmet)))      => 31,
+            EntityKind::Crate(CrateKind::Powerup(PowerupKind::Head(HeadPowerup::XrayGoggles))) => 32,
+            EntityKind::Crate(CrateKind::Powerup(PowerupKind::Feet(FeetPowerup::Boots)))       => 33,
+            EntityKind::Crate(CrateKind::Powerup(PowerupKind::Feet(FeetPowerup::MoonShoes)))   => 34,
+            EntityKind::Crate(CrateKind::Powerup(PowerupKind::Feet(FeetPowerup::Skirt)))       => 35,
             EntityKind::Chip(_) => 14,
             EntityKind::Life(_) => 17,
             EntityKind::Frog(_) => 19,
@@ -274,6 +278,16 @@ impl TryFrom<u8> for EntityKind {
              4 => Ok(EntityKind::Key(LockColor::White)),
              5 => Ok(EntityKind::Key(LockColor::Black)),
              6 => Ok(EntityKind::Key(LockColor::Rainbow)),
+            26 => Ok(EntityKind::Powerup(PowerupKind::Head(HeadPowerup::Helmet), false, false)),
+            27 => Ok(EntityKind::Powerup(PowerupKind::Head(HeadPowerup::XrayGoggles), false, false)),
+            28 => Ok(EntityKind::Powerup(PowerupKind::Feet(FeetPowerup::Boots), false, false)),
+            29 => Ok(EntityKind::Powerup(PowerupKind::Feet(FeetPowerup::MoonShoes), false, false)),
+            30 => Ok(EntityKind::Powerup(PowerupKind::Feet(FeetPowerup::Skirt), false, false)),
+            31 => Ok(EntityKind::Crate(CrateKind::Powerup(PowerupKind::Head(HeadPowerup::Helmet)))),
+            32 => Ok(EntityKind::Crate(CrateKind::Powerup(PowerupKind::Head(HeadPowerup::XrayGoggles)))),
+            33 => Ok(EntityKind::Crate(CrateKind::Powerup(PowerupKind::Feet(FeetPowerup::Boots)))),
+            34 => Ok(EntityKind::Crate(CrateKind::Powerup(PowerupKind::Feet(FeetPowerup::MoonShoes)))),
+            35 => Ok(EntityKind::Crate(CrateKind::Powerup(PowerupKind::Feet(FeetPowerup::Skirt)))),
             14 => Ok(EntityKind::Chip(false)),
             17 => Ok(EntityKind::Life(false)),
             19 => Ok(EntityKind::Frog(false)),

@@ -1,10 +1,10 @@
 use std::cmp::Ordering;
 
-use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, shapes::draw_circle};
+use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, rand::gen_range, shapes::draw_circle};
 
 use crate::{game::collision::spike_check, level_pack_data::LevelPosition, resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect, draw_rect_lines}};
 
-use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityKind, Id}, level::{things::{Door, DoorKind}, tile::{TileCollision, TileDir}, Level}, scene::{entity_spawner::EntitySpawner, fader::Fader, particles::Particles, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
+use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityKind, Id}, level::{things::{Door, DoorKind}, tile::{TileCollision, TileDir, TileHitKind}, Level}, scene::{entity_spawner::EntitySpawner, fader::Fader, particles::Particles, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.0);
@@ -52,13 +52,19 @@ impl Dir {
 }
 
 // Powerups
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum HeadPowerup {
-    Helmet, XraySpecs,
+    Helmet, XrayGoggles,
 }
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FeetPowerup {
-    Boots, MoonShoes,
+    Boots, MoonShoes, Skirt,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum PowerupKind {
+    Head(HeadPowerup),
+    Feet(FeetPowerup),
 }
 
 // Rendering
@@ -72,6 +78,10 @@ pub enum PlayerPart {
     Feet { powerup: Option<FeetPowerup>, run: bool, ladder: bool },
 }
 
+#[derive(Debug)]
+pub enum Invuln {
+    None, Damage(f32), Powerup(PowerupKind, f32),
+}
 
 pub struct Player {
     state: State,
@@ -88,7 +98,7 @@ pub struct Player {
     feet_powerup: Option<FeetPowerup>,
     holding: Option<Box<dyn Entity>>,
     prev_held: Option<(f32, Id)>,
-    invuln: Option<f32>,
+    invuln: Invuln,
     
     target_x_vel: f32,
     target_approach: f32,
@@ -112,7 +122,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn new(pos: Vec2) -> Self {
+    pub fn new(pos: Vec2, head_powerup: Option<HeadPowerup>, feet_powerup: Option<FeetPowerup>) -> Self {
         Self {
             state: State::Standing,
             pos,
@@ -121,11 +131,11 @@ impl Player {
             dir: Dir::Right,
             move_dir: None,
             last_dir_pressed: Some(Dir::Right),
-            head_powerup: None,
-            feet_powerup: None,
+            head_powerup,
+            feet_powerup,
             holding: None,
             prev_held: None,
-            invuln: None,
+            invuln: Invuln::None,
 
             target_x_vel: 0.0,
             target_approach: 0.0,
@@ -171,6 +181,9 @@ impl Player {
     }
     pub fn holding_id(&self) -> Option<Id> {
         self.holding.as_ref().map(|e| e.id())
+    }
+    pub fn invuln(&self) -> &Invuln {
+        &self.invuln        
     }
 
     pub fn set_pos(&mut self, pos: Vec2) {
@@ -269,7 +282,7 @@ impl Player {
         let speed = 0.5;
         self.target_approach = 0.05;
         self.air_logic(speed);
-        if self.coyote_time < 0.1 {
+        if self.coyote_time < 0.1 && self.vel.x.abs() >= self.run_speed_beg + (self.run_speed_end - self.run_speed_beg) / 2.0 {
             self.allow_jumping(self.jump_vel);
         }
         self.allow_climbing(level, resources);
@@ -360,25 +373,48 @@ impl Player {
         }
     }
 
+    pub fn collect_powerup(&mut self, powerup: PowerupKind, entity_spawner: &mut EntitySpawner) {
+        let mut spawn_new_powerup = |powerup: PowerupKind| {
+            let vel = vec2(0.5 * if self.dir == Dir::Left { 1.0 } else { -1.0 }, -1.6) * gen_range(0.8, 1.0);
+            entity_spawner.add_entity(self.pos, vel, EntityKind::Powerup(powerup, true, true), None);
+        };
+        match powerup {
+            PowerupKind::Feet(kind) => { 
+                if let Some(k) = self.feet_powerup {
+                    spawn_new_powerup(PowerupKind::Feet(k));
+                }
+                self.feet_powerup = Some(kind);
+            }
+            PowerupKind::Head(kind) => {
+                if let Some(k) = self.head_powerup {
+                    spawn_new_powerup(PowerupKind::Head(k));
+                }
+                self.head_powerup = Some(kind);
+            }
+        }
+        self.invuln = Invuln::Powerup(powerup, 1.0);
+    }
+
     pub fn update(&mut self, entities: &mut Vec<Box<dyn Entity>>, fader: &mut Fader, sign_display: &mut SignDisplay, level: &mut Level, resources: &Resources) {
         if self.prev_on_ladder && !self.center_on_ladder(level, resources) {
             self.prev_on_ladder = false;
         }
 
-        if is_key_pressed(KeyCode::Key8) {
-            self.head_powerup = match self.head_powerup {
-                None => Some(HeadPowerup::Helmet),
-                Some(HeadPowerup::Helmet) => Some(HeadPowerup::XraySpecs),
-                Some(HeadPowerup::XraySpecs) => None,
-            }
-        }
-        if is_key_pressed(KeyCode::Key9) {
-            self.feet_powerup = match self.feet_powerup {
-                None => Some(FeetPowerup::Boots),
-                Some(FeetPowerup::Boots) => Some(FeetPowerup::MoonShoes),
-                Some(FeetPowerup::MoonShoes) => None,
-            }
-        }
+        // if is_key_pressed(KeyCode::Key8) {
+        //     match self.head_powerup {
+        //         None => self.collect_powerup(PowerupKind::Head(HeadPowerup::Helmet)),
+        //         Some(HeadPowerup::Helmet) => self.collect_powerup(PowerupKind::Head(HeadPowerup::XrayGoggles)),
+        //         Some(HeadPowerup::XrayGoggles) => self.head_powerup = None,
+        //     }
+        // }
+        // if is_key_pressed(KeyCode::Key9) {
+        //     match self.feet_powerup {
+        //         None => self.collect_powerup(PowerupKind::Feet(FeetPowerup::Boots)),
+        //         Some(FeetPowerup::Boots) => self.collect_powerup(PowerupKind::Feet(FeetPowerup::MoonShoes)),
+        //         Some(FeetPowerup::MoonShoes) => self.collect_powerup(PowerupKind::Feet(FeetPowerup::Skirt)),
+        //         Some(FeetPowerup::Skirt) => self.feet_powerup = None,
+        //     }
+        // }
 
         // Update the state
         self.update_state(level, resources);
@@ -438,8 +474,8 @@ impl Player {
                 let mut throw_vel = match (is_key_down(KEY_UP), is_key_down(KEY_DOWN), top_hit) {
                     (true, _, _)  => vec2(self.vel.x.abs().clamp(0.0, 0.8), -2.4), // Holding up
                     (_, true,  _) => vec2(0.0, 0.0), // Gently putting down
-                    (_, _, false) => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.6, (-self.vel.x.abs() / 4.0).clamp(0.0, 0.4) - 0.6), // Throwing normally
-                    (_, _, true)  => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.7, 1.0), // Throwing lower
+                    (_, _, false) => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.7, (-self.vel.x.abs() / 4.0).clamp(0.0, 0.4) - 0.6), // Throwing normally
+                    (_, _, true)  => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.8, 1.0), // Throwing lower
                 };
                 if self.last_dir_pressed == Some(Dir::Left)
                 || self.dir == Dir::Left && self.last_dir_pressed.is_none() {
@@ -519,13 +555,15 @@ impl Player {
         }
 
         if self.state != State::Climbing {
-            let gravity = match (self.feet_powerup, self.state, is_key_down(KEY_JUMP)) {
-                (Some(FeetPowerup::MoonShoes), State::Jumping, true) => GRAVITY * 0.65 * 0.7,
-                (Some(FeetPowerup::MoonShoes), _, _) => GRAVITY * 0.65,
-                (_, State::Jumping, true) => GRAVITY * 0.7,
-                _ => GRAVITY
+            let (gravity, max_fall_speed) = match (self.feet_powerup, self.state, is_key_down(KEY_JUMP)) {
+                (Some(FeetPowerup::Skirt), State::Falling, true)  => (GRAVITY * 0.9, 0.2),
+                (Some(FeetPowerup::Skirt), State::Falling, false) => (GRAVITY * 0.9, 1.2),
+                (Some(FeetPowerup::MoonShoes), State::Jumping, true) => (GRAVITY * 0.65 * 0.7, MAX_FALL_SPEED),
+                (Some(FeetPowerup::MoonShoes), _, _) => (GRAVITY * 0.65, MAX_FALL_SPEED),
+                (_, State::Jumping, true) => (GRAVITY * 0.7, MAX_FALL_SPEED),
+                _ => (GRAVITY, MAX_FALL_SPEED)
             };
-            self.vel.y = (self.vel.y + gravity).min(MAX_FALL_SPEED);
+            self.vel.y = (self.vel.y + gravity).min(max_fall_speed);
             self.step_anim = (self.step_anim + self.vel.x.abs() / 12.0).rem_euclid(1.0);
         } else {
             self.step_anim = (self.step_anim + self.vel.abs().max_element() / 20.0).rem_euclid(1.0);
@@ -569,7 +607,11 @@ impl Player {
             let hit_pos  = self.pos + HEAD;
             let t  = collision_top(&mut self.pos, HEAD, level, resources);
             if t {
-                level.hit_tile_at_pos(hit_pos, super::level::tile::TileHitKind::Hard, resources);
+                let hit_kind = match self.head_powerup {
+                    Some(HeadPowerup::Helmet) => TileHitKind::Hard,
+                    _ => TileHitKind::Soft,
+                };
+                level.hit_tile_at_pos(hit_pos, hit_kind, particles, resources);
                 self.vel.y = 0.0;
             }
         }
@@ -622,7 +664,7 @@ impl Player {
             }
         };
         let mut stomped = false;
-        if self.invuln.is_none() {
+        if !matches!(self.invuln, Invuln::Damage(_)) {
             'entities: for e in entities.iter_mut() {
                 // Don't stomp entities if we're moving up relative to them
                 if !e.can_stomp() || self.vel.y < e.vel().y {
@@ -639,7 +681,6 @@ impl Player {
                     }
                     stomped = true;
                     if e.stomp(self.feet_powerup, relative_dir(e.hitbox().center().x)) {
-                        // println!("BROKE! stomped {:?}", e.kind());
                         break 'entities;
                     }
                 }
@@ -653,17 +694,32 @@ impl Player {
     }
 
     pub fn hurt(&mut self) {
-        self.invuln = Some(1.0);
+        if !matches!(self.invuln, Invuln::None) {
+            return;
+        }
+        self.invuln = Invuln::Damage(1.5);
+        if self.head_powerup.is_some() {
+            self.head_powerup = None;
+        } else if self.feet_powerup.is_some() {
+            self.feet_powerup = None;
+        } else {
+            // DIE!
+        }
     }
     
     pub fn hurt_check(&mut self, entities: &mut Vec<Box<dyn Entity>>, level: &Level, _resources: &Resources) {
         // Update the timer
-        if let Some(t) = &mut self.invuln {
-            *t -= 1.0/120.0;
-            self.invuln = match *t <= 0.0 {
-                true  => None,
-                false => return,
-            };
+        match &mut self.invuln {
+            Invuln::Damage(t) | Invuln::Powerup(_, t) => {
+                *t -= 1.0 / 120.0;
+                if *t <= 0.0 {
+                    self.invuln = Invuln::None;
+                }
+            }
+            _ => {}
+        }
+        if matches!(self.invuln, Invuln::Damage(_)) {
+            return;
         }
 
         // Entities
@@ -737,10 +793,10 @@ impl Player {
     }
 
     pub fn draw(&self, camera_pos: Vec2, resources: &Resources, debug: bool) {
-        if self.invuln.is_some_and(|t| t % 0.1 >= 0.05) {
-            return;
-        }
-
+        match self.invuln {
+            Invuln::Damage(t) if t % 0.1 >= 0.05 => return,
+            _ => ()
+        };
         let holding = self.holding.is_some();
         let ladder = self.state == State::Climbing;
 
@@ -761,8 +817,8 @@ impl Player {
         // Drawing individual parts of the player
         // The player sprite should be offset vertically if they're wearing boots
         let y_offset = match self.feet_powerup {
-            None    => 8.0,
-            Some(_) => 10.0,
+            None | Some(FeetPowerup::Skirt) => 8.0,
+            _ => 10.0,
         };
         // The player sprite should be moved up by one if they're stepping
         let y_offset = match self.stepping && !ladder {
@@ -780,16 +836,26 @@ impl Player {
             resources.draw_rect(self.pos + vec2(0.0, y - y_offset) - camera_pos, Player::part_rect(part), flip_x, false, WHITE, resources.entity_atlas());
         };
 
+        let (head_powerup, feet_powerup) = match self.invuln {
+            Invuln::Powerup(kind, t) if t % 0.1 >= 0.05 && t >= 0.5 => {
+                match kind {
+                    PowerupKind::Head(_) => (None, self.feet_powerup),
+                    PowerupKind::Feet(_) => (self.head_powerup, None),
+                }
+            },
+            _ => (self.head_powerup, self.feet_powerup),
+        };
+
         // Draw the player!
         if let Some(back_arm) = back_arm {
             draw_player_part(PlayerPart::Arm { kind: back_arm });
         }
         draw_player_part(PlayerPart::Body { ladder });
-        draw_player_part(PlayerPart::Head { powerup: self.head_powerup, ladder });
+        draw_player_part(PlayerPart::Head { powerup: head_powerup, ladder });
         if let Some(entity) = &self.holding {
             entity.draw(self, camera_pos, resources);
         }
-        draw_player_part(PlayerPart::Feet { powerup: self.feet_powerup, run, ladder });
+        draw_player_part(PlayerPart::Feet { powerup: feet_powerup, run, ladder });
         if let Some(front_arm) = front_arm {
             draw_player_part(PlayerPart::Arm { kind: front_arm });
         }

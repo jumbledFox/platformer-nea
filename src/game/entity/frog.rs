@@ -140,7 +140,7 @@ impl Entity for Frog {
 
     }
 
-    fn physics_update(&mut self, player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
+    fn physics_update(&mut self, player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
         self.vel.y = (self.vel.y + GRAVITY * 0.5).min(MAX_FALL_SPEED);
         self.pos += self.vel; // my code is awesome #selflove love frome jo
 
@@ -173,7 +173,7 @@ impl Entity for Frog {
         let mut bots   = [(BOT_L, false), (BOT_R, false)];
         let mut lefts  = [(LEFT, true, false)];
         let mut rights = [(RIGHT, true, false)];
-        let (_, b, _, _, _, _) = default_collision(&mut self.pos, &mut self.vel, None, None, others, &mut tops, &mut bots, &mut lefts, &mut rights, level, resources);
+        let (_, b, _, _, _, _) = default_collision(&mut self.pos, &mut self.vel, None, None, others, &mut tops, &mut bots, &mut lefts, &mut rights, particles, level, resources);
 
         // Spikes
         if self.invuln.is_none() {

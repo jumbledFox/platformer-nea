@@ -112,7 +112,7 @@ impl Entity for Explosion {
             (-1.0,  1.0), ( 0.0,  1.0), ( 1.0,  1.0), 
         ] {
             let pos = vec2(offset.0, offset.1) * 16.0 + self.center;
-            level.hit_tile_at_pos(pos, TileHitKind::Hard, resources);
+            level.hit_tile_at_pos(pos, TileHitKind::Hard, particles, resources);
         }
     }
 

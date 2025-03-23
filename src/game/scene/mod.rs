@@ -1,17 +1,19 @@
 // The current level being played along with the stuff it needs
 // e.g. level, player, enemies, timer, etc
 
+use std::f32::consts::PI;
+
 use camera::Camera;
 use entity_spawner::EntitySpawner;
 use fader::Fader;
 // use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
-use macroquad::{color::{Color, GREEN, ORANGE, RED, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}};
-use particles::Particles;
+use macroquad::{color::{Color, GREEN, ORANGE, RED, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, rand::gen_range};
+use particles::{ParticleKind, Particles};
 use sign_display::SignDisplay;
 
 use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
 
-use super::{entity::{crate_entity::Crate, key::Key, Entity, EntityKind, Id}, player::{FeetPowerup, HeadPowerup, Player}};
+use super::{entity::{chip::Chip, crate_entity::Crate, key::Key, powerup::Powerup, Entity, EntityKind, Id}, player::{FeetPowerup, HeadPowerup, Invuln, Player, PowerupKind}};
 
 pub mod camera;
 pub mod entity_spawner;
@@ -51,7 +53,7 @@ impl Scene {
             timer: 0.0,
 
             camera: Camera::new(player_spawn),
-            player: Player::new(player_spawn),
+            player: Player::new(player_spawn, None, Some(FeetPowerup::Skirt)),
             entities:     Vec::with_capacity(64),
             entity_spawner: EntitySpawner::default(),
             particles: Particles::default(),
@@ -89,6 +91,7 @@ impl Scene {
             freeze = false;
             self.player.set_pos(dest);
         }
+
         freeze |= self.sign_display.active();
 
         resources.set_anim_timer_update(!freeze);
@@ -132,6 +135,7 @@ impl Scene {
                     self.level.remove_entity_spawn(spawn_pos);
                 }
             };
+            let mut collected_powerup = false;
             for i in (0..self.entities.len()).rev() {
                 if self.entities[i].should_destroy() {
                     disable_respawn(self.entities[i].id());
@@ -139,26 +143,54 @@ impl Scene {
                     self.entities.remove(i);
                     continue;
                 }
-                // TODO: Particles, letting flying crates and keys and stuff collect chips
+                
+                let mut particle_col = None;
                 // Collecting chips
                 if matches!(self.entities[i].kind(), EntityKind::Chip(_)) {
                     if self.entities[i].hitbox().overlaps(&self.player.chip_hitbox()) {
+                        particle_col = Some((self.entities[i].hitbox().center(), Chip::particle_color(false)));
                         self.player.give_chip();
                         disable_respawn(self.entities[i].id());
                         self.entities.remove(i);
-                        continue;
                     }
                 }
                 // Collecting lives
                 else if matches!(self.entities[i].kind(), EntityKind::Life(_)) {
                     if self.entities[i].hitbox().overlaps(&self.player.chip_hitbox()) {
+                        particle_col = Some((self.entities[i].hitbox().center(), Chip::particle_color(true)));
+                        self.particles.add_particle(self.entities[i].hitbox().center(), vec2(0.0, -0.5), ParticleKind::OneUp);
                         disable_respawn(self.entities[i].id());
                         self.entities.remove(i);
                         *lives += 1;
-                        continue;
                     }
                 }
-                // TODO: Collecting powerups...
+                // Collecting powerups
+                else if !collected_powerup {
+                    if let EntityKind::Powerup(kind, _, false) = self.entities[i].kind() {
+                        if !self.entities[i].hitbox().overlaps(&self.player.chip_hitbox()) {
+                            continue;
+                        }
+                        match (kind, self.player.invuln()) {
+                            (PowerupKind::Head(_), Invuln::Powerup(PowerupKind::Head(_), _)) |
+                            (PowerupKind::Feet(_), Invuln::Powerup(PowerupKind::Feet(_), _)) => continue,
+                            (PowerupKind::Head(kind), ..) if self.player.head_powerup() == Some(kind) => continue,
+                            (PowerupKind::Feet(kind), ..) if self.player.feet_powerup() == Some(kind) => continue,
+                            _ => {}
+                        }
+                        particle_col = Some((self.entities[i].hitbox().center(), Powerup::particle_color(kind)));
+                        collected_powerup = true;
+                        self.player.collect_powerup(kind, &mut self.entity_spawner);
+                        disable_respawn(self.entities[i].id());
+                        self.entities.remove(i);
+                    }
+                }
+                
+                if let Some((center, col)) = particle_col {
+                    for i in 0..4 {
+                        let angle = Vec2::from_angle((PI * 2.0 / 4.0) * (i as f32 + 0.5));
+                        self.particles.add_particle(center + angle, angle * gen_range(0.1, 0.6), ParticleKind::Sparkle(col));
+                    }
+                }
             }
             self.level.fixed_update();
             self.physics_update_timer -= PHYSICS_STEP;
@@ -175,8 +207,8 @@ impl Scene {
 
     pub fn draw(&self, chips: usize, lives: usize, resources: &Resources, debug: bool) {
         let camera_pos = self.camera.pos();
-
-        draw_rect(Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y), self.level.bg_col());
+        let view_rect = Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y);
+        draw_rect(view_rect, self.level.bg_col());
         self.level.render_bg(camera_pos, resources);
         self.level.render_below(camera_pos, resources);
 
@@ -186,13 +218,14 @@ impl Scene {
         self.player.draw(camera_pos, resources, debug);
 
 
-        // Draw the entities in reverse so the player is always on top
-        // for (i, entity) in self.entities.iter().enumerate().rev() {
-        //     entity.draw(resources, i, debug);
-        // }
         self.level.render_above(camera_pos, resources, debug);
         self.level.render_bumped_tiles(camera_pos, resources);
         self.particles.draw(camera_pos, resources);
+
+        // X-Ray goggles overlay
+        if self.player.head_powerup().is_some_and(|p| p == HeadPowerup::XrayGoggles) {
+            draw_rect(view_rect, Color::from_rgba(82, 195, 129, 20));
+        }
 
         // Draw the UI
         // Lives
@@ -210,7 +243,7 @@ impl Scene {
         if let Some(powerup) = self.player.head_powerup() {
             let (name, col) = match powerup {
                 HeadPowerup::Helmet => ("Helmet", 0xe43b44),
-                HeadPowerup::XraySpecs => ("X-Ray Specs", 0x52c381),
+                HeadPowerup::XrayGoggles => ("X-Ray Goggles", 0x55f998),
             };
             render_powerup_text(name, col, powerup_y);
             powerup_y += 12.0;
@@ -219,6 +252,7 @@ impl Scene {
             let (name, col) = match powerup {
                 FeetPowerup::MoonShoes => ("Moon Shoes", 0xbc41c7),
                 FeetPowerup::Boots => ("Boots", 0x855a55),
+                FeetPowerup::Skirt => ("Skirt", 0xf994fb),
             };
             render_powerup_text(name, col, powerup_y);
         }
