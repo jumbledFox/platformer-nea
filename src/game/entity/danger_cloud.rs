@@ -52,7 +52,7 @@ impl Entity for DangerCloud {
         self.pos += self.vel;
         self.time -= 1.0 / 120.0;
     }
-    fn draw(&self, camera_pos: Vec2, resources: &Resources) {
+    fn draw(&self,_player: &Player,  camera_pos: Vec2, resources: &Resources) {
         let color = Color::new(1.0, 0.0, 0.0, self.time / self.total_time);
         resources.draw_rect(self.pos - camera_pos, Rect::new(320.0, 112.0, 16.0, 16.0), false, false, color, resources.entity_atlas());
     }

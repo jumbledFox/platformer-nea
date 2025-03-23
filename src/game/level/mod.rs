@@ -113,6 +113,7 @@ impl Level {
 
     // Switch blocks - sets the state of all switch tiles in the level and the background
     fn set_switch_state(&mut self, enabled: bool) {
+        println!("new state: {:?}", enabled);
         self.new_on_off_state = Some(enabled);
     }
 
@@ -174,6 +175,7 @@ impl Level {
                 self.should_update_render_data = true;
             } else if let TileHit::Replace { new } = hit {
                 self.tiles[index] = *new;
+                // TODO: Particles...
                 self.should_update_render_data = true;
             }
         }
@@ -218,6 +220,7 @@ impl Level {
 
     pub fn fixed_update(&mut self) {
         if let Some(enabled) = self.new_on_off_state.take() {
+            println!("UPDATE: {:?}", enabled);
             for t in self.tiles.iter_mut().chain(self.tiles_bg.iter_mut()) {
                 match t {
                     Tile::Switch(state) |

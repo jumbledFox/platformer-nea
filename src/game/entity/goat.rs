@@ -318,7 +318,7 @@ impl Entity for Goat {
             self.hit();
         }
     }
-    fn draw(&self, camera_pos: Vec2, resources: &Resources) {
+    fn draw(&self, _player: &Player, camera_pos: Vec2, resources: &Resources) {
         if self.invuln.is_none_or(|t| t % 0.1 < 0.05) {
             let dead = matches!(self.state, State::Dead(_));
             Self::draw(dead, self.step_anim > 0.5 || self.in_air, self.facing, self.arm, self.pos, camera_pos, WHITE, resources);

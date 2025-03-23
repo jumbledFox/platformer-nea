@@ -54,7 +54,7 @@ impl Dir {
 // Powerups
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum HeadPowerup {
-    Helmet,
+    Helmet, XraySpecs,
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum FeetPowerup {
@@ -368,7 +368,8 @@ impl Player {
         if is_key_pressed(KeyCode::Key8) {
             self.head_powerup = match self.head_powerup {
                 None => Some(HeadPowerup::Helmet),
-                Some(HeadPowerup::Helmet) => None,
+                Some(HeadPowerup::Helmet) => Some(HeadPowerup::XraySpecs),
+                Some(HeadPowerup::XraySpecs) => None,
             }
         }
         if is_key_pressed(KeyCode::Key9) {
@@ -434,12 +435,11 @@ impl Player {
                 let top_hit = resources.tile_data(top_l_check).collision().is_solid()
                 ||            resources.tile_data(top_r_check).collision().is_solid();
 
-                let mut throw_vel = match (is_key_down(KEY_UP), is_key_down(KEY_DOWN), entity.can_drop(), top_hit) {
-                    (true, _, _, _)  => vec2(self.vel.x.abs().clamp(0.0, 0.8), -2.4), // Holding up
-                    (_, true, true,  _)  => vec2(0.0, 0.0), // Gently putting down
-                    (_, true, false, _)  => vec2(self.vel.x.signum() * 0.4, -0.5), // Gently throwing (if can't drop)
-                    (_, _, _, false) => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.6, (-self.vel.x.abs() / 4.0).clamp(0.0, 0.4) - 0.6), // Throwing normally
-                    (_, _, _, true)  => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.7, 1.0), // Throwing lower
+                let mut throw_vel = match (is_key_down(KEY_UP), is_key_down(KEY_DOWN), top_hit) {
+                    (true, _, _)  => vec2(self.vel.x.abs().clamp(0.0, 0.8), -2.4), // Holding up
+                    (_, true,  _) => vec2(0.0, 0.0), // Gently putting down
+                    (_, _, false) => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.6, (-self.vel.x.abs() / 4.0).clamp(0.0, 0.4) - 0.6), // Throwing normally
+                    (_, _, true)  => vec2(self.vel.x.abs().clamp(0.5, 1.0) + 0.7, 1.0), // Throwing lower
                 };
                 if self.last_dir_pressed == Some(Dir::Left)
                 || self.dir == Dir::Left && self.last_dir_pressed.is_none() {
@@ -613,7 +613,7 @@ impl Player {
         }
         
         // I spent hours stomping... KOOPAS....
-        // (stomping / kicking)
+        // (stomping)
         let relative_dir = |center_x: f32| -> Dir {
             match (self.pos.x + CENTER.x).total_cmp(&center_x) {
                 Ordering::Greater => Dir::Right,
@@ -622,47 +622,25 @@ impl Player {
             }
         };
         let mut stomped = false;
-        'entities: for e in entities.iter_mut() {
-            // Don't stop entities if we're moving up relative to them and we're not invuln
-            if e.can_stomp() && self.vel.y >= e.vel().y && self.invuln.is_none() {
-                if let Some(stompbox) = e.stompbox() {
-                    // Try and stomp them with each foot
-                    for p in [FOOT_L, FOOT_R] {
-                        if !stompbox.contains(self.pos + p) {
-                            continue;
-                        }
-                        stomped = true;
-                        if e.stomp(self.feet_powerup, relative_dir(e.hitbox().center().x)) {
-                            // println!("BROKE! stomped {:?}", e.kind());
-                            break 'entities;
-                        }
-                    }
+        if self.invuln.is_none() {
+            'entities: for e in entities.iter_mut() {
+                // Don't stomp entities if we're moving up relative to them
+                if !e.can_stomp() || self.vel.y < e.vel().y {
+                    continue;
                 }
-            }
-            // Kicking
-            if e.can_kick() {
-                if let Some(kickbox) = e.kickbox() {
-                    // Try and kick them with each side
-                    for (p, dir) in [(SIDE_LB, Dir::Left), (SIDE_RB, Dir::Right)] {
-                        if !kickbox.contains(self.pos + p) {
-                            continue;
-                        }
-                        if e.kick(self.feet_powerup, dir) {
-                            // println!("BROKE! kicked {:?}", e.kind());
-                            break 'entities;
-                        }
+                let stompbox = match e.stompbox() {
+                    Some(s) => s,
+                    None => continue,
+                };
+                // Try and stomp them with each foot
+                for p in [FOOT_L, FOOT_R] {
+                    if !stompbox.contains(self.pos + p) {
+                        continue;
                     }
-                }
-            }
-        }
-        // Headbutt
-        for e in entities.iter_mut() {
-            if e.can_headbutt() && self.vel.y < e.vel().y && self.invuln.is_none() {
-                if let Some(headbuttbox) = e.headbuttbox() {
-                    // Try and headbutt them
-                    if headbuttbox.contains(self.pos + HEAD) {
-                        // println!("haedbut {:?}", e.kind());
-                        e.headbutt(self.head_powerup, e.hitbox().center().x - (self.pos.x + CENTER.x));
+                    stomped = true;
+                    if e.stomp(self.feet_powerup, relative_dir(e.hitbox().center().x)) {
+                        // println!("BROKE! stomped {:?}", e.kind());
+                        break 'entities;
                     }
                 }
             }
@@ -809,7 +787,7 @@ impl Player {
         draw_player_part(PlayerPart::Body { ladder });
         draw_player_part(PlayerPart::Head { powerup: self.head_powerup, ladder });
         if let Some(entity) = &self.holding {
-            entity.draw(camera_pos, resources);
+            entity.draw(self, camera_pos, resources);
         }
         draw_player_part(PlayerPart::Feet { powerup: self.feet_powerup, run, ladder });
         if let Some(front_arm) = front_arm {

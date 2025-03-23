@@ -203,7 +203,7 @@ impl Entity for Frog {
             self.state = State::Air;
         }
     }
-    fn draw(&self, camera_pos: Vec2, resources: &Resources) {
+    fn draw(&self, _player: &Player, camera_pos: Vec2, resources: &Resources) {
         if self.invuln.is_none_or(|t| t % 0.1 < 0.05) {
             Self::draw(&self.state, self.pos, camera_pos, WHITE, resources);
         }

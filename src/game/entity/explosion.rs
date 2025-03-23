@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 
 use macroquad::{color::{BLUE, GREEN, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{player::Player, scene::{camera::Camera, particles::{ParticleKind, Particles}}}, resources::Resources, util::{draw_rect, rect}};
+use crate::{game::{level::tile::TileHitKind, player::Player, scene::{camera::Camera, particles::{ParticleKind, Particles}}}, resources::Resources, util::{draw_rect, rect}};
 
 use super::{crate_entity::CrateKind, Entity, EntityKind, Id};
 
@@ -104,10 +104,19 @@ impl Entity for Explosion {
         if player.chip_hitbox().overlaps(&player_rect) {
             player.hurt();
         }
+
         // TODO: Break / hit blocks
+        for offset in [
+            (-1.0, -1.0), ( 0.0, -1.0), ( 1.0, -1.0), 
+            (-1.0,  0.0), ( 0.0,  0.0), ( 1.0,  0.0), 
+            (-1.0,  1.0), ( 0.0,  1.0), ( 1.0,  1.0), 
+        ] {
+            let pos = vec2(offset.0, offset.1) * 16.0 + self.center;
+            level.hit_tile_at_pos(pos, TileHitKind::Hard, resources);
+        }
     }
 
-    fn draw(&self, _camera_pos: Vec2, _resources: &Resources) {
+    fn draw(&self, _player: &Player, _camera_pos: Vec2, _resources: &Resources) {
 
     }
 }

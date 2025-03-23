@@ -181,10 +181,9 @@ impl Scene {
         self.level.render_below(camera_pos, resources);
 
         for e in &self.entities {
-            e.draw(camera_pos, resources);
+            e.draw(&self.player, camera_pos, resources);
         }
         self.player.draw(camera_pos, resources, debug);
-        self.particles.draw(camera_pos, resources);
 
 
         // Draw the entities in reverse so the player is always on top
@@ -193,6 +192,7 @@ impl Scene {
         // }
         self.level.render_above(camera_pos, resources, debug);
         self.level.render_bumped_tiles(camera_pos, resources);
+        self.particles.draw(camera_pos, resources);
 
         // Draw the UI
         // Lives
@@ -210,6 +210,7 @@ impl Scene {
         if let Some(powerup) = self.player.head_powerup() {
             let (name, col) = match powerup {
                 HeadPowerup::Helmet => ("Helmet", 0xe43b44),
+                HeadPowerup::XraySpecs => ("X-Ray Specs", 0x52c381),
             };
             render_powerup_text(name, col, powerup_y);
             powerup_y += 12.0;

@@ -93,7 +93,7 @@ impl Entity for Chip {
         if b { vel.x = 0.0; }
         self.vel = Some(vel);
     }
-    fn draw(&self, camera_pos: Vec2, resources: &Resources) {
+    fn draw(&self, _player: &Player, camera_pos: Vec2, resources: &Resources) {
         let y_offset = match self.vel {
             None => (resources.tile_animation_timer() * 3.0).sin() as f32 * 2.0,
             _ => 0.0,

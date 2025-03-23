@@ -99,7 +99,7 @@ impl Entity for Key {
         }
     }
 
-    fn draw(&self, camera_pos: Vec2, resources: &Resources) {
+    fn draw(&self, _player: &Player, camera_pos: Vec2, resources: &Resources) {
         Self::draw(self.color, self.pos, camera_pos, WHITE, resources);
     }
 }

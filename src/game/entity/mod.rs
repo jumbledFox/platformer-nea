@@ -60,29 +60,24 @@ pub trait Entity {
     fn hold_fixed_update(&mut self) {}
     fn throw(&mut self, _vel: Vec2) {}
     fn throw_push_out(&self) -> bool { false }
-    fn can_drop(&self) -> bool { true }
     fn should_throw(&self) -> bool { false }
 
     // Hurting
     fn can_hurt(&self) -> bool { false }
     fn can_stomp(&self) -> bool { false }
-    fn can_kick(&self) -> bool { false }
-    fn can_headbutt(&self) -> bool { false }
     fn dead(&self) -> bool { false }
     fn kill(&mut self) {}
     fn hit(&mut self) {}
     fn stomp(&mut self, _power: Option<FeetPowerup>, _dir: Dir) -> bool {
         false
     }
-    fn kick(&mut self, _power: Option<FeetPowerup>, _dir: Dir) -> bool {
-        false
-    }
-    fn headbutt(&mut self, _power: Option<HeadPowerup>, _diff: f32) -> bool {
-        false
-    }
     fn hit_with_throwable(&mut self, _vel: Vec2) -> bool {
         false
     }
+
+    fn bump(&mut self) { }
+
+    // TODO: add bumping positions to level and bump entities standing on them
 
     // Destroying
     fn should_destroy(&self) -> bool;
@@ -92,7 +87,7 @@ pub trait Entity {
     // (idk if i need update? it's never really used... but good to have just in case i guess...) i might remove it...
     fn update(&mut self, _resources: &Resources) {}
     fn physics_update(&mut self, _player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources);
-    fn draw(&self, camera_pos: Vec2, resources: &Resources);
+    fn draw(&self, _player: &Player, camera_pos: Vec2, resources: &Resources);
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -103,7 +98,7 @@ pub enum EntityKind {
     Life(bool),
     Frog(bool),
     Goat,
-    Armadillo(bool),
+    Armadillo(bool, bool), // invuln, spinning
 
     DangerCloud,
     Explosion,
@@ -119,7 +114,7 @@ impl Ord for EntityKind {
                 EntityKind::Chip(_)  => 2,
                 EntityKind::Life(_)  => 3,
                 EntityKind::Goat |
-                EntityKind::Armadillo(_) |
+                EntityKind::Armadillo(..) |
                 EntityKind::Frog(_) => 4,
                 EntityKind::Key(_) => 5,
 
@@ -144,7 +139,7 @@ impl EntityKind {
             Self::Chip(_) | Self::Life(_) => Chip::hitbox(),
             Self::Frog(_) => Frog::hitbox(),
             Self::Goat => Goat::hitbox(),
-            Self::Armadillo(_) => Armadillo::hitbox(),
+            Self::Armadillo(..) => Armadillo::hitbox(),
 
             _ => Rect::default(),
         }
@@ -158,7 +153,7 @@ impl EntityKind {
             Self::Chip(_) | Self::Life(_) => Chip::tile_offset(),
             Self::Frog(_) => Frog::tile_offset(),
             Self::Goat => Goat::tile_offset(),
-            Self::Armadillo(_) => Armadillo::tile_offset(),
+            Self::Armadillo(..) => Armadillo::tile_offset(),
 
             _ => Vec2::ZERO,
         }
@@ -174,7 +169,7 @@ impl EntityKind {
             
             Self::Frog(_) => Frog::object_selector_rect().point(),
             Self::Goat => Goat::object_selector_rect().point(),
-            Self::Armadillo(_) => Armadillo::object_selector_rect().point(),
+            Self::Armadillo(..) => Armadillo::object_selector_rect().point(),
 
             _ => Vec2::ZERO,
         }
@@ -187,7 +182,7 @@ impl EntityKind {
             Self::Chip(_) | Self::Life(_) => Chip::object_selector_size(),
             Self::Frog(_) => Frog::object_selector_rect().size(),
             Self::Goat => Goat::object_selector_rect().size(),
-            Self::Armadillo(_) => Armadillo::object_selector_rect().size(),
+            Self::Armadillo(..) => Armadillo::object_selector_rect().size(),
 
             _ => Vec2::ZERO,
         }
@@ -205,46 +200,14 @@ impl EntityKind {
 
         match self {
             // If it's a crate.. it's a bit more difficult!!
-            EntityKind::Crate(kind) => {
-                let explosive = match kind {
-                    CrateKind::Explosive => Some(0.0),
-                    _ => None,
-                };
-                Crate::draw(pos, explosive, camera_pos, color, resources);
-                
-                // Position the object in the center of the crate...
-                let (selector_size, selector_offset) = match kind {
-                    CrateKind::Chip(_) | CrateKind::Life => (Chip::object_selector_size(), Vec2::ZERO),
-                    CrateKind::Frog(_) => (Frog::object_selector_rect().size(), Frog::object_selector_rect().point()),
-                    CrateKind::Key(_)  => (Key::hitbox().size(), Vec2::ZERO),
-                    CrateKind::Explosive => (Vec2::ZERO, Vec2::ZERO),
-                };
-                let center = pos + 8.0 - (selector_size/2.0) + selector_offset;
-                // ... and make it semi-transparent
-                let color = Color::new(1.0, 1.0, 1.0, 0.8);
-                // Draw the object, or if there are multiple, draw multiple.
-                match kind {
-                    CrateKind::Frog(false) => Frog::draw_editor(center, camera_pos, color, resources),
-                    CrateKind::Frog(true) => {
-                        Frog::draw_editor(center - vec2(0.0, 1.0), camera_pos, color, resources);
-                        Frog::draw_editor(center + vec2(0.0, 2.0), camera_pos, color, resources);
-                    },
-                    CrateKind::Chip(false) => Chip::draw_editor(false, center, camera_pos, color, resources),
-                    CrateKind::Chip(true) => { 
-                        Chip::draw_editor(false, center - vec2(1.0, 1.0), camera_pos, color, resources);
-                        Chip::draw_editor(false, center + vec2(1.0, 1.0), camera_pos, color, resources);
-                    },
-                    CrateKind::Life => Chip::draw_editor(true, center, camera_pos, color, resources),
-                    CrateKind::Key(key_color) => Key::draw_editor(*key_color, center, camera_pos, color, resources),
-                    CrateKind::Explosive => {}
-                }
-            }
+            EntityKind::Crate(kind) => Crate::draw(Some(*kind), pos, if *kind == CrateKind::Explosive { Some(0.0) } else { None }, camera_pos, color, resources),
             EntityKind::Key(c) => Key::draw_editor(*c, pos, camera_pos, color, resources),
             EntityKind::Chip(_) => Chip::draw_editor(false, pos, camera_pos, color, resources),
             EntityKind::Life(_) => Chip::draw_editor(true, pos, camera_pos, color, resources),
             EntityKind::Frog(_) => Frog::draw_editor(pos, camera_pos, color, resources),
             EntityKind::Goat => Goat::draw_editor(pos, camera_pos, color, resources),
-            EntityKind::Armadillo(_) => Armadillo::draw_editor(pos, camera_pos, color, resources),
+            EntityKind::Armadillo(_, false) => Armadillo::draw_editor(pos, None, camera_pos, color, resources),
+            EntityKind::Armadillo(_, true)  => Armadillo::draw_editor(pos, Some(resources.tile_animation_timer() as f32), camera_pos, color, resources),
             _ => {}
         }
     }
@@ -277,7 +240,8 @@ impl From<EntityKind> for u8 {
             EntityKind::Life(_) => 17,
             EntityKind::Frog(_) => 19,
             EntityKind::Goat => 22,
-            EntityKind::Armadillo(_) => 24,
+            EntityKind::Armadillo(_, false) => 24,
+            EntityKind::Armadillo(_, true)  => 25,
 
             // These shouldn't be saved!! they can't be placed!!
             EntityKind::DangerCloud |
@@ -314,7 +278,8 @@ impl TryFrom<u8> for EntityKind {
             17 => Ok(EntityKind::Life(false)),
             19 => Ok(EntityKind::Frog(false)),
             22 => Ok(EntityKind::Goat),
-            24 => Ok(EntityKind::Armadillo(false)),
+            24 => Ok(EntityKind::Armadillo(false, false)),
+            25 => Ok(EntityKind::Armadillo(false, true)),
             _ => Err(())
         }
     }

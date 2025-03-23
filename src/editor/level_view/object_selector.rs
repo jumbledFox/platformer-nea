@@ -85,7 +85,8 @@ impl ObjectSelector {
             (EntityKind::Crate(CrateKind::Frog(true)), "Multi-frog crate".to_string()),
             (EntityKind::Crate(CrateKind::Explosive), "Explosive crate".to_string()),
             (EntityKind::Goat, "Aerosol Kid".to_string()),
-            (EntityKind::Armadillo(false), "Armadillo".to_string()),
+            (EntityKind::Armadillo(false, false), "Armadillo".to_string()),
+            (EntityKind::Armadillo(false, true), "Spinning Armadillo".to_string()),
         ];
 
         for col in LockColor::colors().iter() {

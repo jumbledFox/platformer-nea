@@ -45,7 +45,7 @@ impl EntitySpawner {
                 EntityKind::Life(gravity) => Box::new(Chip::new(true,  e.pos, if gravity { Some(e.vel) } else { None }, id)),
                 EntityKind::Frog(invuln) => Box::new(Frog::new(e.pos, e.vel, invuln, id)),
                 EntityKind::Goat => Box::new(Goat::new(e.pos, e.vel, id)),
-                EntityKind::Armadillo(invuln) => Box::new(Armadillo::new(e.pos, e.vel, invuln, id)),
+                EntityKind::Armadillo(invuln, spinning) => Box::new(Armadillo::new(e.pos, e.vel, spinning, invuln, id)),
                 EntityKind::DangerCloud => Box::new(DangerCloud::new(e.pos, e.vel, id)),
                 EntityKind::Explosion => Box::new(Explosion::new(e.pos, id))
             };
