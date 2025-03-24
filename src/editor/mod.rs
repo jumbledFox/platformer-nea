@@ -70,7 +70,7 @@ impl GameState for Editor {
             }
         }
         // If the scene is meant to be closed... do that!
-        if self.close_scene {
+        if self.close_scene || self.scene.as_ref().is_some_and(|s| s.completed()) {
             self.close_scene = false;
             self.scene = None;
         }

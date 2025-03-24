@@ -11,7 +11,7 @@ use macroquad::{color::{Color, GREEN, ORANGE, RED, WHITE}, input::{is_key_presse
 use particles::{ParticleKind, Particles};
 use sign_display::SignDisplay;
 
-use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
+use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, draw_rect_lines, rect}, VIEW_SIZE};
 
 use super::{entity::{chip::Chip, crate_entity::Crate, key::Key, powerup::Powerup, Entity, EntityKind, Id}, player::{FeetPowerup, HeadPowerup, Invuln, Player, PowerupKind}};
 
@@ -38,9 +38,33 @@ pub struct Scene {
     fader: Fader,
     sign_display: SignDisplay,
     physics_update_timer: f32,
+
+    completed: bool,
 }
 
 impl Scene {
+    pub fn new(level_data: &LevelData, head_powerup: Option<HeadPowerup>, feet_powerup: Option<FeetPowerup>) -> Self {
+        let level = level_data.to_level();
+        let spawn = level.spawn();
+
+        Self {
+            level,
+            timer: 300.0,
+
+            camera: Camera::new(spawn),
+            player: Player::new(spawn, head_powerup, feet_powerup),
+            entities:       Vec::with_capacity(128),
+            entity_spawner: EntitySpawner::default(),
+            particles:      Particles::default(),
+
+            fader:        Fader::default(),
+            sign_display: SignDisplay::default(),
+            physics_update_timer: PHYSICS_STEP,
+
+            completed: false,
+        }
+    }
+
     pub fn from_editor_level(editor_level: &EditorLevel, player_spawn: Option<Vec2>) -> Self {
         // TODO: ... We can set world as 0 since we don't really care at all, as we're in the editor... for now?! 
         let level = LevelData::from_editor_level(editor_level, 0)
@@ -61,7 +85,22 @@ impl Scene {
             fader: Fader::default(),
             sign_display: SignDisplay::default(),
             physics_update_timer: PHYSICS_STEP,
+
+            completed: false,
         }
+    }
+
+    pub fn completed(&self) -> bool {
+        self.completed
+    }
+    pub fn player_screen_space_center(&self) -> Vec2 {
+        self.player.pos() - 8.0 - self.camera.pos()
+    }
+    pub fn head_powerup(&self) -> Option<HeadPowerup> {
+        self.player.head_powerup()
+    }
+    pub fn feet_powerup(&self) -> Option<FeetPowerup> {
+        self.player.feet_powerup()
     }
 
     pub fn update(&mut self, lives: &mut usize, deltatime: f32, resources: &mut Resources) {
@@ -107,7 +146,7 @@ impl Scene {
 
         // Update all of the physics in a fixed time-step
         self.physics_update_timer += deltatime;
-        while self.physics_update_timer >= PHYSICS_STEP {
+        while self.physics_update_timer >= PHYSICS_STEP &&!self.completed {
             self.particles.update(&self.camera);
 
             self.player.physics_update(&mut self.entities, &mut self.entity_spawner, &mut self.particles, &mut self.level, resources);
@@ -193,6 +232,14 @@ impl Scene {
                     }
                 }
             }
+
+            // Finishing
+            let fin_hitbox = rect(self.level.finish(), vec2(16.0, 16.0));
+            if fin_hitbox.contains(self.player.pos() + 8.0) {
+                self.completed = true;
+                println!("you da winner!! :3");
+            }
+
             self.level.fixed_update();
             self.physics_update_timer -= PHYSICS_STEP;
 

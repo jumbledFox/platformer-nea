@@ -41,8 +41,8 @@ impl Chip {
 
     pub fn particle_color(life: bool) -> Color {
         match life {
-            false => Color::from_hex(0x6cfb4c),
-            true  => Color::from_hex(0xff5ce6),
+            false => Color::from_hex(0x6eee51),
+            true  => Color::from_hex(0xff50e5),
         }
     }
 

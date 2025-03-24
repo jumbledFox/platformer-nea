@@ -77,6 +77,8 @@ pub trait Entity {
         false
     }
 
+    // TODO: Headbutt for helmet
+
     fn bump(&mut self) { }
 
     // TODO: add bumping positions to level and bump entities standing on them

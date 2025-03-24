@@ -84,7 +84,7 @@ impl Entity for Explosion {
             particles.add_particle(self.center + angle * 16.0, angle * gen_range(0.4, 0.9), ParticleKind::ExplosionSmoke);
         }
         // Hurt things
-        let player_rect_size = SIZE * 0.5;
+        let player_rect_size = SIZE * 1.1;
         let player_rect = rect(self.center - player_rect_size / 2.0, player_rect_size);
         let kill_rect_size = SIZE * 1.2;
         let kill_rect = rect(self.center - kill_rect_size / 2.0, kill_rect_size);

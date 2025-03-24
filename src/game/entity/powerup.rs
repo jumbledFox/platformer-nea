@@ -51,10 +51,10 @@ impl Powerup {
 
     pub fn particle_color(kind: PowerupKind) -> Color {
         match kind {
-            PowerupKind::Head(HeadPowerup::Helmet)      => Color::from_hex(0xee4d56),
-            PowerupKind::Head(HeadPowerup::XrayGoggles) => Color::from_hex(0x81f2b0),
+            PowerupKind::Head(HeadPowerup::Helmet)      => Color::from_hex(0xff6d75),
+            PowerupKind::Head(HeadPowerup::XrayGoggles) => Color::from_hex(0x70e09e),
             PowerupKind::Feet(FeetPowerup::Boots)       => Color::from_hex(0xb37972),
-            PowerupKind::Feet(FeetPowerup::MoonShoes)   => Color::from_hex(0xf278fe),
+            PowerupKind::Feet(FeetPowerup::MoonShoes)   => Color::from_hex(0x93fb7b),
             PowerupKind::Feet(FeetPowerup::Skirt)       => Color::from_hex(0xfda7ff),
         }
     }

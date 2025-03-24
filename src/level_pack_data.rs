@@ -59,6 +59,13 @@ pub fn level_pos_to_pos(level_pos: LevelPosition) -> Vec2 {
 }
 
 impl LevelData {
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    pub fn world(&self) -> u8 {
+        self.world
+    }
+
     // Turning an editor level into LevelData
     pub fn from_editor_level(editor_level: &EditorLevel, world: u8) -> Self {
         Self {
@@ -157,6 +164,12 @@ impl LevelPackData {
     }
     pub fn author(&self) -> &String {
         &self.author
+    }
+    pub fn worlds(&self) -> &Vec<String> {
+        &self.worlds
+    }
+    pub fn levels(&self) -> &Vec<LevelData> {
+        &self.levels
     }
 
     pub fn from_editor_level_pack(value: &EditorLevelPack) -> Self {

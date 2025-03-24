@@ -160,9 +160,9 @@ impl Entity for Armadillo {
         if vel.x.abs() > 0.0 {
             if let State::Squished(frame, ..) = self.state {
                 self.state = State::Spinning(frame);
+                self.invuln = Some(0.5);
             }
         }
-        self.invuln = Some(0.5)
     }
     fn should_throw(&self) -> bool {
         !matches!(self.state, State::Squished(..))

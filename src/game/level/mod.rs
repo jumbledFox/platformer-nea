@@ -111,6 +111,13 @@ impl Level {
         self.entity_spawns.remove(&pos);
     }
 
+    pub fn spawn(&self) -> Vec2 {
+        self.spawn
+    }
+    pub fn finish(&self) -> Vec2 {
+        self.finish
+    }
+
     // Switch blocks - sets the state of all switch tiles in the level and the background
     fn set_switch_state(&mut self, enabled: bool) {
         self.new_on_off_state = Some(enabled);

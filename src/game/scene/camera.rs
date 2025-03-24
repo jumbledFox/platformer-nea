@@ -15,7 +15,7 @@ const X_LEFT:  f32 = VIEW_SIZE.x / 3.0 * 1.3;
 const X_RIGHT: f32 = VIEW_SIZE.x / 3.0 * 1.7;
 const Y_TOP_GRND: f32 = VIEW_SIZE.y / 3.0 * 1.5;
 const Y_TOP:      f32 = VIEW_SIZE.y / 3.0 * 1.0;
-const Y_BOT:      f32 = VIEW_SIZE.y / 3.0 * 1.8;
+const Y_BOT:      f32 = VIEW_SIZE.y / 3.0 * 2.1;
 
 pub struct Camera {
     center: Vec2,
@@ -115,18 +115,25 @@ impl Camera {
             Some(Dir::Right) if player.vel().x >= 0.0 => X_LEFT  - 8.0,
             _ => self.target_offset.x
         };
-        approach_target(&mut self.center.x, player.vel().x.abs() * 1.5, player.pos().x.floor() - self.target_offset.x + VIEW_SIZE.x / 2.0);
+        let approach = match player.state() {
+            player::State::Climbing => 2.0,
+            _ => 1.5,
+        };
+        approach_target(&mut self.center.x, player.vel().x.abs() * approach, player.pos().x.floor() - self.target_offset.x + VIEW_SIZE.x / 2.0);
 
         // Vertical clamping
         let top_grnd = self.center.y - VIEW_SIZE.y / 2.0 + Y_TOP_GRND;
         let top      = self.center.y - VIEW_SIZE.y / 2.0 + Y_TOP;
         let bot      = self.center.y - VIEW_SIZE.y / 2.0 + Y_BOT - 16.0;
-        if player.pos().y < top_grnd && !matches!(player.state(), player::State::Jumping | player::State::Falling | player::State::Climbing) {
+        let grounded = !matches!(player.state(), player::State::Jumping | player::State::Falling | player::State::Climbing);
+        // Top
+        if player.pos().y < top_grnd && grounded {
             self.center.y -= ((player.pos().y - top_grnd).abs() / 20.0).max(0.1);
         }
         else if player.pos().y < top {
             self.center.y -= (player.pos().y - top).abs() / 10.0;
         }
+        // Bottom
         if player.pos().y > bot {
             self.center.y += (player.pos().y - bot).abs() / 10.0;
         }

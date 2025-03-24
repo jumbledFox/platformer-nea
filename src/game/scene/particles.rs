@@ -83,9 +83,9 @@ impl Particle {
             ParticleKind::Crate(CrateParticleKind::Diag2) => vec2(9.0, 16.0),
             ParticleKind::ExplosionSmoke => vec2(80.0, 0.0),
             ParticleKind::Explosion => vec2(80.0, 32.0),
-            ParticleKind::Sparkle(_) if self.timer >= 0.3  => vec2(57.0, 32.0),
-            ParticleKind::Sparkle(_) if self.timer >= 0.2  => vec2(54.0, 32.0),
-            ParticleKind::Sparkle(_) if self.timer >= 0.1 => vec2(51.0, 32.0),
+            ParticleKind::Sparkle(_) if self.timer >= 0.3  => vec2(63.0, 32.0),
+            ParticleKind::Sparkle(_) if self.timer >= 0.2  => vec2(58.0, 32.0),
+            ParticleKind::Sparkle(_) if self.timer >= 0.1  => vec2(53.0, 32.0),
             ParticleKind::Sparkle(_) => vec2(48.0, 32.0),
             ParticleKind::OneUp => vec2(48.0, 0.0),
             ParticleKind::Stone(i) => vec2(i as f32 * 16.0, 48.0)
@@ -101,7 +101,7 @@ impl Particle {
             ParticleKind::Crate(CrateParticleKind::Diag2) => vec2(8.0, 8.0),
             ParticleKind::ExplosionSmoke => vec2(41.0, 29.0),
             ParticleKind::Explosion => vec2(48.0, 40.0),
-            ParticleKind::Sparkle(_) => vec2(3.0, 9.0),
+            ParticleKind::Sparkle(_) => vec2(5.0, 9.0),
             ParticleKind::OneUp => vec2(15.0, 7.0),
             ParticleKind::Stone(_) => vec2(16.0, 16.0),
         };
