@@ -1,12 +1,31 @@
-use macroquad::{math::{vec2, Vec2}, rand::{gen_range, rand}};
+use macroquad::{color::{BLUE, ORANGE, RED}, math::{vec2, Vec2}, rand::{gen_range, rand}, shapes::draw_line};
 
-use crate::{level_pack_data::{pos_to_level_pos, LevelPosition}, VIEW_SIZE};
+use crate::{game::{level::Level, player::{self, Dir, Player}}, level_pack_data::{pos_to_level_pos, LevelPosition}, util::approach_target, VIEW_SIZE};
+
+/*
+let (x1, x2) = (VIEW_SIZE.x / 3.0, 2.0 * VIEW_SIZE.x / 3.0);
+        draw_line(x1, 0.0, x1, VIEW_SIZE.y, 1.0, RED);
+        draw_line(x2, 0.0, x2, VIEW_SIZE.y, 1.0, RED);
+        let (y1, y2) = (0.7 * VIEW_SIZE.y / 3.0, 2.3 * VIEW_SIZE.y / 3.0);
+        draw_line(0.0, y1, VIEW_SIZE.x, y1, 1.0, ORANGE);
+        draw_line(0.0, y2, VIEW_SIZE.x, y2, 1.0, ORANGE);
+*/
+
+const X_LEFT:  f32 = VIEW_SIZE.x / 3.0 * 1.3;
+const X_RIGHT: f32 = VIEW_SIZE.x / 3.0 * 1.7;
+const Y_TOP_GRND: f32 = VIEW_SIZE.y / 3.0 * 1.5;
+const Y_TOP:      f32 = VIEW_SIZE.y / 3.0 * 1.0;
+const Y_BOT:      f32 = VIEW_SIZE.y / 3.0 * 1.8;
 
 pub struct Camera {
     center: Vec2,
 
     center_tile: LevelPosition,
     should_update_entities: bool,
+
+    last_player_x: f32,
+    target_offset: Vec2,
+    // target: Vec2,
 
     shook: bool,
     shake_timer: f32,
@@ -22,6 +41,9 @@ impl Camera {
             center_tile: pos_to_level_pos(player_pos),
             should_update_entities: true,
 
+            target_offset: Vec2::ZERO,
+            last_player_x: 0.0,
+
             shook: false,
             shake_timer: 0.0,
             shake_first: true,
@@ -31,7 +53,7 @@ impl Camera {
     }
 
     pub fn pos(&self) -> Vec2 {
-        (self.center - VIEW_SIZE / 2.0).floor()
+        (self.center - VIEW_SIZE / 2.0 + self.shake_offset).floor()
     }
 
     pub fn entity_in_rect(&self, pos: LevelPosition) -> bool {
@@ -58,8 +80,15 @@ impl Camera {
         self.shook
     }
 
+    // Used for when the player teleports through a door or something
+    // TODO: Camera when doors
+    pub fn offset_center(&mut self, pos: Vec2) {
+        self.center += pos;
+    }
+
     // Yeah this needs to be much better, it's temporary!!!!
-    pub fn update(&mut self, player_pos: Vec2, deltatime: f32) {
+    pub fn update(&mut self, deltatime: f32, player: &Player, level: &Level) {
+        // SHAKING
         self.shook = false;
         // Using this makes sure the shake always has some impact, and can never by chance be 0, or something too close to it
         let shake_var = |low: f32, high: f32| {
@@ -80,12 +109,48 @@ impl Camera {
             self.shake_timer += deltatime;
         }
 
-        self.center = player_pos.max(VIEW_SIZE / 2.0) + self.shake_offset;
-        
+        // Horizontal clamping
+        self.target_offset.x = match player.move_dir() {
+            Some(Dir::Left)  if player.vel().x <= 0.0 => X_RIGHT - 8.0,
+            Some(Dir::Right) if player.vel().x >= 0.0 => X_LEFT  - 8.0,
+            _ => self.target_offset.x
+        };
+        approach_target(&mut self.center.x, player.vel().x.abs() * 1.5, player.pos().x.floor() - self.target_offset.x + VIEW_SIZE.x / 2.0);
+
+        // Vertical clamping
+        let top_grnd = self.center.y - VIEW_SIZE.y / 2.0 + Y_TOP_GRND;
+        let top      = self.center.y - VIEW_SIZE.y / 2.0 + Y_TOP;
+        let bot      = self.center.y - VIEW_SIZE.y / 2.0 + Y_BOT - 16.0;
+        if player.pos().y < top_grnd && !matches!(player.state(), player::State::Jumping | player::State::Falling | player::State::Climbing) {
+            self.center.y -= ((player.pos().y - top_grnd).abs() / 20.0).max(0.1);
+        }
+        else if player.pos().y < top {
+            self.center.y -= (player.pos().y - top).abs() / 10.0;
+        }
+        if player.pos().y > bot {
+            self.center.y += (player.pos().y - bot).abs() / 10.0;
+        }
+
+        // Clamp to the bounds of the level
+        self.center = self.center.clamp(VIEW_SIZE / 2.0, vec2(level.width() as f32, level.height() as f32) * 16.0 - VIEW_SIZE / 2.0);
+
         let center_tile = pos_to_level_pos(self.center);
         if center_tile != self.center_tile {
             self.should_update_entities = true;
             self.center_tile = center_tile;
         }
+    }
+
+    pub fn draw(&self, debug: bool) {
+        if !debug {
+            return;
+        }
+        draw_line(X_LEFT,  0.0, X_LEFT,  VIEW_SIZE.y, 1.0, RED);
+        draw_line(X_RIGHT, 0.0, X_RIGHT, VIEW_SIZE.y, 1.0, RED);
+        draw_line(0.0, Y_TOP_GRND, VIEW_SIZE.x, Y_TOP_GRND, 1.0, BLUE);
+        draw_line(0.0, Y_TOP, VIEW_SIZE.x, Y_TOP, 1.0, ORANGE);
+        draw_line(0.0, Y_BOT, VIEW_SIZE.x, Y_BOT, 1.0, ORANGE);
+        // let (y1, y2) = (0.7 * VIEW_SIZE.y / 3.0, 2.3 * VIEW_SIZE.y / 3.0);
+        // draw_line(0.0, y2, VIEW_SIZE.x, y2, 1.0, ORANGE);
     }
 }

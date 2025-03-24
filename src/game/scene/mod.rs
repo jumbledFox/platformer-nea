@@ -53,7 +53,7 @@ impl Scene {
             timer: 0.0,
 
             camera: Camera::new(player_spawn),
-            player: Player::new(player_spawn, None, Some(FeetPowerup::Skirt)),
+            player: Player::new(player_spawn, None, None),
             entities:     Vec::with_capacity(64),
             entity_spawner: EntitySpawner::default(),
             particles: Particles::default(),
@@ -89,6 +89,7 @@ impl Scene {
         let mut freeze = self.fader.fading();
         if let Some(dest) = self.fader.move_player() {
             freeze = false;
+            self.camera.offset_center(dest - self.player.pos());
             self.player.set_pos(dest);
         }
 
@@ -98,7 +99,7 @@ impl Scene {
 
         self.player.update_move_dir();
         if freeze { return; }
-        self.player.update(&mut self.entities, &mut self.fader, &mut self.sign_display, &mut self.level, resources);
+        self.player.update(&mut self.entities, &mut self.camera, &mut self.fader, &mut self.sign_display, &mut self.level, resources);
 
         for e in &mut self.entities {
             e.update(resources);
@@ -198,7 +199,7 @@ impl Scene {
             // Sorting them every frame?! idk man...... it works..
             self.entities.sort_by(|e1, e2| e1.kind().cmp(&e2.kind()));
 
-            self.camera.update(self.player.pos(), deltatime);
+            self.camera.update(deltatime, &self.player, &self.level);
         }
 
         self.level.update_bumped_tiles(deltatime);
@@ -269,5 +270,6 @@ impl Scene {
 
         self.sign_display.draw(resources);
         self.fader.draw();
+        self.camera.draw(debug);
     }
 }

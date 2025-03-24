@@ -4,7 +4,7 @@ use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_
 
 use crate::{game::collision::spike_check, level_pack_data::LevelPosition, resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect, draw_rect_lines}};
 
-use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityKind, Id}, level::{things::{Door, DoorKind}, tile::{TileCollision, TileDir, TileHitKind}, Level}, scene::{entity_spawner::EntitySpawner, fader::Fader, particles::Particles, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
+use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityKind, Id}, level::{things::{Door, DoorKind}, tile::{TileCollision, TileDir, TileHitKind}, Level}, scene::{camera::Camera, entity_spawner::EntitySpawner, fader::Fader, particles::Particles, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED, PHYSICS_STEP}};
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.0);
@@ -166,6 +166,9 @@ impl Player {
     }
     pub fn vel(&self) -> Vec2 {
         self.vel
+    }
+    pub fn move_dir(&self) -> Option<Dir> {
+        self.move_dir
     }
     pub fn chips(&self) -> usize {
         self.chips
@@ -395,26 +398,10 @@ impl Player {
         self.invuln = Invuln::Powerup(powerup, 1.0);
     }
 
-    pub fn update(&mut self, entities: &mut Vec<Box<dyn Entity>>, fader: &mut Fader, sign_display: &mut SignDisplay, level: &mut Level, resources: &Resources) {
+    pub fn update(&mut self, entities: &mut Vec<Box<dyn Entity>>, camera: &mut Camera, fader: &mut Fader, sign_display: &mut SignDisplay, level: &mut Level, resources: &Resources) {
         if self.prev_on_ladder && !self.center_on_ladder(level, resources) {
             self.prev_on_ladder = false;
         }
-
-        // if is_key_pressed(KeyCode::Key8) {
-        //     match self.head_powerup {
-        //         None => self.collect_powerup(PowerupKind::Head(HeadPowerup::Helmet)),
-        //         Some(HeadPowerup::Helmet) => self.collect_powerup(PowerupKind::Head(HeadPowerup::XrayGoggles)),
-        //         Some(HeadPowerup::XrayGoggles) => self.head_powerup = None,
-        //     }
-        // }
-        // if is_key_pressed(KeyCode::Key9) {
-        //     match self.feet_powerup {
-        //         None => self.collect_powerup(PowerupKind::Feet(FeetPowerup::Boots)),
-        //         Some(FeetPowerup::Boots) => self.collect_powerup(PowerupKind::Feet(FeetPowerup::MoonShoes)),
-        //         Some(FeetPowerup::MoonShoes) => self.collect_powerup(PowerupKind::Feet(FeetPowerup::Skirt)),
-        //         Some(FeetPowerup::Skirt) => self.feet_powerup = None,
-        //     }
-        // }
 
         // Update the state
         self.update_state(level, resources);
@@ -542,6 +529,7 @@ impl Player {
         }
 
         if let Some(n) = new_pos {
+            camera.offset_center(n - self.pos);
             self.pos = n;
         }
     }
