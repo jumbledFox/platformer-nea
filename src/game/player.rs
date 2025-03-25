@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, rand::gen_range, shapes::draw_circle};
+use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, rand::gen_range, shapes::draw_circle, texture::{draw_texture_ex, DrawTextureParams}};
 
 use crate::{game::collision::spike_check, level_pack_data::LevelPosition, resources::Resources, text_renderer::render_text, util::{approach_target, draw_rect, draw_rect_lines}};
 
@@ -778,6 +778,39 @@ impl Player {
             }
         };
         Rect::new(x, y, 16.0, height)
+    }
+    
+    pub fn draw_intro(pos: Vec2, size: f32, head_powerup: Option<HeadPowerup>, feet_powerup: Option<FeetPowerup>, timer: f32, resources: &Resources) {
+        let run = timer % 0.5 > 0.25;
+
+        let mut y_offset = match feet_powerup {
+            None | Some(FeetPowerup::Skirt) => 8.0,
+            _ => 10.0,
+        } * size;
+        if run {
+            y_offset += size;
+        }
+
+        let draw_player_part = |part: PlayerPart| {
+            let y = match part {
+                PlayerPart::Head { .. } => 0.0,
+                PlayerPart::Arm  { .. } => 3.0,
+                PlayerPart::Body { .. } => 15.0,
+                PlayerPart::Feet { .. } => 18.0,
+            } * size;
+            let part_rect = Player::part_rect(part);
+            draw_texture_ex(resources.entity_atlas(), pos.x, pos.y + y - y_offset, WHITE, DrawTextureParams {
+                dest_size: Some(part_rect.size() * size),
+                source: Some(part_rect),
+                ..Default::default()
+            });
+        };
+
+        let ladder = false;
+        draw_player_part(PlayerPart::Body { ladder });
+        draw_player_part(PlayerPart::Head { powerup: head_powerup, ladder });
+        draw_player_part(PlayerPart::Feet { powerup: feet_powerup, run, ladder });
+        draw_player_part(PlayerPart::Arm { kind: PlayerArmKind::Normal });
     }
 
     pub fn draw(&self, camera_pos: Vec2, resources: &Resources, debug: bool) {

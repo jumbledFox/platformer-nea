@@ -94,13 +94,16 @@ impl Scene {
         self.completed
     }
     pub fn player_screen_space_center(&self) -> Vec2 {
-        self.player.pos() - 8.0 - self.camera.pos()
+        self.player.pos() + 8.0 - self.camera.pos()
     }
     pub fn head_powerup(&self) -> Option<HeadPowerup> {
         self.player.head_powerup()
     }
     pub fn feet_powerup(&self) -> Option<FeetPowerup> {
         self.player.feet_powerup()
+    }
+    pub fn chips(&self) -> usize {
+        self.player.chips()
     }
 
     pub fn update(&mut self, lives: &mut usize, deltatime: f32, resources: &mut Resources) {
@@ -237,7 +240,6 @@ impl Scene {
             let fin_hitbox = rect(self.level.finish(), vec2(16.0, 16.0));
             if fin_hitbox.contains(self.player.pos() + 8.0) {
                 self.completed = true;
-                println!("you da winner!! :3");
             }
 
             self.level.fixed_update();

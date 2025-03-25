@@ -1,9 +1,10 @@
 // A bunch of levels to be played, the global chip counter, etc.
 // Loaded from a level pack
 
-use macroquad::{color::BLACK, window::clear_background};
+use macroquad::{color::BLACK, input::is_key_pressed, math::Vec2, window::clear_background};
+use player::{FeetPowerup, HeadPowerup};
 use scene::Scene;
-use transition::Transition;
+use transition::{Transition, TransitionKind};
 
 use crate::{level_pack_data::LevelPackData, resources::Resources, ui::Ui, GameState};
 
@@ -15,145 +16,171 @@ pub mod entity;
 pub mod player;
 
 #[derive(PartialEq, Eq)]
-enum EndAction {
-    Finish, Intro, GameOver,
+enum TransitionAction {
+    Finish, Intro, Death, GameOver,
 }
 
 pub struct Game {
     transition: Transition, // Based?
-    end_action: Option<EndAction>,
+    transition_action: Option<TransitionAction>,
 
     level_pack: LevelPackData,
     current_level: usize,
 
     level_name: String,
     world_name: String,
+    next_powerups: (Option<HeadPowerup>, Option<FeetPowerup>),
+    prev_chips: usize,
 
     // player types
-    scene: Scene,
+    scene: Option<Scene>,
     lives: usize,
     chips: usize,
 }
 
 impl Game {
     pub fn new(level_pack: LevelPackData, resources: &mut Resources) -> Self {
-        // would crash if there are no levels... but that's never the case!!
-        // literally impossible
-        let first_level = level_pack.levels().get(0).unwrap();
-        let mut scene = Scene::new(first_level, None, None);
-        // Update the scene so we can load all the entities and stuff
-        scene.update(&mut 3, 0.0, resources);
-
-        // let level_name = first_level.name();
-        // let world_name = level_pack.worlds().get(first_level.world() - 1);
-
         Self {
             transition: Transition::new(&level_pack),
-            end_action: Some(EndAction::Intro),
+            transition_action: None,
             
             level_pack,
             current_level: 0,
 
-            level_name: String::from("BLARG"),
-            world_name: String::from("AAAAH!"),
+            level_name: String::from("you'll never see this"),
+            world_name: String::from("muahahaha :3 "),
+            next_powerups: (None, None),
+            prev_chips: 0,
 
-            scene,
+            scene: None,
             lives: 3,
             chips: 0,
         }
     }
+
+    fn load_scene(&mut self, index: usize, head_powerup: Option<HeadPowerup>, feet_powerup: Option<FeetPowerup>, pack: &LevelPackData, resources: &mut Resources) -> Option<(Scene, String, String)> {
+        let level_data = pack.levels().get(index)?;
+
+        let mut scene = Scene::new(level_data, head_powerup, feet_powerup);
+        // Update the scene so we can load all the entities and stuff
+        // kinda hacky passing &mut 1... idk
+        scene.update(&mut 1, 0.0, resources);
+
+        let level_name = level_data.name().clone();
+        let world_name = match level_data.world() as usize {
+            0 => String::new(),
+            w @ _ => pack.worlds().get(w-1).cloned().unwrap_or(String::new()),
+        };
+
+        Some((scene, level_name, world_name))
+    }
 }
 
 impl GameState for Game {
-    fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources, next_state: &mut Option<Box<dyn GameState>>) {
-        // if transitioning the pack intro, update and return
+    fn update(&mut self, deltatime: f32, _ui: &mut Ui, resources: &mut Resources, _next_state: &mut Option<Box<dyn GameState>>) {
+        self.transition.update(deltatime);
+        
+        if self.transition.time_up() {
+            match self.transition.kind() {
+                TransitionKind::PackStart(..) |
+                TransitionKind::Finish(_)     |
+                TransitionKind::GameOver      |
+                TransitionKind::Death(_)  => self.transition_action = Some(TransitionAction::Intro),
+                _ => self.transition_action = None,
+            };
+            self.transition.set_none();
+        }
 
-        if let Some(end_action) = self.end_action.take() {
-            let (mut head_powerup, mut feet_powerup) = (None, None);
-
-            let mut next_level: Option<usize> = None;
-
-            match end_action {
-                EndAction::Intro => {
+        if let Some(transition_action) = self.transition_action.take() {
+            match transition_action {
+                TransitionAction::Intro => {
+                    self.chips += self.prev_chips;
+                    self.prev_chips = 0;
+                    // Load the level and begin the transition
+                    if let Some(level_data) = self.level_pack.levels().get(self.current_level) {
+                        let mut scene = Scene::new(level_data, self.next_powerups.0, self.next_powerups.1);
+                        // Update the scene so we can load all the entities and stuff
+                        // kinda hacky passing &mut 1... idk
+                        scene.update(&mut 1, 0.0, resources);
+                        self.scene = Some(scene);
+                        self.level_name = level_data.name().clone();
+                        self.world_name = match level_data.world() as usize {
+                            0     => String::new(),
+                            w @ _ => self.level_pack.worlds().get(w-1).cloned().unwrap_or(String::new()),
+                        };
+                        self.transition.begin_intro(
+                            self.level_name.clone(),
+                            self.world_name.clone(),
+                            level_data.world(),
+                            self.next_powerups.0.take(),
+                            self.next_powerups.1.take(),
+                            self.lives
+                        );
+                    }
+                    // Or if we've beaten all the levels, show the end screen!
+                    else {
+                        self.scene = None;
+                        println!("pack completed!!");
+                    }
+                }
+                TransitionAction::Finish => {
+                    let (center, head, feet, prev_chips) = match &self.scene {
+                        Some(s) => (s.player_screen_space_center(), s.head_powerup(), s.feet_powerup(), s.chips()),
+                        // Should never happen, but im not gonna unwrap now, am i?!
+                        None => (Vec2::ZERO, None, None, 0),
+                    };
+                    self.current_level += 1;
+                    self.next_powerups = (head, feet);
+                    self.prev_chips = prev_chips;
+                    self.transition.begin_finish(center);
                     
                 }
-                EndAction::Finish => {
-                    self.current_level += 1;
-                    head_powerup = self.scene.head_powerup();
-                    feet_powerup = self.scene.feet_powerup();
-                    next_level = Some(self.current_level + 1);
+                TransitionAction::Death => {
+                    let center = match &self.scene {
+                        Some(s) => s.player_screen_space_center(),
+                        None => Vec2::ZERO,
+                    };
+                    self.transition.begin_death(center);
                 }
-                EndAction::GameOver => {
+                TransitionAction::GameOver => {
                     // Go back to the first level in the world
-                    next_level = Some(0);
+                    if let Some(level) = self.level_pack.levels().get(self.current_level) {
+                        let world = level.world();
+                        self.current_level = self.level_pack.levels()
+                            .iter()
+                            .position(|l| l.world() == world)
+                            .unwrap_or_default();
+                    }
+                    self.transition.begin_game_over();
                 }
-            }
-
-            // Load the new level
-            if let Some(level_data) = self.level_pack.levels().get(self.current_level) {
-                // Load the next scene and update it once to load all the entities and shit
-                self.scene = Scene::new(level_data, head_powerup, feet_powerup);
-                self.scene.update(&mut self.lives, deltatime, resources);
-            } else {
-                // Finish pack screen!
             }
         }
         
-        /*
-        if transitioning, update and return
-
-        update the scene
-        */
-
-
-        self.scene.update(&mut self.lives, deltatime, resources);
-        self.end_action = match (self.scene.completed(), false, self.lives) {
-            // Finishing level
-            (true, _, _) => Some(EndAction::Finish),
-            // Game over
-            (_, true, 0) => Some(EndAction::GameOver),
-            // Respawning
-            (_, true, _) => Some(EndAction::Intro),
-            // Nothing
-            (false, false, _) => None,
-        };
-
-        // Update the scene if it exists
-        // let mut end_action: Option<LevelEndAction> = None;
-
-        // if let Some(scene) = &mut self.scene {
-        //     scene.update(&mut self.lives, deltatime, resources);
-
-        //     end_action = match (scene.completed(), false, self.lives) {
-        //         // Finishing level
-        //         (true, _, _) => Some(LevelEndAction::Finish),
-        //         // Game over
-        //         (_, true, 0) => Some(LevelEndAction::GameOver),
-        //         // Respawning
-        //         (_, true, _) => Some(LevelEndAction::Intro),
-        //         // Nothing
-        //         (false, false, _) => None,
-        //     };
-
-        //     if let Some(end_action) = end_action {
-        //         if end_action == LevelEndAction::Intro {
-        //             // self.transition.begin_intro(level_name, world, head_powerup, feet_powerup, lives);
-        //         }
-        //         else if end_action == LevelEndAction::Finish {
-        //             // self.transition.begin_finish(scene.player_screen_space_center());
-        //         }
-        //         else if end_action == LevelEndAction::GameOver {
-        //             // self.transition.begin_game_over();
-        //         }
-
-        //         self.scene = None;
-        //     }
-        // }
+        // If transitioning, don't update the scene
+        if !self.transition.can_update() {
+            return;
+        }
+        if let Some(scene) = &mut self.scene {
+            scene.update(&mut self.lives, deltatime, resources);
+    
+            self.transition_action = match (scene.completed(), false, self.lives) {
+                // Finishing level
+                (true, _, _) => Some(TransitionAction::Finish),
+                // Game over
+                (_, true, 0) => Some(TransitionAction::GameOver),
+                // Respawning
+                (_, true, _) => Some(TransitionAction::Death),
+                // Nothing
+                (false, false, _) => None,
+            };
+        }
     }
 
     fn draw(&self, _ui: &Ui, resources: &Resources, debug: bool) {
         clear_background(BLACK);
-        self.scene.draw(self.chips, self.lives, resources, debug);
-        // self.transition.draw(resources);
+        if let Some(scene) = &self.scene {
+            scene.draw(self.chips, self.lives, resources, debug);
+        }
+        self.transition.draw(resources, debug);
     }
 }
