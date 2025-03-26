@@ -29,6 +29,8 @@ pub struct Game {
 
     level_name: String,
     world_name: String,
+    level_num: usize,
+    world_num: usize,
     next_powerups: (Option<HeadPowerup>, Option<FeetPowerup>),
     prev_chips: usize,
 
@@ -49,6 +51,8 @@ impl Game {
 
             level_name: String::from("you'll never see this"),
             world_name: String::from("muahahaha :3 "),
+            level_num: 420,
+            world_num: 69,
             next_powerups: (None, None),
             prev_chips: 0,
 
@@ -56,23 +60,6 @@ impl Game {
             lives: 3,
             chips: 0,
         }
-    }
-
-    fn load_scene(&mut self, index: usize, head_powerup: Option<HeadPowerup>, feet_powerup: Option<FeetPowerup>, pack: &LevelPackData, resources: &mut Resources) -> Option<(Scene, String, String)> {
-        let level_data = pack.levels().get(index)?;
-
-        let mut scene = Scene::new(level_data, head_powerup, feet_powerup);
-        // Update the scene so we can load all the entities and stuff
-        // kinda hacky passing &mut 1... idk
-        scene.update(&mut 1, 0.0, resources);
-
-        let level_name = level_data.name().clone();
-        let world_name = match level_data.world() as usize {
-            0 => String::new(),
-            w @ _ => pack.worlds().get(w-1).cloned().unwrap_or(String::new()),
-        };
-
-        Some((scene, level_name, world_name))
     }
 }
 
@@ -103,12 +90,22 @@ impl GameState for Game {
                         // kinda hacky passing &mut 1... idk
                         scene.update(&mut 1, 0.0, resources);
                         self.scene = Some(scene);
+
+                        self.level_num = 1 + self.current_level - self.level_pack.levels()
+                            .iter()
+                            .position(|l| l.world() == level_data.world())
+                            .unwrap_or_default(); 
+                        self.world_num = level_data.world() as usize;
+
                         self.level_name = level_data.name().clone();
-                        self.world_name = match level_data.world() as usize {
+                        self.world_name = match self.world_num {
                             0     => String::new(),
                             w @ _ => self.level_pack.worlds().get(w-1).cloned().unwrap_or(String::new()),
                         };
+
                         self.transition.begin_intro(
+                            self.level_pack.name().clone(),
+                            self.level_pack.author().clone(),
                             self.level_name.clone(),
                             self.world_name.clone(),
                             level_data.world(),
@@ -179,7 +176,7 @@ impl GameState for Game {
     fn draw(&self, _ui: &Ui, resources: &Resources, debug: bool) {
         clear_background(BLACK);
         if let Some(scene) = &self.scene {
-            scene.draw(self.chips, self.lives, resources, debug);
+            scene.draw(Some((self.world_num, self.level_num)), self.chips, self.lives, resources, debug);
         }
         self.transition.draw(resources, debug);
     }

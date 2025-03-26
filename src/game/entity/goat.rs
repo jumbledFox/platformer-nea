@@ -268,6 +268,7 @@ impl Entity for Goat {
         } else {
             if dist_to_player.x.abs() <= 16.0 * 4.0 && dist_to_player.y.abs() <= 16.0 * 3.0 {
                 self.step_anim = 0.5;
+                // TODO: Check blocks in a line to see if they're not solid
                 self.state = State::Charge(0.5);
             }
         }

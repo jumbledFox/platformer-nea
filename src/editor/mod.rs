@@ -109,7 +109,7 @@ impl GameState for Editor {
 
     fn draw(&self, _ui: &Ui, resources: &Resources, debug: bool) {
         if let Some(scene) = &self.scene {
-            scene.draw(0, self.lives, resources, debug);
+            scene.draw(None, 0, self.lives, resources, debug);
             Editor::draw_editor_logo(resources);
             return;
         }

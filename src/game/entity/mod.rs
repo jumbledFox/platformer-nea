@@ -4,12 +4,13 @@ use crate_entity::{Crate, CrateKind};
 use frog::Frog;
 use goat::Goat;
 use key::Key;
+use launcher::{Launcher, LauncherKind};
 use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
 use powerup::Powerup;
 
 use crate::{level_pack_data::LevelPosition, resources::Resources};
 
-use super::{level::{tile::LockColor, Level}, player::{Dir, FeetPowerup, HeadPowerup, Player, PowerupKind}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles}};
+use super::{level::{tile::{LockColor, TileDir}, Level}, player::{Dir, FeetPowerup, HeadPowerup, Player, PowerupKind}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles}};
 
 pub mod crate_entity;
 pub mod powerup;
@@ -20,6 +21,9 @@ pub mod goat;
 pub mod armadillo;
 pub mod danger_cloud;
 pub mod explosion;
+pub mod launcher;
+pub mod cannonball;
+pub mod fireball;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Id {
@@ -67,6 +71,8 @@ pub trait Entity {
     // Hurting
     fn can_hurt(&self) -> bool { false }
     fn can_stomp(&self) -> bool { false }
+    // TODO: i just put this always true, in case it has any drawbacks and i should remove it...
+    fn can_stomp_when_player_invuln(&self) -> bool { true }
     fn dead(&self) -> bool { false }
     fn kill(&mut self) {}
     fn hit(&mut self) {}
@@ -104,6 +110,9 @@ pub enum EntityKind {
     Frog(bool),
     Goat,
     Armadillo(bool, bool), // invuln, spinning
+    Launcher(LauncherKind),
+    Cannonball,
+    Fireball,
 
     DangerCloud,
     Explosion,
@@ -114,6 +123,7 @@ impl Ord for EntityKind {
         fn order(kind: &EntityKind) -> u8 {
             match kind {
                 // Explosion is ordered first so that shakes can be detected by armadillos
+                EntityKind::Launcher(..) |
                 EntityKind::Explosion   => 0,
                 EntityKind::DangerCloud => 1,
                 EntityKind::Crate(_) => 2,
@@ -122,8 +132,10 @@ impl Ord for EntityKind {
                 EntityKind::Goat |
                 EntityKind::Armadillo(..) |
                 EntityKind::Frog(_) => 5,
-                EntityKind::Key(_)  => 6,
-                EntityKind::Powerup(..)  => 7,
+                EntityKind::Fireball   => 6,
+                EntityKind::Cannonball => 7,
+                EntityKind::Key(_)  => 8,
+                EntityKind::Powerup(..)  => 9,
             }
         }
         order(self).cmp(&order(other))
@@ -179,6 +191,8 @@ impl EntityKind {
             Self::Goat => Goat::object_selector_rect().size(),
             Self::Armadillo(..) => Armadillo::object_selector_rect().size(),
 
+            Self::Launcher(..) => vec2(16.0, 16.0),
+
             _ => Vec2::ZERO,
         }
     }
@@ -204,6 +218,7 @@ impl EntityKind {
             EntityKind::Goat => Goat::draw_editor(pos, camera_pos, color, resources),
             EntityKind::Armadillo(_, false) => Armadillo::draw_editor(pos, None, camera_pos, color, resources),
             EntityKind::Armadillo(_, true)  => Armadillo::draw_editor(pos, Some(resources.tile_animation_timer() as f32), camera_pos, color, resources),
+            EntityKind::Launcher(kind) => Launcher::draw_editor(*kind, pos, camera_pos, color, resources),
             _ => {}
         }
     }
@@ -249,9 +264,19 @@ impl From<EntityKind> for u8 {
             EntityKind::Armadillo(_, false) => 24,
             EntityKind::Armadillo(_, true)  => 25,
 
+            EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Bottom)) => 36,
+            EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Left))   => 37,
+            EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Right))  => 38,
+            EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Top))    => 39,
+            EntityKind::Launcher(LauncherKind::Fireball) => 43,
+
+            // 40, 41, 42
+
             // These shouldn't be saved!! they can't be placed!!
             EntityKind::DangerCloud |
-            EntityKind::Explosion => 0,
+            EntityKind::Explosion   |
+            EntityKind::Cannonball  |
+            EntityKind::Fireball => 255,
         }
     }
 }
@@ -296,6 +321,11 @@ impl TryFrom<u8> for EntityKind {
             22 => Ok(EntityKind::Goat),
             24 => Ok(EntityKind::Armadillo(false, false)),
             25 => Ok(EntityKind::Armadillo(false, true)),
+            36 => Ok(EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Bottom))),
+            37 => Ok(EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Left))),
+            38 => Ok(EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Right))),
+            39 => Ok(EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Top))),
+            43 => Ok(EntityKind::Launcher(LauncherKind::Fireball)),
             _ => Err(())
         }
     }

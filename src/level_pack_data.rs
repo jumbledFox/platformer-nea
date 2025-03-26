@@ -230,10 +230,10 @@ fn string_to_bytes(s: &String, resources: &Resources) -> [u8; MAX_FIELD_LEN] {
     bytes
 }
 
-fn bytes_to_string(begin: usize, bytes: &[u8], resources: &Resources) -> Option<String> {
+fn bytes_to_string(begin: usize, bytes: &[u8], max_len: usize, resources: &Resources) -> Option<String> {
     let mut s = String::new();
 
-    for i in 0..MAX_FIELD_LEN {
+    for i in 0..max_len {
         // Get the byte
         let b = *bytes.get(begin + i)?;
         // If it's null, terminate string!
@@ -327,7 +327,7 @@ impl LevelData {
         };
 
         // Get the name and move the cursor
-        let name = bytes_to_string(*cursor, &bytes, resources)?;
+        let name = bytes_to_string(*cursor, &bytes, 22, resources)?;
         *cursor += MAX_FIELD_LEN;
 
         // Get the world number and move the cursor
@@ -390,7 +390,7 @@ impl LevelData {
         for _ in 0..signs_len {
             let mut lines = Vec::with_capacity(4);
             for _ in 0..4 {
-                lines.push(bytes_to_string(*cursor, &bytes, resources)?);
+                lines.push(bytes_to_string(*cursor, &bytes, 24, resources)?);
                 *cursor += MAX_FIELD_LEN;
             }
             let x = get_byte(*cursor)?;
@@ -469,9 +469,9 @@ impl LevelPackData {
         }
 
         // Get the name and the author
-        let name = bytes_to_string(cursor, bytes, resources)?;
+        let name = bytes_to_string(cursor, bytes, 22, resources)?;
         cursor += MAX_FIELD_LEN;
-        let author = bytes_to_string(cursor, bytes, resources)?;
+        let author = bytes_to_string(cursor, bytes, 22, resources)?;
         cursor += MAX_FIELD_LEN;
 
         // Get the worlds
@@ -480,7 +480,7 @@ impl LevelPackData {
         let mut worlds = Vec::with_capacity(world_count as usize);
         for _ in 0..world_count {
             // Get the name and add it
-            let world_name = bytes_to_string(cursor, bytes, resources)?;
+            let world_name = bytes_to_string(cursor, bytes, 22, resources)?;
             cursor += MAX_FIELD_LEN;
             worlds.push(world_name);
         }

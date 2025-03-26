@@ -7,7 +7,7 @@ use camera::Camera;
 use entity_spawner::EntitySpawner;
 use fader::Fader;
 // use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
-use macroquad::{color::{Color, GREEN, ORANGE, RED, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, rand::gen_range};
+use macroquad::{color::{Color, GRAY, GREEN, LIGHTGRAY, ORANGE, RED, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, rand::gen_range};
 use particles::{ParticleKind, Particles};
 use sign_display::SignDisplay;
 
@@ -255,7 +255,7 @@ impl Scene {
         self.level.update_if_should(resources);
     }
 
-    pub fn draw(&self, chips: usize, lives: usize, resources: &Resources, debug: bool) {
+    pub fn draw(&self, world_level: Option<(usize, usize)>, chips: usize, lives: usize, resources: &Resources, debug: bool) {
         let camera_pos = self.camera.pos();
         let view_rect = Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y);
         draw_rect(view_rect, self.level.bg_col());
@@ -265,8 +265,7 @@ impl Scene {
         for e in &self.entities {
             e.draw(&self.player, camera_pos, resources);
         }
-        self.player.draw(camera_pos, resources, debug);
-
+        self.player.draw(self.completed, camera_pos, resources, debug);
 
         self.level.render_above(camera_pos, resources, debug);
         self.level.render_bumped_tiles(camera_pos, resources);
@@ -284,19 +283,25 @@ impl Scene {
         render_text(&format!("{lives}"), WHITE,  vec2( 60.0, 24.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         resources.draw_rect(vec2(13.0, 16.0), Rect::new(192.0, 16.0, 16.0, 15.0), false, false, WHITE, resources.entity_atlas());
         
+        if let Some((world, level)) = world_level {
+            render_text(&format!("{:>2} - {:<2}", world, level), LIGHTGRAY, vec2(VIEW_SIZE.x / 8.0 * 3.0, 17.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+        }
+
         // Powerups
         let render_powerup_text = |text: &str, col: u32, y: f32| {
-            render_text(text, Color::from_hex(col), vec2(176.0, y), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+            render_text(text, Color::from_hex(col), vec2(VIEW_SIZE.x / 8.0 * 5.0, y), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         };
 
-        let mut powerup_y = 10.0;
+        let (head_y, feet_y) = match (self.player.head_powerup(), self.player.feet_powerup()) {
+            (Some(_), Some(_)) => (10.0, 22.0),
+            _ => (17.0, 17.0),
+        };
         if let Some(powerup) = self.player.head_powerup() {
             let (name, col) = match powerup {
                 HeadPowerup::Helmet => ("Helmet", 0xe43b44),
                 HeadPowerup::XrayGoggles => ("X-Ray Goggles", 0x55f998),
             };
-            render_powerup_text(name, col, powerup_y);
-            powerup_y += 12.0;
+            render_powerup_text(name, col, head_y);
         }
         if let Some(powerup) = self.player.feet_powerup() {
             let (name, col) = match powerup {
@@ -304,7 +309,7 @@ impl Scene {
                 FeetPowerup::Boots => ("Boots", 0x855a55),
                 FeetPowerup::Skirt => ("Skirt", 0xf994fb),
             };
-            render_powerup_text(name, col, powerup_y);
+            render_powerup_text(name, col, feet_y);
         }
 
         // Timer and points

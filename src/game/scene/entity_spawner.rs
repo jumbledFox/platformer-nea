@@ -1,6 +1,6 @@
 use macroquad::math::Vec2;
 
-use crate::{game::entity::{armadillo::Armadillo, chip::Chip, crate_entity::Crate, danger_cloud::DangerCloud, explosion::Explosion, frog::Frog, goat::Goat, key::Key, powerup::Powerup, Entity, EntityKind, Id}, level_pack_data::LevelPosition};
+use crate::{game::entity::{armadillo::Armadillo, cannonball::Cannonball, chip::Chip, crate_entity::Crate, danger_cloud::DangerCloud, explosion::Explosion, fireball::Fireball, frog::Frog, goat::Goat, key::Key, launcher::Launcher, powerup::Powerup, Entity, EntityKind, Id}, level_pack_data::LevelPosition};
 
 struct EntityToSpawn {
     pos: Vec2,
@@ -48,7 +48,10 @@ impl EntitySpawner {
                 EntityKind::Goat => Box::new(Goat::new(e.pos, e.vel, id)),
                 EntityKind::Armadillo(invuln, spinning) => Box::new(Armadillo::new(e.pos, e.vel, spinning, invuln, id)),
                 EntityKind::DangerCloud => Box::new(DangerCloud::new(e.pos, e.vel, id)),
-                EntityKind::Explosion => Box::new(Explosion::new(e.pos, id))
+                EntityKind::Explosion => Box::new(Explosion::new(e.pos, id)),
+                EntityKind::Launcher(kind) => Box::new(Launcher::new(kind, e.pos, id)),
+                EntityKind::Cannonball => Box::new(Cannonball::new(e.pos, e.vel, id)),
+                EntityKind::Fireball => Box::new(Fireball::new(e.pos, e.vel, id)),
             };
             entities.push(entity);
         }

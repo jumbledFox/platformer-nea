@@ -652,25 +652,26 @@ impl Player {
             }
         };
         let mut stomped = false;
-        if !matches!(self.invuln, Invuln::Damage(_)) {
-            'entities: for e in entities.iter_mut() {
-                // Don't stomp entities if we're moving up relative to them
-                if !e.can_stomp() || self.vel.y < e.vel().y {
+        'entities: for e in entities.iter_mut() {
+            // Don't stomp entities if we're moving up relative to them
+            if !e.can_stomp() || self.vel.y < e.vel().y {
+                continue;
+            }
+            if !e.can_stomp_when_player_invuln() && matches!(self.invuln, Invuln::Damage(_)) {
+                continue;
+            }
+            let stompbox = match e.stompbox() {
+                Some(s) => s,
+                None => continue,
+            };
+            // Try and stomp them with each foot
+            for p in [FOOT_L, FOOT_R] {
+                if !stompbox.contains(self.pos + p) {
                     continue;
                 }
-                let stompbox = match e.stompbox() {
-                    Some(s) => s,
-                    None => continue,
-                };
-                // Try and stomp them with each foot
-                for p in [FOOT_L, FOOT_R] {
-                    if !stompbox.contains(self.pos + p) {
-                        continue;
-                    }
-                    stomped = true;
-                    if e.stomp(self.feet_powerup, relative_dir(e.hitbox().center().x)) {
-                        break 'entities;
-                    }
+                stomped = true;
+                if e.stomp(self.feet_powerup, relative_dir(e.hitbox().center().x)) {
+                    break 'entities;
                 }
             }
         }
@@ -813,10 +814,10 @@ impl Player {
         draw_player_part(PlayerPart::Arm { kind: PlayerArmKind::Normal });
     }
 
-    pub fn draw(&self, camera_pos: Vec2, resources: &Resources, debug: bool) {
-        match self.invuln {
-            Invuln::Damage(t) if t % 0.1 >= 0.05 => return,
-            _ => ()
+    pub fn draw(&self, always_draw: bool, camera_pos: Vec2, resources: &Resources, debug: bool) {
+        match (always_draw, &self.invuln) {
+            (false, Invuln::Damage(t)) if t % 0.1 >= 0.05 => return,
+            _ => {}
         };
         let holding = self.holding.is_some();
         let ladder = self.state == State::Climbing;

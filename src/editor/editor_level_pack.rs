@@ -2,7 +2,6 @@ use crate::resources::Resources;
 
 use super::editor_level::EditorLevel;
 
-// TODO: This is a temporary value...
 pub const MAX_LEVELS: usize = 99;
 
 pub struct EditorLevelPack {

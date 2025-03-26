@@ -2,7 +2,7 @@
 
 use macroquad::{color::{Color, WHITE}, color_u8, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{game::{entity::{crate_entity::CrateKind, EntityKind}, level::{things::DoorKind, tile::{render_tile, BrickColor, CheckerBlockColor, LockColor, Tile, TileDir, TileRenderLayer}, TileDrawKind, TileRenderData}, player::{FeetPowerup, HeadPowerup, PowerupKind}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
+use crate::{game::{entity::{crate_entity::CrateKind, launcher::LauncherKind, EntityKind}, level::{things::DoorKind, tile::{render_tile, BrickColor, CheckerBlockColor, LockColor, Tile, TileDir, TileRenderLayer}, TileDrawKind, TileRenderData}, player::{FeetPowerup, HeadPowerup, PowerupKind}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
 
 const BG_COL: Color = color_u8!(255, 255, 255, 150);
 
@@ -67,10 +67,14 @@ impl ObjectSelector {
             Tile::StoneBlock,
             Tile::Glass,
             Tile::Block,
-            Tile::Spikes(TileDir::Bottom),
             Tile::Spikes(TileDir::Left),
-            Tile::Spikes(TileDir::Top),
             Tile::Spikes(TileDir::Right),
+            Tile::Spikes(TileDir::Top),
+            Tile::Spikes(TileDir::Bottom),
+            Tile::Cannon(TileDir::Left),
+            Tile::Cannon(TileDir::Right),
+            Tile::Cannon(TileDir::Top),
+            Tile::Cannon(TileDir::Bottom),
             Tile::Switch(false), Tile::SwitchBlockOff(true), Tile::SwitchBlockOn(false),
             Tile::Lava,
         ];
@@ -97,6 +101,11 @@ impl ObjectSelector {
             (EntityKind::Goat, "Aerosol Kid".to_string()),
             (EntityKind::Armadillo(false, false), "Armadillo".to_string()),
             (EntityKind::Armadillo(false, true), "Spinning Armadillo".to_string()),
+            (EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Left)), "cannonball launcher".to_string()),
+            (EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Right)), "cannonball launcher".to_string()),
+            (EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Top)), "cannonball launcher".to_string()),
+            (EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Bottom)), "cannonball launcher".to_string()),
+            (EntityKind::Launcher(LauncherKind::Fireball), "fireball launcher".to_string()),
         ];
 
         for col in LockColor::colors().iter() {

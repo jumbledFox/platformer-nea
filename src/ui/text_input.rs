@@ -6,7 +6,7 @@ use crate::{resources::Resources, text_renderer::{render_text, Align, Font}, uti
 
 use super::Ui;
 
-pub const MAX_USER_STRING_LEN: usize = 24;
+pub const MAX_USER_STRING_LEN: usize = 22;
 pub const LINE_FLASH_DURATION: f32 = 0.2;
 pub const BACKSPACE_TIMER_FIRST: f32 = 0.5;
 pub const BACKSPACE_TIMER_OTHER: f32 = 0.035;

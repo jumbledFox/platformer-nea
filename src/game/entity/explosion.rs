@@ -105,7 +105,6 @@ impl Entity for Explosion {
             player.hurt();
         }
 
-        // TODO: Break / hit blocks
         for offset in [
             (-1.0, -1.0), ( 0.0, -1.0), ( 1.0, -1.0), 
             (-1.0,  0.0), ( 0.0,  0.0), ( 1.0,  0.0), 

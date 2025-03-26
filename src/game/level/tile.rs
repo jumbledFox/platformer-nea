@@ -68,6 +68,7 @@ pub enum Tile {
     Bush,
 
     Bricks(BrickColor),
+    Cannon(TileDir),
 }
 
 // Some of these are in a weird order because I kept adding new tiles and new variations of tiles,
@@ -128,6 +129,10 @@ impl From<Tile> for u8 {
             Tile::Bricks(BrickColor::Blue)  => 47,
             Tile::Bricks(BrickColor::Green) => 48,
             Tile::Bush => 52,
+            Tile::Cannon(TileDir::Bottom) => 53,
+            Tile::Cannon(TileDir::Left)   => 54,
+            Tile::Cannon(TileDir::Top)    => 55,
+            Tile::Cannon(TileDir::Right)  => 56,
         }
     }
 }
@@ -189,6 +194,10 @@ impl TryFrom<u8> for Tile {
             47 => Ok(Tile::Bricks(BrickColor::Blue)),
             48 => Ok(Tile::Bricks(BrickColor::Green)),
             52 => Ok(Tile::Bush),
+            53 => Ok(Tile::Cannon(TileDir::Bottom)),
+            54 => Ok(Tile::Cannon(TileDir::Left)),
+            55 => Ok(Tile::Cannon(TileDir::Top)),
+            56 => Ok(Tile::Cannon(TileDir::Right)),
             _ => Err(())
         }
     }
@@ -223,9 +232,19 @@ impl Default for TileDataManager {
         // President bush!
         data.insert(Tile::Bush, TileData::new("Bush".to_owned(), Some(TileTexture::fixed(208, TileTextureConnection::Horizontal(TileTextureConnectionKind::None), false)), TileCollision::None));
         
-        // Spikes
+        // Directional
+        let connect_solids = TileTextureConnectionKind::AllBut(vec![
+            Tile::ShortGrass, Tile::TallGrass, Tile::DeadShortGrass, Tile::DeadTallGrass, Tile::Bush,Tile::Lava, Tile::Ladder,
+            Tile::Vine, Tile::Rope, Tile::Bridge, Tile::WoodenPlatform, Tile::MetalPlatform, Tile::Empty, Tile::Door,
+            Tile::Spikes(TileDir::Bottom), Tile::Spikes(TileDir::Left), Tile::Spikes(TileDir::Top), Tile::Spikes(TileDir::Right), ]
+        );
         for (i, dir) in [TileDir::Bottom, TileDir::Left, TileDir::Top, TileDir::Right].iter().enumerate() {
             data.insert(Tile::Spikes(*dir), TileData::new(format!("{:?} Spikes", dir), Some(TileTexture::fixed(66+i, TileTextureConnection::None, false)), TileCollision::solid_default(false)));
+            let connection_kind = match dir {
+                TileDir::Right | TileDir::Left => TileTextureConnection::Vertical(connect_solids.clone()),
+                _ => TileTextureConnection::Horizontal(connect_solids.clone()),
+            };
+            data.insert(Tile::Cannon(*dir), TileData::new(format!("{:?} Cannon", dir), Some(TileTexture::fixed(16*(i+12)+6, connection_kind, true)), TileCollision::solid_default(false)));
         }
         // Solid normal tiles
         for (tile, name, texture) in [
@@ -333,6 +352,7 @@ pub enum TileTextureRenderType {
     },
 }
 
+#[derive(Clone)]
 pub enum TileTextureConnectionKind {
     None,
     AllBut(Vec<Tile>),

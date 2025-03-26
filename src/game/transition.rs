@@ -19,7 +19,7 @@ pub enum TransitionKind {
     PackFinish(String, String, Option<HeadPowerup>, Option<FeetPowerup>, usize), // name, author, chips, powerups
     
     // Level transitions
-    Intro(String, String, u8, Option<HeadPowerup>, Option<FeetPowerup>, usize), // name, world, powerups, lives
+    Intro(String, String, String, String, u8, Option<HeadPowerup>, Option<FeetPowerup>, usize), // pack name, author, name, world, powerups, lives
 
     Finish(Vec2), // Center
     Death(Vec2),  // Center
@@ -56,7 +56,7 @@ impl Transition {
             TransitionKind::PackStart(..)  => 5.0,
             TransitionKind::PackFinish(..) => 4.0,
             TransitionKind::Intro(..)      => 5.0,
-            TransitionKind::Finish(_)      => 3.5,
+            TransitionKind::Finish(_)      => 3.0,
             TransitionKind::Death(_)       => 4.0,
             TransitionKind::GameOver       => 5.0,
             _ => return false,
@@ -75,14 +75,15 @@ impl Transition {
         self.kind = TransitionKind::None;
         self.timer = 0.0;
     }
-    pub fn begin_pack_finish(&mut self, name: String, world: String, head: Option<HeadPowerup>, feet: Option<FeetPowerup>, chips: usize) {
-        self.kind = TransitionKind::PackFinish(name, world, head, feet, chips);
+    pub fn begin_pack_finish(&mut self, name: String, author: String, head: Option<HeadPowerup>, feet: Option<FeetPowerup>, chips: usize) {
+        self.kind = TransitionKind::PackFinish(name, author, head, feet, chips);
         self.timer = 0.0;
     }
-    pub fn begin_intro(&mut self, name: String, world: String, world_num: u8, head: Option<HeadPowerup>, feet: Option<FeetPowerup>, lives: usize) {
-        self.kind = TransitionKind::Intro(name, world, world_num, head, feet, lives);
+    pub fn begin_intro(&mut self, pack_name: String, author: String, name: String, world: String, world_num: u8, head: Option<HeadPowerup>, feet: Option<FeetPowerup>, lives: usize) {
+        self.kind = TransitionKind::Intro(pack_name, author, name, world, world_num, head, feet, lives);
         self.timer = 0.0;
     }
+    // on a ship.. after the war
     pub fn begin_finish(&mut self, center: Vec2) {
         self.kind = TransitionKind::Finish(center);
         self.timer = 0.0;
@@ -119,18 +120,22 @@ impl Transition {
         };
 
         if let TransitionKind::PackStart(name, author) = &self.kind {
-            let fg_col = Color::new(1.0, 1.0, 1.0, fade_alpha(0.0, 5.0));
+            let fg_col = Color::new(1.0, 1.0, 1.0, fade_alpha(-1.0, 5.0));
 
             render_text(&name,   fg_col, vec2(VIEW_SIZE.x / 2.0, 80.0), vec2(2.0, 2.0), Align::Mid, Font::Small, resources);
             render_text(&author, fg_col, vec2(VIEW_SIZE.x / 2.0, 130.0), vec2(2.0, 2.0), Align::Mid, Font::Small, resources);
             render_text("by", Color::new(0.5, 0.5, 0.5, fg_col.a), vec2(VIEW_SIZE.x / 2.0, 105.0), Vec2::ONE, Align::Mid, Font::Small, resources);
         }
-        else if let TransitionKind::Intro(level, world, world_num, head, feet, lives) = &self.kind {
+        else if let TransitionKind::Intro(pack_name, author, level, world, world_num, head, feet, lives) = &self.kind {
             let bg_col = Color::new(0.0, 0.0, 0.0, (5.0 - self.timer).clamp(0.0, 1.0));
 
             draw_rect(screen_rect, bg_col);
             
             if t < 4.0 {
+                // Pack info
+                render_text(&format!("{pack_name}"), Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 208.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
+                render_text(&format!("{author}"),    Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 216.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
+
                 // Level/world
                 render_text(&format!("World {world_num}"), Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 25.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
                 render_text(&world, WHITE, vec2(VIEW_SIZE.x / 2.0, 40.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
@@ -139,10 +144,15 @@ impl Transition {
                 resources.draw_rect(vec2(VIEW_SIZE.x / 2.0 - 27.0, 172.0), Rect::new(192.0, 16.0, 16.0, 15.0), false, false, WHITE, resources.entity_atlas());
                 render_text("*",                 WHITE,  vec2(VIEW_SIZE.x / 2.0, 180.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
                 render_text(&format!("{lives}"), WHITE,  vec2(VIEW_SIZE.x / 2.0 + 20.0, 180.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
-                // Shadow
-                draw_ellipse(VIEW_SIZE.x / 2.0, 147.0, 30.0, 8.0, 0.0, Color::from_hex(0x413a4d));
+                
                 let player_size = 3.0;
-                let player_pos = vec2((VIEW_SIZE.x - player_size * 16.0) / 2.0, 100.0);
+                let player_pos = vec2((VIEW_SIZE.x - player_size * 16.0) / 2.0, 110.0);
+                // Shadow
+                draw_texture_ex(resources.entity_atlas(), player_pos.x - 2.0 * player_size, player_pos.y - 10.0 * player_size, WHITE, DrawTextureParams {
+                    source: Some(Rect::new(608.0, 0.0, 20.0, 27.0)),
+                    dest_size: Some(vec2(20.0, 27.0) * player_size),
+                    ..Default::default()
+                });
                 // Player
                 Player::draw_intro(player_pos, 3.0, *head, *feet, self.timer, resources);
                 // Cover rect
@@ -151,25 +161,22 @@ impl Transition {
 
         }
         else if let TransitionKind::Finish(end) = &self.kind {
-            if t >= 0.5 {
-                let t = (t - 0.5) / 3.0;
-                
-                let size = Vec2::splat(VIEW_SIZE.x) * 2.0 * (1.0 - t);
-                let pos = (VIEW_SIZE/2.0).lerp(*end, t) - size / 2.0;
+            let t = t / 3.0;
+            
+            let size = Vec2::splat(VIEW_SIZE.x) * 2.0 * (1.0 - t);
+            let pos = (VIEW_SIZE/2.0).lerp(*end, t) - size / 2.0;
 
-                draw_rectangle(0.0,            pos.y, pos.x,                        size.y, BLACK);
-                draw_rectangle(pos.x + size.x, pos.y, VIEW_SIZE.x - pos.x + size.x, size.y, BLACK);
-                draw_rectangle(0.0, 0.0,            VIEW_SIZE.x, pos.y,                        BLACK);
-                draw_rectangle(0.0, pos.y + size.y, VIEW_SIZE.x, VIEW_SIZE.y - pos.y + size.y, BLACK);
-                // let size = (VIEW_SIZE / circ_tex_size).lerp(Vec2::ZERO, (t - 1.0) / 3.0);
+            draw_rectangle(0.0,                  pos.y, pos.x + 1.0,                        size.y, BLACK);
+            draw_rectangle(pos.x + size.x - 1.0, pos.y, VIEW_SIZE.x - pos.x + size.x + 1.0, size.y, BLACK);
+            draw_rectangle(0.0, 0.0,                  VIEW_SIZE.x, pos.y + 1.0,                        BLACK);
+            draw_rectangle(0.0, pos.y + size.y - 1.0, VIEW_SIZE.x, VIEW_SIZE.y - pos.y + size.y + 1.0, BLACK);
+            // let size = (VIEW_SIZE / circ_tex_size).lerp(Vec2::ZERO, (t - 1.0) / 3.0);
 
-                draw_texture_ex(resources.entity_atlas(), pos.x, pos.y, WHITE, DrawTextureParams {
-                    source: Some(Rect::new(512.0, 0.0, 96.0, 96.0)),
-                    dest_size: Some(size),
-                    ..Default::default()
-                });
-
-            }
+            draw_texture_ex(resources.entity_atlas(), pos.x, pos.y, WHITE, DrawTextureParams {
+                source: Some(Rect::new(512.0, 0.0, 96.0, 96.0)),
+                dest_size: Some(size),
+                ..Default::default()
+            });
         }
 
         // else if let TransitionKind::Intro(level_name, world, head_powerup, feet_powerup, lives) = &self.kind {

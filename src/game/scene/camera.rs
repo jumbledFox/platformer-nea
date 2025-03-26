@@ -81,7 +81,6 @@ impl Camera {
     }
 
     // Used for when the player teleports through a door or something
-    // TODO: Camera when doors
     pub fn offset_center(&mut self, pos: Vec2) {
         self.center += pos;
     }
