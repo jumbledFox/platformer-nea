@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use macroquad::{color::{BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, rand::gen_range, shapes::draw_circle, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, FloatExt, Rect, Vec2}, rand::gen_range, shapes::draw_circle, texture::{draw_texture_ex, DrawTextureParams}};
 
 use crate::{game::collision::spike_check, resources::Resources, util::{approach_target, draw_rect_lines}};
 
@@ -65,6 +65,36 @@ pub enum FeetPowerup {
 pub enum PowerupKind {
     Head(HeadPowerup),
     Feet(FeetPowerup),
+}
+
+impl PowerupKind {
+    pub fn name(&self) -> &str {
+        match self {
+            PowerupKind::Head(HeadPowerup::Helmet)      => "Helmet",
+            PowerupKind::Head(HeadPowerup::XrayGoggles) => "X-Ray Goggles",
+            PowerupKind::Feet(FeetPowerup::Boots)       => "Boots",
+            PowerupKind::Feet(FeetPowerup::MoonShoes)   => "Moon Shoes",
+            PowerupKind::Feet(FeetPowerup::Skirt)       => "Skirt",
+        }
+    }
+    pub fn text_color(&self) -> Color {
+        match self {
+            PowerupKind::Head(HeadPowerup::Helmet)      => Color::from_hex(0xe43b44),
+            PowerupKind::Head(HeadPowerup::XrayGoggles) => Color::from_hex(0x55f998),
+            PowerupKind::Feet(FeetPowerup::Boots)       => Color::from_hex(0x855a55),
+            PowerupKind::Feet(FeetPowerup::MoonShoes)   => Color::from_hex(0xbc41c7),
+            PowerupKind::Feet(FeetPowerup::Skirt)       => Color::from_hex(0xf994fb),
+        }
+    }
+    pub fn particle_color(&self) -> Color {
+        match self {
+            PowerupKind::Head(HeadPowerup::Helmet)      => Color::from_hex(0xff6d75),
+            PowerupKind::Head(HeadPowerup::XrayGoggles) => Color::from_hex(0x70e09e),
+            PowerupKind::Feet(FeetPowerup::Boots)       => Color::from_hex(0xb37972),
+            PowerupKind::Feet(FeetPowerup::MoonShoes)   => Color::from_hex(0x93fb7b),
+            PowerupKind::Feet(FeetPowerup::Skirt)       => Color::from_hex(0xfda7ff),
+        }
+    }
 }
 
 // Rendering
@@ -376,7 +406,7 @@ impl Player {
         }
     }
 
-    pub fn collect_powerup(&mut self, powerup: PowerupKind, entity_spawner: &mut EntitySpawner) {
+    pub fn collect_powerup(&mut self, powerup: PowerupKind, powerup_center: Vec2, particles: &mut Particles, entity_spawner: &mut EntitySpawner) {
         let mut spawn_new_powerup = |powerup: PowerupKind| {
             let vel = vec2(0.5 * if self.dir == Dir::Left { 1.0 } else { -1.0 }, -1.6) * gen_range(0.8, 1.0);
             entity_spawner.add_entity(self.pos, vel, EntityKind::Powerup(powerup, true, true), None);
@@ -395,6 +425,7 @@ impl Player {
                 self.head_powerup = Some(kind);
             }
         }
+        particles.add_powerup(powerup_center, powerup);
         self.invuln = Invuln::Powerup(powerup, 1.0);
     }
 

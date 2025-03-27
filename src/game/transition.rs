@@ -136,8 +136,10 @@ impl Transition {
                 render_text(&format!("{author}"),    Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 216.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
 
                 // Level/world
-                render_text(&format!("World {world_num}"), Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 25.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
-                render_text(&world, WHITE, vec2(VIEW_SIZE.x / 2.0, 40.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
+                if *world_num > 0 {
+                    render_text(&format!("World {world_num}"), Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 25.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
+                    render_text(&world, WHITE, vec2(VIEW_SIZE.x / 2.0, 40.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
+                }
                 render_text(&level, WHITE, vec2(VIEW_SIZE.x / 2.0, 60.0), vec2(2.0, 2.0), Align::Mid, Font::Small, resources);
                 // Lives
                 resources.draw_rect(vec2(VIEW_SIZE.x / 2.0 - 27.0, 172.0), Rect::new(192.0, 16.0, 16.0, 15.0), false, false, WHITE, resources.entity_atlas());

@@ -124,20 +124,22 @@ impl Level {
     }
 
     // Lock blocks - removes all of the specified colour and spawns particles
-    pub fn remove_lock_blocks(&mut self, color: LockColor) {
-        let mut check_tile = |t: &mut Tile, _bg: bool| {
-            if *t == Tile::Lock(color) || *t == Tile::LockBlock(color) {
+    pub fn remove_lock_blocks(&mut self, color: LockColor, particles: &mut Particles) {
+        let mut check_tile = |i: usize, t: &mut Tile, bg: bool| {
+            let lock = *t == Tile::Lock(color);
+            if lock || *t == Tile::LockBlock(color) {
+                let pos = vec2((i % self.width) as f32, (i / self.width) as f32) * 16.0 + 8.0;
+                particles.add_lock(pos, lock, color, bg);
                 self.should_update_render_data = true;
                 *t = Tile::Empty;
-                // spawn particles;
             }
         };
 
-        for t in &mut self.tiles {
-            check_tile(t, false);
+        for (i, t) in self.tiles.iter_mut().enumerate() {
+            check_tile(i, t, false);
         }
-        for t in &mut self.tiles_bg {
-            check_tile(t, true);
+        for (i, t) in self.tiles_bg.iter_mut().enumerate() {
+            check_tile(i, t, true);
         }
     }
 

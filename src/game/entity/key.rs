@@ -18,11 +18,12 @@ pub struct Key {
     pos: Vec2,
     vel: Vec2,
     color: LockColor,
+    remove: bool,
 }
 
 impl Key {
     pub fn new(color: LockColor, pos: Vec2, vel: Vec2, id: Id) -> Self {
-        Self { pos, vel, color, id }
+        Self { pos, vel, color, id, remove: false }
     }
     pub fn hitbox() -> Rect {
         Rect::new(0.0, 0.0, 16.0, 14.0)
@@ -69,7 +70,7 @@ impl Entity for Key {
     fn set_pos(&mut self, pos: Vec2) { self.pos = pos; }
     fn set_vel(&mut self, vel: Vec2) { self.vel = vel; }
     fn should_destroy(&self) -> bool {
-        false
+        self.remove
     }
 
     fn physics_update(&mut self, _player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
@@ -91,8 +92,9 @@ impl Entity for Key {
             for point in [TOP, BOT_L, BOT_M, BOT_R, SIDE_LT, SIDE_LB, SIDE_RT, SIDE_RB] {
                 // If so, destroy all the lock blocks of our color and destroy ourself.
                 if level.tile_at_pos(prev_pos + point) == Tile::Lock(self.color) {
-                    // TODO: Particles
-                    level.remove_lock_blocks(self.color);
+                    // TODO: Key particles
+                    self.remove = true;
+                    level.remove_lock_blocks(self.color, particles);
                     continue;
                 }
             }

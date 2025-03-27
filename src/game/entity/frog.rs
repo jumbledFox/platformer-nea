@@ -37,7 +37,7 @@ impl Frog {
             pos,
             vel,
             invuln,
-            state: State::Waiting(1.5),
+            state: State::Waiting(1.8),
         }
     }
 

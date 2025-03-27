@@ -1,4 +1,4 @@
-use macroquad::{color::WHITE, math::{Rect, Vec2}};
+use macroquad::{color::WHITE, math::{vec2, Rect, Vec2}};
 
 use crate::game::scene::{GRAVITY, MAX_FALL_SPEED};
 
@@ -8,11 +8,12 @@ pub struct Fireball {
     id: Id,
     pos: Vec2,
     vel: Vec2,
+    hit_solid: bool,
 }
 
 impl Fireball {
     pub fn new(pos: Vec2, vel: Vec2, id: Id) -> Self {
-        Self { id, pos, vel }
+        Self { id, pos, vel, hit_solid: false, }
     }
 }
 
@@ -42,7 +43,7 @@ impl Entity for Fireball {
         self.vel = vel;
     }
     fn should_destroy(&self) -> bool {
-        false
+        self.hit_solid
     }
     fn destroy_offscreen(&self) -> bool {
         true
@@ -55,9 +56,17 @@ impl Entity for Fireball {
         true
     }
     
-    fn physics_update(&mut self, _player: &mut crate::game::player::Player, _others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut crate::game::scene::entity_spawner::EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, _level: &mut crate::game::level::Level, _camera: &mut crate::game::scene::camera::Camera, _resources: &crate::resources::Resources) {
+    fn physics_update(&mut self, _player: &mut crate::game::player::Player, _others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut crate::game::scene::entity_spawner::EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, _camera: &mut crate::game::scene::camera::Camera, resources: &crate::resources::Resources) {
         self.vel.y = (self.vel.y + GRAVITY * 0.4).min(MAX_FALL_SPEED);
         self.pos += self.vel;
+
+        let top_pos = self.pos + vec2(8.0,  2.0);
+        let bot_pos = self.pos + vec2(8.0, 14.0);
+
+        if resources.tile_data(level.tile_at_pos(top_pos)).collision().is_solid()
+        || resources.tile_data(level.tile_at_pos(bot_pos)).collision().is_solid() {
+            self.hit_solid = true;
+        }
     }
     fn draw(&self, _player: &crate::game::player::Player, camera_pos: Vec2, resources: &crate::resources::Resources) {
         let x_offset = if resources.tile_animation_timer() % 0.1 < 0.05 { 16.0 } else { 0.0 };

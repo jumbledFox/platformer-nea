@@ -49,16 +49,6 @@ impl Powerup {
         vec2(18.0, 16.0)
     }
 
-    pub fn particle_color(kind: PowerupKind) -> Color {
-        match kind {
-            PowerupKind::Head(HeadPowerup::Helmet)      => Color::from_hex(0xff6d75),
-            PowerupKind::Head(HeadPowerup::XrayGoggles) => Color::from_hex(0x70e09e),
-            PowerupKind::Feet(FeetPowerup::Boots)       => Color::from_hex(0xb37972),
-            PowerupKind::Feet(FeetPowerup::MoonShoes)   => Color::from_hex(0x93fb7b),
-            PowerupKind::Feet(FeetPowerup::Skirt)       => Color::from_hex(0xfda7ff),
-        }
-    }
-
     fn draw(outline: bool, kind: PowerupKind, pos: Vec2, camera_pos: Vec2, color: Color, resources: &Resources) {
         let y_offset = if outline { 0.0 } else { 32.0 };
         let atlas_pos = vec2(448.0, 112.0 + y_offset) + match kind {
@@ -111,7 +101,7 @@ impl Entity for Powerup {
                 gen_range(-5.0, 24.0),
                 if rand() % 2 == 0 { gen_range(-1.0, 3.0) } else { gen_range(12.0, 16.0) },
             );
-            let color = Self::particle_color(self.kind);
+            let color = self.kind.particle_color();
             particles.add_particle(self.pos + pos, Vec2::ZERO, ParticleKind::Sparkle(color));
             self.particle_timer = 0.0;
             self.next_particle_time = gen_range(0.4, 0.9);

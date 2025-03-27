@@ -7,13 +7,13 @@ use camera::Camera;
 use entity_spawner::EntitySpawner;
 use fader::Fader;
 // use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
-use macroquad::{color::{Color, GREEN, LIGHTGRAY, ORANGE, RED, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
+use macroquad::{color::{Color, GREEN, ORANGE, RED, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
 use particles::{ParticleKind, Particles};
 use sign_display::SignDisplay;
 
 use crate::{editor::editor_level::EditorLevel, game::level::Level, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, rect}, VIEW_SIZE};
 
-use super::{entity::{chip::Chip, powerup::Powerup, Entity, EntityKind, Id}, player::{FeetPowerup, HeadPowerup, Invuln, Player, PowerupKind}};
+use super::{entity::{chip::Chip, Entity, EntityKind, Id}, player::{FeetPowerup, HeadPowerup, Invuln, Player, PowerupKind}};
 
 pub mod camera;
 pub mod entity_spawner;
@@ -27,7 +27,6 @@ pub const GRAVITY: f32 = 0.045;
 
 pub struct Scene {
     level: Level,
-    timer: f32,
 
     camera: Camera,
     player: Player,
@@ -49,7 +48,6 @@ impl Scene {
 
         let mut scene = Self {
             level,
-            timer: 300.0,
 
             camera: Camera::new(spawn),
             player: Player::new(spawn, head_powerup, feet_powerup),
@@ -76,7 +74,6 @@ impl Scene {
 
         let mut scene = Self {
             level,
-            timer: 0.0,
 
             camera: Camera::new(player_spawn),
             player: Player::new(player_spawn, None, None),
@@ -119,24 +116,6 @@ impl Scene {
     }
 
     pub fn update(&mut self, lives: &mut usize, deltatime: f32, resources: &mut Resources) {
-        // See if we should add any entities
-        // if self.camera.should_update_entities() {
-        //     for (&spawn_pos, &k) in self.level.entity_spawns().iter() {
-        //         let id = Id::Level(spawn_pos);
-        //         // If the spawn pos isn't in the camera's rect, or it exists, or it's being carried, don't spawn it!
-        //         if !self.camera.entity_in_rect(spawn_pos)
-        //         || self.entities.iter().any(|e| e.id() == id)
-        //         || self.player.holding_id() == Some(id) {
-        //             continue;
-        //         }
-        //         // Otherwise... spawn it!
-        //         self.entity_spawner.add_entity(level_pos_to_pos(spawn_pos) + k.tile_offset(), Vec2::ZERO, k, Some(spawn_pos));
-        //     }
-        //     // Spawn all of them
-        //     self.entity_spawner.spawn_entities(&mut self.entities);
-        // }
-
-        self.timer -= deltatime;
         self.fader.update(deltatime);
         self.sign_display.update();
 
@@ -244,9 +223,10 @@ impl Scene {
                             (PowerupKind::Feet(kind), ..) if self.player.feet_powerup() == Some(kind) => continue,
                             _ => {}
                         }
-                        particle_col = Some((self.entities[i].hitbox().center(), Powerup::particle_color(kind)));
+                        let center = self.entities[i].hitbox().center();
+                        particle_col = Some((center, kind.particle_color()));
                         collected_powerup = true;
-                        self.player.collect_powerup(kind, &mut self.entity_spawner);
+                        self.player.collect_powerup(kind, center, &mut self.particles, &mut self.entity_spawner);
                         disable_respawn(self.entities[i].id());
                         self.entities.remove(i);
                     }
@@ -307,13 +287,9 @@ impl Scene {
         render_text(&format!("{lives}"), WHITE,  vec2( 60.0, 24.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         resources.draw_rect(vec2(13.0, 16.0), Rect::new(192.0, 16.0, 16.0, 15.0), false, false, WHITE, resources.entity_atlas());
         
-        if let Some((world, level)) = world_level {
-            render_text(&format!("{:>2} - {:<2}", world, level), LIGHTGRAY, vec2(VIEW_SIZE.x / 8.0 * 3.0, 17.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
-        }
-
         // Powerups
-        let render_powerup_text = |text: &str, col: u32, y: f32| {
-            render_text(text, Color::from_hex(col), vec2(VIEW_SIZE.x / 8.0 * 5.0, y), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+        let render_powerup_text = |kind: PowerupKind, y: f32| {
+            render_text(kind.name(), kind.text_color(), vec2(VIEW_SIZE.x / 2.0, y), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         };
 
         let (head_y, feet_y) = match (self.player.head_powerup(), self.player.feet_powerup()) {
@@ -321,23 +297,17 @@ impl Scene {
             _ => (17.0, 17.0),
         };
         if let Some(powerup) = self.player.head_powerup() {
-            let (name, col) = match powerup {
-                HeadPowerup::Helmet => ("Helmet", 0xe43b44),
-                HeadPowerup::XrayGoggles => ("X-Ray Goggles", 0x55f998),
-            };
-            render_powerup_text(name, col, head_y);
+            render_powerup_text(PowerupKind::Head(powerup), head_y);
         }
         if let Some(powerup) = self.player.feet_powerup() {
-            let (name, col) = match powerup {
-                FeetPowerup::MoonShoes => ("Moon Shoes", 0xbc41c7),
-                FeetPowerup::Boots => ("Boots", 0x855a55),
-                FeetPowerup::Skirt => ("Skirt", 0xf994fb),
-            };
-            render_powerup_text(name, col, feet_y);
+            render_powerup_text(PowerupKind::Feet(powerup), feet_y);
         }
 
-        // Timer and points
-        render_text(&format!("{:?}", self.timer.floor() as usize), WHITE,  vec2(305.0,  3.0), vec2(1.0, 1.0), Align::End, Font::Large, resources);
+        // World/level and points
+        if let Some((world, level)) = world_level {
+            render_text(&format!("{:>2} - {:<2}", world, level), WHITE, vec2(303.0, 8.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+        }
+        resources.draw_rect(vec2(305.0 - 16.0 - 5.0, 16.0), Rect::new(174.0, 16.0, 18.0, 16.0), false, false, WHITE, resources.entity_atlas());
         render_text(&format!("{:?}", self.player.chips() + chips), GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, Font::Large, resources);
 
         if debug {
