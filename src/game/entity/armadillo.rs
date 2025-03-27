@@ -1,8 +1,7 @@
-use std::cmp::Ordering;
 
-use macroquad::{color::{Color, BLUE, WHITE}, math::{vec2, Rect, Vec2}, rand::{gen_range, rand}};
+use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::{gen_range, rand}};
 
-use crate::{game::{collision::{default_collision, EntityHitKind}, level::tile::TileHitKind, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::draw_rect_lines};
+use crate::{game::{collision::{default_collision, EntityHitKind}, level::tile::TileHitKind, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 

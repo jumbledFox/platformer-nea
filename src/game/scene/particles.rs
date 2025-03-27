@@ -172,9 +172,8 @@ impl Particles {
         for p in &mut self.particles {
             p.update();
         }
-        // TODO: Remove off-screen particles
         for i in (0..self.particles.len()).rev() {
-            if self.particles[i].should_remove() /* || off screen */ {
+            if self.particles[i].should_remove() || !camera.on_screen(self.particles[i].pos) {
                 self.particles.remove(i);
             }
         }

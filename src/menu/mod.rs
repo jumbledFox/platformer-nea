@@ -1,6 +1,6 @@
 use std::{f32::consts::PI, fs};
 
-use macroquad::{color::{Color, BLUE, GRAY, GREEN, LIGHTGRAY, ORANGE, PURPLE, RED, WHITE, YELLOW}, color_u8, math::{vec2, Rect, Vec2}, miniquad::window::order_quit};
+use macroquad::{color::{Color, BLUE, GREEN, LIGHTGRAY, ORANGE, PURPLE, RED, WHITE, YELLOW}, color_u8, math::{vec2, Rect, Vec2}, miniquad::window::order_quit};
 
 use crate::{editor::{editor_level::BG_SKY, Editor}, game::Game, level_pack_data::LevelPackData, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::Button, toast::{ToastKind, ToastManager}, Ui}, util::draw_rect, GameState, VIEW_SIZE};
 
@@ -162,7 +162,7 @@ impl GameState for Menu {
                 if self.button_edit_cur.released() {
                     *next_state = Some(Box::new(Editor::new(Some(pack), resources)));
                 } else {
-                    *next_state = Some(Box::new(Game::new(pack, resources)));
+                    *next_state = Some(Box::new(Game::new(pack)));
                 }
             }
         }

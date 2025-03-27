@@ -2,9 +2,9 @@
 // I'd normally make an immediate mode one, but I really don't want to faff around with their weird rendering and such
 // And since the UI in my program will never really change about, a retained mode one will be fiiiiine.... :P
 
-use macroquad::{color::{Color, BLACK, BLUE, DARKGRAY, GRAY, GREEN, ORANGE, RED, WHITE, YELLOW}, input::{is_key_pressed, is_mouse_button_down, is_mouse_button_pressed, is_mouse_button_released, mouse_position_local, KeyCode, MouseButton}, math::{vec2, Rect, Vec2}, window::{screen_height, screen_width}};
+use macroquad::{color::{Color, WHITE}, input::{is_mouse_button_down, mouse_position_local, MouseButton}, math::{vec2, Rect, Vec2}, window::{screen_height, screen_width}};
 
-use crate::{resources::Resources, text_renderer::{render_text, text_size, Align, Font}, util::{draw_rect, draw_rect_lines}, VIEW_SIZE};
+use crate::{resources::Resources, text_renderer::{render_text, text_size, Align, Font}, util::draw_rect, VIEW_SIZE};
 
 pub mod button;
 pub mod slider_u8;

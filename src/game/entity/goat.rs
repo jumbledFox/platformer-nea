@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 
-use macroquad::{color::{Color, GREEN, RED, WHITE}, math::{vec2, Rect, Vec2}, rand::{gen_range, rand}, shapes::draw_circle};
+use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::{gen_range, rand}};
 
-use crate::{game::{collision::{default_collision, spike_check}, level::{tile::TileDir, Level}, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::{approach_target, draw_rect}};
+use crate::{game::{collision::{default_collision, spike_check}, level::{tile::TileDir, Level}, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::approach_target};
 
 use super::{Entity, EntityKind, Id};
 

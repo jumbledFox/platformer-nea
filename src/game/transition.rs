@@ -1,14 +1,13 @@
-use std::ops::Deref;
 
-use macroquad::{color::{Color, BLACK, DARKGRAY, GREEN, RED, WHITE}, math::{vec2, Rect, Vec2}, shapes::{draw_circle, draw_ellipse, draw_rectangle}, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{Color, BLACK, RED, WHITE}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{level_pack_data::LevelPackData, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, draw_rect_lines, rect}, VIEW_SIZE};
+use crate::{level_pack_data::LevelPackData, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, rect}, VIEW_SIZE};
 
 use super::player::{FeetPowerup, HeadPowerup, Player};
 
-const _INTRO_TIME:     f32 = 4.0;
-const _FINISH_TIME:    f32 = 3.0;
-const _GAME_OVER_TIME: f32 = 3.0;
+const INTRO_TIME:     f32 = 4.0;
+const FINISH_TIME:    f32 = 3.0;
+const GAME_OVER_TIME: f32 = 3.0;
 
 #[derive(Default, Debug)]
 pub enum TransitionKind {

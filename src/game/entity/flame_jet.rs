@@ -1,8 +1,8 @@
 // 176.0 96.0
 
-use macroquad::{color::{GREEN, WHITE}, math::{vec2, Rect, Vec2}};
+use macroquad::{color::WHITE, math::{vec2, Rect, Vec2}};
 
-use crate::{game::scene::entity_spawner::EntitySpawner, resources::Resources, util::draw_rect_lines};
+use crate::{game::scene::entity_spawner::EntitySpawner, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -96,7 +96,7 @@ impl Entity for FlameJet {
         true
     }
 
-    fn physics_update(&mut self, _player: &mut crate::game::player::Player, _others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, camera: &mut crate::game::scene::camera::Camera, resources: &Resources) {
+    fn physics_update(&mut self, _player: &mut crate::game::player::Player, _others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, _camera: &mut crate::game::scene::camera::Camera, resources: &Resources) {
         let (first_check, second_check) = match self.dir {
             // Horizontal
             false => (vec2(24.0, 8.0), vec2(-8.0, 8.0)),

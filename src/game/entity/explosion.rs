@@ -1,8 +1,8 @@
 use std::f32::consts::PI;
 
-use macroquad::{color::{BLUE, GREEN, RED, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
+use macroquad::{math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{level::tile::TileHitKind, player::Player, scene::{camera::Camera, particles::{ParticleKind, Particles}}}, resources::Resources, util::{draw_rect, rect}};
+use crate::{game::{level::tile::TileHitKind, player::Player, scene::{camera::Camera, particles::{ParticleKind, Particles}}}, resources::Resources, util::rect};
 
 use super::{crate_entity::CrateKind, Entity, EntityKind, Id};
 

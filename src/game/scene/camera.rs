@@ -49,8 +49,8 @@ impl Camera {
     }
 
     pub fn on_screen(&self, pos: Vec2) -> bool {
-        pos.x >= self.center.x - 12.0 * 16.0 &&
-        pos.x <= self.center.x + 11.0 * 16.0 &&
+        pos.x >= self.center.x - 14.0 * 16.0 &&
+        pos.x <= self.center.x + 13.0 * 16.0 &&
         pos.y >= self.center.y - 12.0 * 16.0 &&
         pos.y <= self.center.y + 13.0 * 16.0 
     }

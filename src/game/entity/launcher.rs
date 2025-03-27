@@ -1,4 +1,4 @@
-use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}};
+use macroquad::{color::WHITE, math::{vec2, Rect, Vec2}};
 
 use crate::{game::{level::tile::TileDir, scene::entity_spawner::EntitySpawner}, resources::Resources};
 

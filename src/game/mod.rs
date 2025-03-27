@@ -1,7 +1,7 @@
 // A bunch of levels to be played, the global chip counter, etc.
 // Loaded from a level pack
 
-use macroquad::{color::BLACK, input::is_key_pressed, math::Vec2, window::clear_background};
+use macroquad::{color::BLACK, math::Vec2, window::clear_background};
 use player::{FeetPowerup, HeadPowerup};
 use scene::Scene;
 use transition::{Transition, TransitionKind};
@@ -41,7 +41,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(level_pack: LevelPackData, resources: &mut Resources) -> Self {
+    pub fn new(level_pack: LevelPackData) -> Self {
         Self {
             transition: Transition::new(&level_pack),
             transition_action: None,

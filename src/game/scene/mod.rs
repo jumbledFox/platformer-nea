@@ -7,11 +7,11 @@ use camera::Camera;
 use entity_spawner::EntitySpawner;
 use fader::Fader;
 // use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
-use macroquad::{color::{Color, GRAY, GREEN, LIGHTGRAY, ORANGE, RED, WHITE}, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, rand::gen_range};
+use macroquad::{color::{Color, GREEN, LIGHTGRAY, ORANGE, RED, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
 use particles::{ParticleKind, Particles};
 use sign_display::SignDisplay;
 
-use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, draw_rect_lines, rect}, VIEW_SIZE};
+use crate::{editor::editor_level::EditorLevel, game::level::Level, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, rect}, VIEW_SIZE};
 
 use super::{entity::{chip::Chip, powerup::Powerup, Entity, EntityKind, Id}, player::{FeetPowerup, HeadPowerup, Invuln, Player, PowerupKind}};
 
