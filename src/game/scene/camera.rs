@@ -1,6 +1,6 @@
 use macroquad::{color::{BLUE, ORANGE, RED}, math::{vec2, Vec2}, rand::{gen_range, rand}, shapes::draw_line};
 
-use crate::{game::{level::Level, player::{self, Dir, Player}}, level_pack_data::{pos_to_level_pos, LevelPosition}, util::approach_target, VIEW_SIZE};
+use crate::{game::{level::Level, player::{self, Dir, Player}}, util::approach_target, VIEW_SIZE};
 
 /*
 let (x1, x2) = (VIEW_SIZE.x / 3.0, 2.0 * VIEW_SIZE.x / 3.0);
@@ -20,12 +20,7 @@ const Y_BOT:      f32 = VIEW_SIZE.y / 3.0 * 2.1;
 pub struct Camera {
     center: Vec2,
 
-    center_tile: LevelPosition,
-    should_update_entities: bool,
-
-    last_player_x: f32,
     target_offset: Vec2,
-    // target: Vec2,
 
     shook: bool,
     shake_timer: f32,
@@ -38,11 +33,8 @@ impl Camera {
     pub fn new(player_pos: Vec2) -> Self {
         Self {
             center: player_pos,
-            center_tile: pos_to_level_pos(player_pos),
-            should_update_entities: true,
 
             target_offset: Vec2::ZERO,
-            last_player_x: 0.0,
 
             shook: false,
             shake_timer: 0.0,
@@ -56,19 +48,17 @@ impl Camera {
         (self.center - VIEW_SIZE / 2.0 + self.shake_offset).floor()
     }
 
-    pub fn entity_in_rect(&self, pos: LevelPosition) -> bool {
-        let left  = self.center_tile.0.saturating_sub(12);
-        let right = self.center_tile.0.saturating_add(11);
-        let top   = self.center_tile.1.saturating_sub(12);
-        let bot   = self.center_tile.1.saturating_add(11);
-        pos.0 >= left && pos.0 <= right && pos.1 >= top && pos.1 <= bot
+    pub fn on_screen(&self, pos: Vec2) -> bool {
+        pos.x >= self.center.x - 12.0 * 16.0 &&
+        pos.x <= self.center.x + 11.0 * 16.0 &&
+        pos.y >= self.center.y - 12.0 * 16.0 &&
+        pos.y <= self.center.y + 13.0 * 16.0 
     }
-
-    // 'Takes' the boolean
-    pub fn should_update_entities(&mut self) -> bool {
-        let s = self.should_update_entities;
-        self.should_update_entities = false;
-        s
+    pub fn on_screen_far(&self, pos: Vec2) -> bool {
+        pos.x >= self.center.x - 24.0 * 16.0 &&
+        pos.x <= self.center.x + 22.0 * 16.0 &&
+        pos.y >= self.center.y - 20.0 * 16.0 &&
+        pos.y <= self.center.y + 18.0 * 16.0 
     }
 
     pub fn shake(&mut self, amount: f32) {
@@ -139,12 +129,6 @@ impl Camera {
 
         // Clamp to the bounds of the level
         self.center = self.center.clamp(VIEW_SIZE / 2.0, vec2(level.width() as f32, level.height() as f32) * 16.0 - VIEW_SIZE / 2.0);
-
-        let center_tile = pos_to_level_pos(self.center);
-        if center_tile != self.center_tile {
-            self.should_update_entities = true;
-            self.center_tile = center_tile;
-        }
     }
 
     pub fn draw(&self, debug: bool) {

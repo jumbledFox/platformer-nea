@@ -2,7 +2,7 @@
 
 use macroquad::{color::{Color, WHITE}, color_u8, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, texture::{draw_texture_ex, DrawTextureParams}};
 
-use crate::{game::{entity::{crate_entity::CrateKind, launcher::LauncherKind, EntityKind}, level::{things::DoorKind, tile::{render_tile, BrickColor, CheckerBlockColor, LockColor, Tile, TileDir, TileRenderLayer}, TileDrawKind, TileRenderData}, player::{FeetPowerup, HeadPowerup, PowerupKind}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
+use crate::{game::{entity::{crate_entity::CrateKind, launcher::LauncherKind, EntityKind}, level::{things::DoorKind, tile::{render_tile, BrickColor, CheckerBlockColor, FancyColor, LockColor, Tile, TileDir, TileRenderLayer}, TileDrawKind, TileRenderData}, player::{FeetPowerup, HeadPowerup, PowerupKind}}, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::{Button, ButtonState}, Ui}, VIEW_SIZE};
 
 const BG_COL: Color = color_u8!(255, 255, 255, 150);
 
@@ -52,6 +52,15 @@ impl ObjectSelector {
             Tile::CheckerBlock(CheckerBlockColor::Cyan),
             Tile::CheckerBlock(CheckerBlockColor::Orange),
             Tile::CheckerBlock(CheckerBlockColor::Purple),
+            Tile::Wood,
+            Tile::FancyFloor(FancyColor::Blue),
+            Tile::FancyFloor(FancyColor::Tan),
+            Tile::FancyFloor(FancyColor::White),
+            Tile::FancyFloor(FancyColor::Black),
+            Tile::Pillar(FancyColor::Blue),
+            Tile::Pillar(FancyColor::Tan),
+            Tile::Pillar(FancyColor::White),
+            Tile::Pillar(FancyColor::Black),
             Tile::WoodenPlatform,
             Tile::MetalPlatform,
             Tile::Bridge,
@@ -64,6 +73,7 @@ impl ObjectSelector {
             Tile::Door,
             Tile::Ladder,
             Tile::Vine,
+            Tile::Grate,
             Tile::StoneBlock,
             Tile::Glass,
             Tile::Block,
@@ -75,6 +85,8 @@ impl ObjectSelector {
             Tile::Cannon(TileDir::Right),
             Tile::Cannon(TileDir::Top),
             Tile::Cannon(TileDir::Bottom),
+            Tile::FlameJet(false),
+            Tile::FlameJet(true),
             Tile::Switch(false), Tile::SwitchBlockOff(true), Tile::SwitchBlockOn(false),
             Tile::Lava,
         ];
@@ -106,6 +118,8 @@ impl ObjectSelector {
             (EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Top)), "cannonball launcher".to_string()),
             (EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Bottom)), "cannonball launcher".to_string()),
             (EntityKind::Launcher(LauncherKind::Fireball), "fireball launcher".to_string()),
+            (EntityKind::FlameJet(false), "horizontal flame jet".to_string()),
+            (EntityKind::FlameJet(true), "vertical flame jet".to_string()),
         ];
 
         for col in LockColor::colors().iter() {

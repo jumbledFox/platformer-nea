@@ -297,6 +297,17 @@ impl Entity for Crate {
         self.b = b;
 
         self.hit |= hit || hit_entity;
+
+        if self.kind == CrateKind::Explosive {
+            for e in others {
+                if matches!(e.kind(), EntityKind::Cannonball | EntityKind::Fireball) {
+                    if e.hitbox().overlaps(&self.hitbox()) {
+                        self.hit = true;
+                    }
+                }
+            }
+        }
+
         // Spikes
         if spike_check(self.pos, &[TOP], &[BOT_L, BOT_R], &[SIDE_LT, SIDE_LB], &[SIDE_RT, SIDE_RB], level).is_some() {
             if !self.hit {

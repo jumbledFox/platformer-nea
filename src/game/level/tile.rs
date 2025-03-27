@@ -8,8 +8,6 @@ use super::{TileDrawKind, TileRenderData};
 
 pub const RAINBOW_LOCK_FRAME_DUR: f64 = 0.1;
 
-// Used only for the spikes, but I like my code being reusable, ya know?
-// (which is why it's not SpikeDir...)
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
 pub enum TileDir {
     Top, Bottom, Left, Right
@@ -20,7 +18,6 @@ pub enum LockColor {
     Red, Green, Blue, Yellow, White, Black,
     Rainbow, // The rainbow one is special and cute because it has a neat animated texture :3
 }
-
 impl LockColor {
     pub fn colors() -> &'static [LockColor] {
         &[Self::Red, Self::Green, Self::Blue, Self::Yellow, Self::White, Self::Black, Self::Rainbow]
@@ -35,6 +32,11 @@ pub enum CheckerBlockColor {
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
 pub enum BrickColor {
     Gray, Tan, Blue, Green,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
+pub enum FancyColor {
+    Blue, Tan, White, Black,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
@@ -69,6 +71,11 @@ pub enum Tile {
 
     Bricks(BrickColor),
     Cannon(TileDir),
+    FlameJet(bool),
+    FancyFloor(FancyColor),
+    Pillar(FancyColor),
+    Wood,
+    Grate,
 }
 
 // Some of these are in a weird order because I kept adding new tiles and new variations of tiles,
@@ -133,6 +140,18 @@ impl From<Tile> for u8 {
             Tile::Cannon(TileDir::Left)   => 54,
             Tile::Cannon(TileDir::Top)    => 55,
             Tile::Cannon(TileDir::Right)  => 56,
+            Tile::FlameJet(false) => 57,
+            Tile::FlameJet(true)  => 58,
+            Tile::FancyFloor(FancyColor::Blue)  => 59,
+            Tile::FancyFloor(FancyColor::Tan)   => 60,
+            Tile::FancyFloor(FancyColor::White) => 61,
+            Tile::FancyFloor(FancyColor::Black) => 62,
+            Tile::Pillar(FancyColor::Blue)  => 63,
+            Tile::Pillar(FancyColor::Tan)   => 64,
+            Tile::Pillar(FancyColor::White) => 65,
+            Tile::Pillar(FancyColor::Black) => 66,
+            Tile::Wood => 67,
+            Tile::Grate => 68,
         }
     }
 }
@@ -198,6 +217,18 @@ impl TryFrom<u8> for Tile {
             54 => Ok(Tile::Cannon(TileDir::Left)),
             55 => Ok(Tile::Cannon(TileDir::Top)),
             56 => Ok(Tile::Cannon(TileDir::Right)),
+            57 => Ok(Tile::FlameJet(false)),
+            58 => Ok(Tile::FlameJet(true)),
+            59 => Ok(Tile::FancyFloor(FancyColor::Blue)),
+            60 => Ok(Tile::FancyFloor(FancyColor::Tan)),
+            61 => Ok(Tile::FancyFloor(FancyColor::White)),
+            62 => Ok(Tile::FancyFloor(FancyColor::Black)),
+            63 => Ok(Tile::Pillar(FancyColor::Blue)),
+            64 => Ok(Tile::Pillar(FancyColor::Tan)),
+            65 => Ok(Tile::Pillar(FancyColor::White)),
+            66 => Ok(Tile::Pillar(FancyColor::Black)),
+            67 => Ok(Tile::Wood),
+            68 => Ok(Tile::Grate),
             _ => Err(())
         }
     }
@@ -261,10 +292,25 @@ impl Default for TileDataManager {
             (Tile::Sand, "Sand", TileTexture::fixed(150, TileTextureConnection::Both(TileTextureConnectionKind::None), false)),
             (Tile::Glass, "Glass", TileTexture::fixed(4, TileTextureConnection::None, false)),
             (Tile::Block, "Block", TileTexture::fixed(5, TileTextureConnection::None, false)),
+            (Tile::Wood, "Wood", TileTexture::fixed(16*21, TileTextureConnection::Both(TileTextureConnectionKind::None), false)),
+            (Tile::FlameJet(false), "Horizontal flame jet", TileTexture::fixed(16*15+10, TileTextureConnection::None, false)),
+            (Tile::FlameJet(true), "Vertical flame jet", TileTexture::fixed(16*15+11, TileTextureConnection::None, false)),
         ] {
             data.insert(tile, TileData::new(name.to_owned(), Some(texture), TileCollision::solid_default(false)));
         }
 
+        for (i, col) in [FancyColor::Blue, FancyColor::Tan, FancyColor::White, FancyColor::Black].iter().enumerate() {
+            data.insert(Tile::FancyFloor(*col), TileData::new(
+                format!("{:?} fancy floor", col),
+                Some(TileTexture::fixed(16*(16+i), TileTextureConnection::Both(TileTextureConnectionKind::None), false)),
+                TileCollision::solid_default(false)
+            ));
+            data.insert(Tile::Pillar(*col), TileData::new(
+                format!("{:?} pillar", col),
+                Some(TileTexture::fixed(16*(16+i) + 5, TileTextureConnection::Vertical(TileTextureConnectionKind::None), false)),
+                TileCollision::solid_default(false)
+            ));
+        }
 
         // Bricks
         for (y, color) in [(2, BrickColor::Gray), (3, BrickColor::Tan), (11, BrickColor::Blue), (12, BrickColor::Green)] {
@@ -283,6 +329,7 @@ impl Default for TileDataManager {
         // Ladders
         data.insert(Tile::Ladder, TileData::new("Ladder".to_owned(), Some(TileTexture::fixed(108, TileTextureConnection::Vertical(TileTextureConnectionKind::None), false)), TileCollision::Ladder));
         data.insert(Tile::Vine, TileData::new("Vine".to_owned(), Some(TileTexture::fixed(64, TileTextureConnection::None, false)), TileCollision::Ladder));
+        data.insert(Tile::Grate, TileData::new("Grate".to_owned(), Some(TileTexture::fixed(16*21+5, TileTextureConnection::Both(TileTextureConnectionKind::None), false)), TileCollision::Ladder));
         // Lock blocks
         let lock_cols = [LockColor::Red, LockColor::Green, LockColor::Blue, LockColor::Yellow, LockColor::White, LockColor::Black, LockColor::Rainbow];
         for (i, color) in lock_cols.iter().enumerate() {

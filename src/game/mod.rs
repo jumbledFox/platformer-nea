@@ -155,8 +155,10 @@ impl GameState for Game {
         
         // If transitioning, don't update the scene
         if !self.transition.can_update() {
+            resources.set_anim_timer_update(false);
             return;
         }
+        resources.set_anim_timer_update(true);
         if let Some(scene) = &mut self.scene {
             scene.update(&mut self.lives, deltatime, resources);
     

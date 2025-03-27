@@ -13,7 +13,7 @@ use sign_display::SignDisplay;
 
 use crate::{editor::editor_level::EditorLevel, game::level::{tile::LockColor, Level}, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, draw_rect_lines, rect}, VIEW_SIZE};
 
-use super::{entity::{chip::Chip, crate_entity::Crate, key::Key, powerup::Powerup, Entity, EntityKind, Id}, player::{FeetPowerup, HeadPowerup, Invuln, Player, PowerupKind}};
+use super::{entity::{chip::Chip, powerup::Powerup, Entity, EntityKind, Id}, player::{FeetPowerup, HeadPowerup, Invuln, Player, PowerupKind}};
 
 pub mod camera;
 pub mod entity_spawner;
@@ -47,7 +47,7 @@ impl Scene {
         let level = level_data.to_level();
         let spawn = level.spawn();
 
-        Self {
+        let mut scene = Self {
             level,
             timer: 300.0,
 
@@ -62,7 +62,9 @@ impl Scene {
             physics_update_timer: PHYSICS_STEP,
 
             completed: false,
-        }
+        };
+        scene.spawn_all_entities();
+        scene
     }
 
     pub fn from_editor_level(editor_level: &EditorLevel, player_spawn: Option<Vec2>) -> Self {
@@ -72,7 +74,7 @@ impl Scene {
 
         let player_spawn = player_spawn.unwrap_or(editor_level.spawn());
 
-        Scene {
+        let mut scene = Self {
             level,
             timer: 0.0,
 
@@ -87,7 +89,17 @@ impl Scene {
             physics_update_timer: PHYSICS_STEP,
 
             completed: false,
+        };
+        scene.spawn_all_entities();
+        scene
+    }
+
+    fn spawn_all_entities(&mut self) {
+        for (&spawn_pos, &k) in self.level.entity_spawns().iter() {
+            self.entity_spawner.add_entity(level_pos_to_pos(spawn_pos) + k.tile_offset(), Vec2::ZERO, k, Some(spawn_pos));
         }
+        // Spawn all of them
+        self.entity_spawner.spawn_entities(&mut self.entities);
     }
 
     pub fn completed(&self) -> bool {
@@ -108,21 +120,21 @@ impl Scene {
 
     pub fn update(&mut self, lives: &mut usize, deltatime: f32, resources: &mut Resources) {
         // See if we should add any entities
-        if self.camera.should_update_entities() {
-            for (&spawn_pos, &k) in self.level.entity_spawns().iter() {
-                let id = Id::Level(spawn_pos);
-                // If the spawn pos isn't in the camera's rect, or it exists, or it's being carried, don't spawn it!
-                if !self.camera.entity_in_rect(spawn_pos)
-                || self.entities.iter().any(|e| e.id() == id)
-                || self.player.holding_id() == Some(id) {
-                    continue;
-                }
-                // Otherwise... spawn it!
-                self.entity_spawner.add_entity(level_pos_to_pos(spawn_pos) + k.tile_offset(), Vec2::ZERO, k, Some(spawn_pos));
-            }
-            // Spawn all of them
-            self.entity_spawner.spawn_entities(&mut self.entities);
-        }
+        // if self.camera.should_update_entities() {
+        //     for (&spawn_pos, &k) in self.level.entity_spawns().iter() {
+        //         let id = Id::Level(spawn_pos);
+        //         // If the spawn pos isn't in the camera's rect, or it exists, or it's being carried, don't spawn it!
+        //         if !self.camera.entity_in_rect(spawn_pos)
+        //         || self.entities.iter().any(|e| e.id() == id)
+        //         || self.player.holding_id() == Some(id) {
+        //             continue;
+        //         }
+        //         // Otherwise... spawn it!
+        //         self.entity_spawner.add_entity(level_pos_to_pos(spawn_pos) + k.tile_offset(), Vec2::ZERO, k, Some(spawn_pos));
+        //     }
+        //     // Spawn all of them
+        //     self.entity_spawner.spawn_entities(&mut self.entities);
+        // }
 
         self.timer -= deltatime;
         self.fader.update(deltatime);
@@ -157,6 +169,16 @@ impl Scene {
             // Update all of the entities
             let mut others: Vec<&mut Box<dyn Entity>>;
             for i in 0..self.entities.len() {
+                // Only update entities that are on screen
+                if self.entities[i].destroy_offscreen() || self.entities[i].update_far() {
+                    if !self.camera.on_screen_far(self.entities[i].pos()) {
+                        continue;
+                    }
+                } else {
+                    if !self.camera.on_screen(self.entities[i].pos()) {
+                        continue;
+                    }
+                }
                 let (left, right) = self.entities.split_at_mut(i);
                 // The unwrap is safe as 'i' is always valid!
                 let (entity, right) = right.split_first_mut().unwrap();
@@ -180,7 +202,9 @@ impl Scene {
             };
             let mut collected_powerup = false;
             for i in (0..self.entities.len()).rev() {
-                if self.entities[i].should_destroy() {
+                if self.entities[i].should_destroy()
+                || (self.entities[i].destroy_offscreen() && !self.camera.on_screen_far(self.entities[i].pos()))
+                {
                     disable_respawn(self.entities[i].id());
                     self.entities[i].destroy(&mut self.entity_spawner, &mut self.particles);
                     self.entities.remove(i);

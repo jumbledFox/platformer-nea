@@ -1,6 +1,6 @@
 use macroquad::math::Vec2;
 
-use crate::{game::entity::{armadillo::Armadillo, cannonball::Cannonball, chip::Chip, crate_entity::Crate, danger_cloud::DangerCloud, explosion::Explosion, fireball::Fireball, frog::Frog, goat::Goat, key::Key, launcher::Launcher, powerup::Powerup, Entity, EntityKind, Id}, level_pack_data::LevelPosition};
+use crate::{game::entity::{armadillo::Armadillo, cannonball::Cannonball, chip::Chip, crate_entity::Crate, danger_cloud::DangerCloud, explosion::Explosion, fireball::Fireball, flame_jet::FlameJet, frog::Frog, goat::Goat, key::Key, launcher::Launcher, powerup::Powerup, Entity, EntityKind, Id}, level_pack_data::LevelPosition};
 
 struct EntityToSpawn {
     pos: Vec2,
@@ -52,6 +52,7 @@ impl EntitySpawner {
                 EntityKind::Launcher(kind) => Box::new(Launcher::new(kind, e.pos, id)),
                 EntityKind::Cannonball => Box::new(Cannonball::new(e.pos, e.vel, id)),
                 EntityKind::Fireball => Box::new(Fireball::new(e.pos, e.vel, id)),
+                EntityKind::FlameJet(dir) => Box::new(FlameJet::new(e.pos, dir, id)),
             };
             entities.push(entity);
         }

@@ -45,6 +45,9 @@ impl Entity for DangerCloud {
     fn should_destroy(&self) -> bool {
         self.time <= 0.0
     }
+    fn destroy_offscreen(&self) -> bool {
+        true
+    }
     fn can_hurt(&self) -> bool {
         self.time / self.total_time > 0.65
     }

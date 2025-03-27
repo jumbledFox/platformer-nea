@@ -1,4 +1,4 @@
-use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
+use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}};
 
 use crate::{game::{level::tile::TileDir, scene::entity_spawner::EntitySpawner}, resources::Resources};
 
@@ -12,15 +12,15 @@ pub enum LauncherKind {
 pub struct Launcher {
     id: Id,
     pos: Vec2,
-    timer: f32,
     kind: LauncherKind,
+    fired: bool,
 }
 
 impl Launcher {
     pub fn new(kind: LauncherKind, pos: Vec2, id: Id) -> Self {
-        Self { id, pos, timer: 9999.0, kind }
+        Self { id, pos, fired: true, kind }
     }
-    pub fn draw_editor(kind: LauncherKind, pos: Vec2, camera_pos: Vec2, color: Color, resources: &Resources) {
+    pub fn draw_editor(kind: LauncherKind, pos: Vec2, camera_pos: Vec2, resources: &Resources) {
         let x_offset = match kind {
             LauncherKind::Cannonball(TileDir::Left)   => 16.0,
             LauncherKind::Cannonball(TileDir::Right)  => 32.0,
@@ -29,7 +29,7 @@ impl Launcher {
             LauncherKind::Fireball => 0.0,
         };
         let rect = Rect::new(176.0 + x_offset, 80.0, 16.0, 16.0);
-        resources.draw_rect(pos - camera_pos, rect, false, false, color, resources.entity_atlas());
+        resources.draw_rect(pos - camera_pos, rect, false, false, WHITE, resources.entity_atlas());
     }
 }
 
@@ -56,17 +56,25 @@ impl Entity for Launcher {
     fn should_destroy(&self) -> bool {
         false
     }
+    fn update_far(&self) -> bool {
+        true
+    }
 
-    fn physics_update(&mut self, _player: &mut crate::game::player::Player, _others: &mut Vec<&mut Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, _level: &mut crate::game::level::Level, camera: &mut crate::game::scene::camera::Camera, _resources: &Resources) {
-        self.timer += 1.0 / 120.0;
-        
-        if self.timer < match self.kind {
+    fn physics_update(&mut self, _player: &mut crate::game::player::Player, _others: &mut Vec<&mut Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, _particles: &mut crate::game::scene::particles::Particles, _level: &mut crate::game::level::Level, camera: &mut crate::game::scene::camera::Camera, resources: &Resources) {
+        let update_time = match self.kind {
             LauncherKind::Cannonball(_) => 3.0,
             LauncherKind::Fireball => 4.0,
-        } {
+        };
+        let t = resources.tile_animation_timer();
+
+        if t % update_time < 0.1 {
+            self.fired = false;
             return;
         }
-        self.timer = 0.0;
+        if self.fired {
+            return;
+        }
+        self.fired = true;
 
         match self.kind {
             LauncherKind::Cannonball(dir) => {

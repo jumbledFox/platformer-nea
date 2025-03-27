@@ -57,6 +57,12 @@ impl Entity for Cannonball {
     fn should_destroy(&self) -> bool {
         matches!(self.stomped, Some(t) if t >= 3.0)
     }
+    fn destroy_offscreen(&self) -> bool {
+        true
+    }
+    fn update_far(&self) -> bool {
+        true
+    }
 
     fn can_hurt(&self) -> bool {
         self.stomped.is_none()

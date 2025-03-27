@@ -6,9 +6,9 @@ use crate::{level_pack_data::LevelPackData, resources::Resources, text_renderer:
 
 use super::player::{FeetPowerup, HeadPowerup, Player};
 
-const INTRO_TIME:     f32 = 4.0;
-const FINISH_TIME:    f32 = 3.0;
-const GAME_OVER_TIME: f32 = 3.0;
+const _INTRO_TIME:     f32 = 4.0;
+const _FINISH_TIME:    f32 = 3.0;
+const _GAME_OVER_TIME: f32 = 3.0;
 
 #[derive(Default, Debug)]
 pub enum TransitionKind {
@@ -133,7 +133,7 @@ impl Transition {
             
             if t < 4.0 {
                 // Pack info
-                render_text(&format!("{pack_name}"), Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 208.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
+                render_text(&format!("{pack_name}"), Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 202.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
                 render_text(&format!("{author}"),    Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 216.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
 
                 // Level/world

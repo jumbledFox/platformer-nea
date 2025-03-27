@@ -1,11 +1,12 @@
 use armadillo::Armadillo;
 use chip::Chip;
 use crate_entity::{Crate, CrateKind};
+use flame_jet::FlameJet;
 use frog::Frog;
 use goat::Goat;
 use key::Key;
 use launcher::{Launcher, LauncherKind};
-use macroquad::{color::Color, math::{vec2, Rect, Vec2}};
+use macroquad::{color::Color, math::{bool, vec2, Rect, Vec2}};
 use powerup::Powerup;
 
 use crate::{level_pack_data::LevelPosition, resources::Resources};
@@ -24,8 +25,9 @@ pub mod explosion;
 pub mod launcher;
 pub mod cannonball;
 pub mod fireball;
+pub mod flame_jet;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Id {
     Level(LevelPosition),
     Spawned(u32),
@@ -92,6 +94,8 @@ pub trait Entity {
     // Destroying
     fn should_destroy(&self) -> bool;
     fn destroy(&mut self, _entity_spawner: &mut EntitySpawner, _particles: &mut Particles) {}
+    fn destroy_offscreen(&self) -> bool { false }
+    fn update_far(&self) -> bool { false }
 
     // Updating/drawing
     // (idk if i need update? it's never really used... but good to have just in case i guess...) i might remove it...
@@ -113,6 +117,7 @@ pub enum EntityKind {
     Launcher(LauncherKind),
     Cannonball,
     Fireball,
+    FlameJet(bool),
 
     DangerCloud,
     Explosion,
@@ -136,6 +141,7 @@ impl Ord for EntityKind {
                 EntityKind::Cannonball => 7,
                 EntityKind::Key(_)  => 8,
                 EntityKind::Powerup(..)  => 9,
+                EntityKind::FlameJet(_) => 10,
             }
         }
         order(self).cmp(&order(other))
@@ -191,7 +197,7 @@ impl EntityKind {
             Self::Goat => Goat::object_selector_rect().size(),
             Self::Armadillo(..) => Armadillo::object_selector_rect().size(),
 
-            Self::Launcher(..) => vec2(16.0, 16.0),
+            Self::Launcher(..) | Self::FlameJet(_) => vec2(16.0, 16.0),
 
             _ => Vec2::ZERO,
         }
@@ -218,7 +224,8 @@ impl EntityKind {
             EntityKind::Goat => Goat::draw_editor(pos, camera_pos, color, resources),
             EntityKind::Armadillo(_, false) => Armadillo::draw_editor(pos, None, camera_pos, color, resources),
             EntityKind::Armadillo(_, true)  => Armadillo::draw_editor(pos, Some(resources.tile_animation_timer() as f32), camera_pos, color, resources),
-            EntityKind::Launcher(kind) => Launcher::draw_editor(*kind, pos, camera_pos, color, resources),
+            EntityKind::Launcher(kind) => Launcher::draw_editor(*kind, pos, camera_pos, resources),
+            EntityKind::FlameJet(direction) => FlameJet::draw_editor(*direction, pos, camera_pos, resources),
             _ => {}
         }
     }
@@ -269,8 +276,9 @@ impl From<EntityKind> for u8 {
             EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Right))  => 38,
             EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Top))    => 39,
             EntityKind::Launcher(LauncherKind::Fireball) => 43,
-
-            // 40, 41, 42
+            EntityKind::FlameJet(false) => 40,
+            EntityKind::FlameJet(true)  => 41,
+            // 42
 
             // These shouldn't be saved!! they can't be placed!!
             EntityKind::DangerCloud |
@@ -326,6 +334,8 @@ impl TryFrom<u8> for EntityKind {
             38 => Ok(EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Right))),
             39 => Ok(EntityKind::Launcher(LauncherKind::Cannonball(TileDir::Top))),
             43 => Ok(EntityKind::Launcher(LauncherKind::Fireball)),
+            40 => Ok(EntityKind::FlameJet(false)),
+            41 => Ok(EntityKind::FlameJet(true)),
             _ => Err(())
         }
     }

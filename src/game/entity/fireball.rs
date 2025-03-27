@@ -44,6 +44,12 @@ impl Entity for Fireball {
     fn should_destroy(&self) -> bool {
         false
     }
+    fn destroy_offscreen(&self) -> bool {
+        true
+    }
+    fn update_far(&self) -> bool {
+        true
+    }
 
     fn can_hurt(&self) -> bool {
         true

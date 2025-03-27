@@ -1,12 +1,12 @@
 use std::f32::consts::PI;
 
-use macroquad::{color::{BLUE, GREEN, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
+use macroquad::{color::{BLUE, GREEN, RED, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
 
 use crate::{game::{level::tile::TileHitKind, player::Player, scene::{camera::Camera, particles::{ParticleKind, Particles}}}, resources::Resources, util::{draw_rect, rect}};
 
 use super::{crate_entity::CrateKind, Entity, EntityKind, Id};
 
-const SIZE: Vec2 = vec2(48.0, 40.0);
+const SIZE: Vec2 = vec2(48.0, 48.0);
 
 pub struct Explosion {
     center: Vec2,
@@ -60,7 +60,7 @@ impl Entity for Explosion {
         
         if self.timer >= 0.2 && !self.explode_more {
             // Explode all of the other explosive crates
-            let explode_rect_size = SIZE * 2.5;
+            let explode_rect_size = SIZE * 1.8;
             let explode_rect = rect(self.center - explode_rect_size / 2.0, explode_rect_size);
             for e in others {
                 if e.kind() == EntityKind::Crate(CrateKind::Explosive) && e.hitbox().overlaps(&explode_rect) {
