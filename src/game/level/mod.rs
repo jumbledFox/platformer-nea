@@ -1,6 +1,6 @@
 // A bunch of tiles, doors, etc...
 
-use std::{collections::HashMap, f32::consts::PI};
+use std::{collections::{HashMap, HashSet}, f32::consts::PI};
 
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, shapes::draw_line};
 use things::{Door, DoorKind, Sign};
@@ -29,6 +29,7 @@ pub struct Level {
     bumped_tiles: Vec<BumpedTile>,
 
     new_on_off_state: Option<bool>,
+    locks_destroyed: HashSet<LockColor>,
 
     spawn:  Vec2,
     finish: Vec2,
@@ -74,6 +75,7 @@ impl Level {
             checkpoints, signs, doors,
             bumped_tiles: vec![],
             new_on_off_state: None,
+            locks_destroyed: HashSet::with_capacity(7),
             checkpoint: None,
             entity_spawns,
             should_update_render_data: true,
@@ -101,6 +103,9 @@ impl Level {
     pub fn checkpoints(&self) -> &Vec<Vec2> {
         &self.checkpoints
     }
+    pub fn checkpoint(&self) -> Option<usize> {
+        self.checkpoint
+    }
     pub fn set_checkpoint(&mut self, index: usize) {
         self.checkpoint = Some(index);
     }
@@ -123,13 +128,19 @@ impl Level {
         self.new_on_off_state = Some(enabled);
     }
 
+    pub fn lock_destroyed(&self, color: LockColor) -> bool {
+        self.locks_destroyed.contains(&color)
+    }
+
     // Lock blocks - removes all of the specified colour and spawns particles
     pub fn remove_lock_blocks(&mut self, color: LockColor, particles: &mut Particles) {
+        self.locks_destroyed.insert(color);
         let mut check_tile = |i: usize, t: &mut Tile, bg: bool| {
-            let lock = *t == Tile::Lock(color);
-            if lock || *t == Tile::LockBlock(color) {
-                let pos = vec2((i % self.width) as f32, (i / self.width) as f32) * 16.0 + 8.0;
-                particles.add_lock(pos, lock, color, bg);
+            if *t == Tile::Lock(color) || *t == Tile::LockBlock(color) {
+                if !bg {
+                    let pos = vec2((i % self.width) as f32, (i / self.width) as f32) * 16.0 + 8.0;
+                    particles.add_lock(pos, color);
+                }
                 self.should_update_render_data = true;
                 *t = Tile::Empty;
             }

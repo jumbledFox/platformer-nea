@@ -1,12 +1,12 @@
 // A bunch of levels to be played, the global chip counter, etc.
 // Loaded from a level pack
 
-use macroquad::{color::BLACK, math::Vec2, window::clear_background};
+use macroquad::{color::BLACK, input::{is_key_pressed, KeyCode}, math::Vec2, window::clear_background};
 use player::{FeetPowerup, HeadPowerup};
 use scene::Scene;
 use transition::{Transition, TransitionKind};
 
-use crate::{level_pack_data::LevelPackData, resources::Resources, ui::Ui, GameState};
+use crate::{level_pack_data::LevelPackData, menu::Menu, resources::Resources, ui::Ui, GameState};
 
 pub mod transition;
 pub mod level;
@@ -15,7 +15,7 @@ pub mod collision;
 pub mod entity;
 pub mod player;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 enum TransitionAction {
     Finish, Intro, Death, GameOver,
 }
@@ -33,6 +33,7 @@ pub struct Game {
     world_num: usize,
     next_powerups: (Option<HeadPowerup>, Option<FeetPowerup>),
     prev_chips: usize,
+    checkpoint: Option<usize>,
 
     // player types
     scene: Option<Scene>,
@@ -55,6 +56,7 @@ impl Game {
             world_num: 69,
             next_powerups: (None, None),
             prev_chips: 0,
+            checkpoint: None,
 
             scene: None,
             lives: 3,
@@ -64,28 +66,44 @@ impl Game {
 }
 
 impl GameState for Game {
-    fn update(&mut self, deltatime: f32, _ui: &mut Ui, resources: &mut Resources, _next_state: &mut Option<Box<dyn GameState>>) {
+    fn update(&mut self, deltatime: f32, _ui: &mut Ui, resources: &mut Resources, next_state: &mut Option<Box<dyn GameState>>) {
         self.transition.update(deltatime);
         
         if self.transition.time_up() {
             match self.transition.kind() {
                 TransitionKind::PackStart(..) |
                 TransitionKind::Finish(_)     |
-                TransitionKind::GameOver      |
+                TransitionKind::GameOver(_)   |
                 TransitionKind::Death(_)  => self.transition_action = Some(TransitionAction::Intro),
                 _ => self.transition_action = None,
             };
+            if matches!(self.transition.kind(), TransitionKind::Death(_)) {
+                self.lives -= 1;
+            }
+            if matches!(self.transition.kind(), TransitionKind::GameOver(_)) {
+                // Go back to the first level in the world
+                if let Some(level) = self.level_pack.levels().get(self.current_level) {
+                    let world = level.world();
+                    self.current_level = self.level_pack.levels()
+                        .iter()
+                        .position(|l| l.world() == world)
+                        .unwrap_or_default();
+                }
+                self.lives = 3;
+                self.chips = 0;
+            }
             self.transition.set_none();
         }
 
         if let Some(transition_action) = self.transition_action.take() {
             match transition_action {
                 TransitionAction::Intro => {
+                    resources.reset_tile_animation_timer();
                     self.chips += self.prev_chips;
                     self.prev_chips = 0;
                     // Load the level and begin the transition
                     if let Some(level_data) = self.level_pack.levels().get(self.current_level) {
-                        let mut scene = Scene::new(level_data, self.next_powerups.0, self.next_powerups.1);
+                        let mut scene = Scene::new(level_data, self.checkpoint, self.next_powerups.0, self.next_powerups.1);
                         // Update the scene so we can load all the entities and stuff
                         // kinda hacky passing &mut 1... idk
                         scene.update(&mut 1, 0.0, resources);
@@ -117,7 +135,8 @@ impl GameState for Game {
                     // Or if we've beaten all the levels, show the end screen!
                     else {
                         self.scene = None;
-                        println!("pack completed!!");
+                        let (head, feet) = self.next_powerups;
+                        self.transition.begin_pack_finish(self.level_pack.name().clone(), self.level_pack.author().clone(), head, feet, self.chips, 0, 0, self.level_pack.levels().len());
                     }
                 }
                 TransitionAction::Finish => {
@@ -129,6 +148,7 @@ impl GameState for Game {
                     self.current_level += 1;
                     self.next_powerups = (head, feet);
                     self.prev_chips = prev_chips;
+                    self.checkpoint = None;
                     self.transition.begin_finish(center);
                     
                 }
@@ -140,16 +160,20 @@ impl GameState for Game {
                     self.transition.begin_death(center);
                 }
                 TransitionAction::GameOver => {
-                    // Go back to the first level in the world
-                    if let Some(level) = self.level_pack.levels().get(self.current_level) {
-                        let world = level.world();
-                        self.current_level = self.level_pack.levels()
-                            .iter()
-                            .position(|l| l.world() == world)
-                            .unwrap_or_default();
-                    }
-                    self.transition.begin_game_over();
+                    let center = match &self.scene {
+                        Some(s) => s.player_screen_space_center(),
+                        None => Vec2::ZERO,
+                    };
+                    self.checkpoint = None;
+                    self.transition.begin_game_over(center);
                 }
+            }
+        }
+
+        if matches!(self.transition.kind(), TransitionKind::PackFinish(..)) {
+            if is_key_pressed(KeyCode::Space) {
+                *next_state = Some(Box::new(Menu::new(Some(self.level_pack.file_name().clone()))));
+                return;
             }
         }
         
@@ -161,8 +185,9 @@ impl GameState for Game {
         resources.set_anim_timer_update(true);
         if let Some(scene) = &mut self.scene {
             scene.update(&mut self.lives, deltatime, resources);
-    
-            self.transition_action = match (scene.completed(), false, self.lives) {
+            self.checkpoint = scene.checkpoint();
+
+            self.transition_action = match (scene.completed(), scene.dead(), self.lives) {
                 // Finishing level
                 (true, _, _) => Some(TransitionAction::Finish),
                 // Game over
@@ -170,7 +195,7 @@ impl GameState for Game {
                 // Respawning
                 (_, true, _) => Some(TransitionAction::Death),
                 // Nothing
-                (false, false, _) => None,
+                _=> None,
             };
         }
     }

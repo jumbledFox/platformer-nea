@@ -7,7 +7,7 @@ use camera::Camera;
 use entity_spawner::EntitySpawner;
 use fader::Fader;
 // use entity::{col_test::ColTest, frog::Frog, player::Player, Entity};
-use macroquad::{color::{Color, GREEN, ORANGE, RED, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
+use macroquad::{color::{Color, GREEN, RED, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
 use particles::{ParticleKind, Particles};
 use sign_display::SignDisplay;
 
@@ -41,10 +41,19 @@ pub struct Scene {
     completed: bool,
 }
 
+// TODO: show_mouse(false);
+
 impl Scene {
-    pub fn new(level_data: &LevelData, head_powerup: Option<HeadPowerup>, feet_powerup: Option<FeetPowerup>) -> Self {
-        let level = level_data.to_level();
-        let spawn = level.spawn();
+    pub fn new(level_data: &LevelData, checkpoint: Option<usize>, head_powerup: Option<HeadPowerup>, feet_powerup: Option<FeetPowerup>) -> Self {
+        let mut level = level_data.to_level();
+
+        let spawn = match checkpoint {
+            Some(c) => {
+                level.set_checkpoint(c);
+                level.checkpoints().get(c).cloned().unwrap_or_default()
+            }
+            None => level.spawn(),
+        };
 
         let mut scene = Self {
             level,
@@ -92,6 +101,16 @@ impl Scene {
     }
 
     fn spawn_all_entities(&mut self) {
+        // INFO
+        // So, when I first made this project, entities only spawned in when they entered
+        // the screen. This was good, however I decided to change it so that entities were
+        // ALWAYS spawned in, but only UPDATED when on screen.
+        // The reason I did this was because of cannons, I wanted them to shoot when they were
+        // slightly off-screen, which worked after they were spawned in, but not beforehand!
+        // Sooo, the whole entity id thing is now useless... but like... it's nice to have ids i guess?
+        // my bad... i've got less than a week left and i've not done much writing,
+        // My head is filled with caffeine, confusion, and an inexplicable sense of impending doom.
+
         for (&spawn_pos, &k) in self.level.entity_spawns().iter() {
             self.entity_spawner.add_entity(level_pos_to_pos(spawn_pos) + k.tile_offset(), Vec2::ZERO, k, Some(spawn_pos));
         }
@@ -99,8 +118,14 @@ impl Scene {
         self.entity_spawner.spawn_entities(&mut self.entities);
     }
 
+    pub fn checkpoint(&self) -> Option<usize> {
+        self.level.checkpoint()
+    }
     pub fn completed(&self) -> bool {
         self.completed
+    }
+    pub fn dead(&self) -> bool {
+        self.player.dead_stop()
     }
     pub fn player_screen_space_center(&self) -> Vec2 {
         self.player.pos() + 8.0 - self.camera.pos()
@@ -145,6 +170,11 @@ impl Scene {
 
             self.player.physics_update(&mut self.entities, &mut self.entity_spawner, &mut self.particles, &mut self.level, resources);
 
+            if self.player.dead() {
+                self.physics_update_timer -= PHYSICS_STEP;
+                continue;
+            }
+
             // Update all of the entities
             let mut others: Vec<&mut Box<dyn Entity>>;
             for i in 0..self.entities.len() {
@@ -173,7 +203,6 @@ impl Scene {
 
             // Remove all the entities that need to be destroyed
             // Also collects chips / lives / powerups...
-            // TODO: Soft remove all entities out of the screen with a spawn_pos id 
             let mut disable_respawn = |id: Id| {
                 if let Id::Level(spawn_pos) = id {
                     self.level.remove_entity_spawn(spawn_pos);
@@ -282,8 +311,8 @@ impl Scene {
 
         // Draw the UI
         // Lives
-        render_text("- fox -",           ORANGE, vec2( 40.0,  8.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
-        render_text("*",                 WHITE,  vec2( 40.0, 24.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+        render_text("- fox -",Color::from_hex(0xf77622), vec2( 40.0,  8.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+        render_text("*", WHITE,  vec2( 40.0, 24.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         render_text(&format!("{lives}"), WHITE,  vec2( 60.0, 24.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         resources.draw_rect(vec2(13.0, 16.0), Rect::new(192.0, 16.0, 16.0, 15.0), false, false, WHITE, resources.entity_atlas());
         

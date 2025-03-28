@@ -69,11 +69,18 @@ impl Entity for Key {
     fn vel(&self) -> Vec2 { self.vel }
     fn set_pos(&mut self, pos: Vec2) { self.pos = pos; }
     fn set_vel(&mut self, vel: Vec2) { self.vel = vel; }
+    fn destroy(&mut self, _entity_spawner: &mut EntitySpawner, particles: &mut Particles) {
+        particles.add_lock(self.hitbox().center(), self.color);
+    }
     fn should_destroy(&self) -> bool {
         self.remove
     }
 
     fn physics_update(&mut self, _player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
+        if level.lock_destroyed(self.color) {
+            self.remove = true;
+            return;
+        }
         
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
@@ -92,7 +99,6 @@ impl Entity for Key {
             for point in [TOP, BOT_L, BOT_M, BOT_R, SIDE_LT, SIDE_LB, SIDE_RT, SIDE_RB] {
                 // If so, destroy all the lock blocks of our color and destroy ourself.
                 if level.tile_at_pos(prev_pos + point) == Tile::Lock(self.color) {
-                    // TODO: Key particles
                     self.remove = true;
                     level.remove_lock_blocks(self.color, particles);
                     continue;

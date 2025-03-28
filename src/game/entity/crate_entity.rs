@@ -271,6 +271,13 @@ impl Entity for Crate {
     fn physics_update(&mut self, _player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
         self.update_fuse();
         
+        if let CrateKind::Key(color) = self.kind {
+            if level.lock_destroyed(color) {
+                self.hit = true;
+                return;
+            }
+        }
+
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
         self.pos += self.vel;
 

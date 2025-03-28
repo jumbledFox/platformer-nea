@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use macroquad::{color::{Color, WHITE}, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
+use macroquad::{color::{Color, WHITE}, color_u8, math::{Rect, Vec2}, texture::{draw_texture_ex, DrawTextureParams}};
 
 use crate::{resources::Resources, VIEW_SIZE};
 
@@ -21,6 +21,21 @@ pub enum LockColor {
 impl LockColor {
     pub fn colors() -> &'static [LockColor] {
         &[Self::Red, Self::Green, Self::Blue, Self::Yellow, Self::White, Self::Black, Self::Rainbow]
+    }
+    pub fn color(&self, resources: &Resources) -> Color {
+        let index = match self {
+            LockColor::Rainbow => ((resources.tile_animation_timer() % (RAINBOW_LOCK_FRAME_DUR * 4.0)) / RAINBOW_LOCK_FRAME_DUR).floor() as usize,
+            c @ _ => *c as usize,
+        };
+        const COLS: [Color; 6] = [
+            color_u8!(207,  72,  71, 255), // Red
+            color_u8!( 99, 207,  71, 255), // Green
+            color_u8!( 71, 109, 207, 255), // Blue
+            color_u8!(207, 179,  71, 255), // Yellow
+            color_u8!(208, 208, 208, 255), // White
+            color_u8!(105, 105, 105, 255), // Black
+        ];
+        COLS[index]
     }
 }
 

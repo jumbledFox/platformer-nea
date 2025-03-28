@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::{gen_range, rand}};
 
-use crate::{game::{collision::default_collision, player::{FeetPowerup, HeadPowerup, Player, PowerupKind}, scene::{particles::ParticleKind, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::rect};
+use crate::{game::{collision::default_collision, player::{Player, PowerupKind}, scene::{particles::ParticleKind, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::rect};
 
 use super::{Entity, EntityKind, Id};
 

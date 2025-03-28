@@ -18,7 +18,7 @@ fn get_col_at_point(pos: Vec2, point: Vec2, level: &Level, resources: &Resources
 }
 
 pub fn collision_left(pos: &mut Vec2, point: Vec2, push: bool, level: &Level, resources: &Resources) -> bool {
-    if !get_col_at_point(*pos, point, level, resources).is_solid() {
+    if !get_col_at_point(*pos, point, level, resources).is_solid() && pos.x + point.x >= 0.0 {
         return false;
     }
     let edge = (pos.x / 16.0).ceil() * 16.0 - (point.x + 0.1).rem_euclid(16.0) - 0.1;
@@ -30,7 +30,7 @@ pub fn collision_left(pos: &mut Vec2, point: Vec2, push: bool, level: &Level, re
 }
 
 pub fn collision_right(pos: &mut Vec2, point: Vec2, push: bool, level: &Level, resources: &Resources) -> bool {
-    if !get_col_at_point(*pos, point, level, resources).is_solid() {
+    if !get_col_at_point(*pos, point, level, resources).is_solid() && pos.x + point.x <= level.width() as f32 * 16.0 {
         return false;
     }
     let edge = (pos.x / 16.0).floor() * 16.0 + 16.0 - (point.x - 0.1).rem_euclid(16.0) + 0.1;
@@ -58,7 +58,7 @@ pub fn collision_bottom(pos: &mut Vec2, point: Vec2, level: &Level, resources: &
 pub fn collision_top(pos: &mut Vec2, point: Vec2, level: &Level, resources: &Resources) -> bool {
     let collision = get_col_at_point(*pos, point, level, resources);
 
-    if !collision.is_solid() {
+    if !collision.is_solid() && pos.y + point.y >= 0.0 {
         return false;
     }
 

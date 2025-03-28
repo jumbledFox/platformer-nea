@@ -99,10 +99,10 @@ impl PowerupKind {
 
 // Rendering
 pub enum PlayerArmKind {
-    Normal, Tilted, Holding, HoldingBack, Jump, Ladder,
+    Normal, Tilted, Holding, HoldingBack, Jump, Ladder, Dead, DeadBack,
 }
 pub enum PlayerPart {
-    Head { powerup: Option<HeadPowerup>, ladder: bool },
+    Head { powerup: Option<HeadPowerup>, ladder: bool, dead: bool },
     Body { ladder: bool },
     Arm { kind: PlayerArmKind },
     Feet { powerup: Option<FeetPowerup>, run: bool, ladder: bool },
@@ -142,6 +142,8 @@ pub struct Player {
     prev_on_ladder: bool,
     nudging_l: bool,
     nudging_r: bool,
+    dead_timer: Option<f32>,
+    dead_y: f32,
     
     // Constants
     walk_speed: f32,
@@ -179,6 +181,8 @@ impl Player {
             prev_on_ladder: false,
             nudging_l: false,
             nudging_r: false,
+            dead_timer: None,
+            dead_y: 0.0,
 
             walk_speed: 0.6,
             run_speed_beg: 0.7,
@@ -217,6 +221,12 @@ impl Player {
     }
     pub fn invuln(&self) -> &Invuln {
         &self.invuln        
+    }
+    pub fn dead(&self) -> bool {
+        self.dead_timer.is_some()
+    }
+    pub fn dead_stop(&self) -> bool {
+        self.dead_timer.is_some() && self.vel.y >= 0.0
     }
 
     pub fn set_pos(&mut self, pos: Vec2) {
@@ -430,6 +440,10 @@ impl Player {
     }
 
     pub fn update(&mut self, entities: &mut Vec<Box<dyn Entity>>, camera: &mut Camera, fader: &mut Fader, sign_display: &mut SignDisplay, level: &mut Level, resources: &Resources) {
+        if self.dead_timer.is_some() {
+            return;
+        }
+        
         if self.prev_on_ladder && !self.center_on_ladder(level, resources) {
             self.prev_on_ladder = false;
         }
@@ -566,6 +580,15 @@ impl Player {
     }
 
     pub fn physics_update(&mut self, entities: &mut Vec<Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, resources: &Resources) {
+        if let Some(t) = &mut self.dead_timer {
+            *t += 1.0/120.0;
+            if *t < 0.8 {
+                return;
+            } 
+            self.vel.y = (self.vel.y + GRAVITY * 0.7).min(MAX_FALL_SPEED);
+            self.pos += self.vel;
+            return;
+        }
         if let Some((t, _)) = &mut self.prev_held {
             *t -= 1.0 / 120.0;
         }
@@ -706,7 +729,6 @@ impl Player {
                 }
             }
         }
-
         if stomped {
             self.state = State::Jumping;
             self.vel.y = self.vel.y.min(-1.5);
@@ -723,11 +745,22 @@ impl Player {
         } else if self.feet_powerup.is_some() {
             self.feet_powerup = None;
         } else {
-            // DIE!
+            self.kill();
         }
+    }
+
+    pub fn kill(&mut self) {
+        self.vel = vec2(0.0, -1.7);
+        self.dead_timer = Some(0.0);
+        self.dead_y = self.pos.y;
+        self.head_powerup = None;
+        self.feet_powerup = None;
     }
     
     pub fn hurt_check(&mut self, entities: &mut Vec<Box<dyn Entity>>, level: &Level, _resources: &Resources) {
+        if self.dead_timer.is_some() {
+            return;
+        }
         // Update the timer
         match &mut self.invuln {
             Invuln::Damage(t) | Invuln::Powerup(_, t) => {
@@ -740,6 +773,11 @@ impl Player {
         }
         if matches!(self.invuln, Invuln::Damage(_)) {
             return;
+        }
+
+        // Falling off the map
+        if self.pos.y >= level.height() as f32 * 16.0 + 4.0 {
+            self.kill();
         }
 
         // Entities
@@ -755,6 +793,9 @@ impl Player {
             for p in [SIDE_LT, SIDE_LB, SIDE_RT, SIDE_RB] {
                 if hurtbox.contains(self.pos + p) {
                     self.hurt();
+                    if self.dead_timer.is_some() {
+                        return;
+                    }
                     self.vel.x = (self.chip_hitbox().center().x - hurtbox.center().x).signum() * self.run_speed_end;
                     self.target_x_vel = self.vel.x;
                     self.jump(1.0);
@@ -766,6 +807,9 @@ impl Player {
         // Spikes
         if let Some(dir) = spike_check(self.pos, &[HEAD], &[FOOT_L, FOOT_R], &[SIDE_LB, SIDE_LT], &[SIDE_RB, SIDE_RT], level) {
             self.hurt();
+            if self.dead_timer.is_some() {
+                return;
+            }
             let side_vel = 0.5;
             if dir == TileDir::Bottom {
                 self.jump(1.8);
@@ -792,11 +836,15 @@ impl Player {
             PlayerPart::Feet { .. } => (44.0,  8.0),
         };
         let x = match part {
-            PlayerPart::Head { powerup, ladder } => {
-                let ladder_offset = if ladder { 16.0 } else { 0.0 };
-                ladder_offset + match powerup {
-                    None    => 0.0,
-                    Some(p) => 32.0 * (p as usize + 1) as f32,
+            PlayerPart::Head { powerup, ladder, dead } => {
+                if dead {
+                    6.0 * 16.0
+                } else {
+                    let ladder_offset = if ladder { 16.0 } else { 0.0 };
+                    ladder_offset + match powerup {
+                        None    => 0.0,
+                        Some(p) => 32.0 * (p as usize + 1) as f32,
+                    }
                 }
             }
             PlayerPart::Body { ladder } => 16.0 * ladder as usize as f32,
@@ -840,32 +888,40 @@ impl Player {
 
         let ladder = false;
         draw_player_part(PlayerPart::Body { ladder });
-        draw_player_part(PlayerPart::Head { powerup: head_powerup, ladder });
+        draw_player_part(PlayerPart::Head { powerup: head_powerup, ladder, dead: false });
         draw_player_part(PlayerPart::Feet { powerup: feet_powerup, run, ladder });
         draw_player_part(PlayerPart::Arm { kind: PlayerArmKind::Normal });
     }
 
     pub fn draw(&self, always_draw: bool, camera_pos: Vec2, resources: &Resources, debug: bool) {
-        match (always_draw, &self.invuln) {
+        match (always_draw || self.dead_timer.is_some(), &self.invuln) {
             (false, Invuln::Damage(t)) if t % 0.1 >= 0.05 => return,
             _ => {}
         };
+        let dead = self.dead_timer.is_some_and(|d| d > 0.8);
         let holding = self.holding.is_some();
         let ladder = self.state == State::Climbing;
 
-        let (front_arm, back_arm) = match (self.state, holding, ladder) {
-            (_, _, true) => (None, Some(PlayerArmKind::Ladder)),
-            (_, true, _) => (Some(PlayerArmKind::Holding), Some(PlayerArmKind::HoldingBack)),
-            (State::Jumping, _, _) => (Some(PlayerArmKind::Tilted), Some(PlayerArmKind::Jump)),
-            (State::Falling, _, _) => (Some(PlayerArmKind::Tilted), None),
+        let (front_arm, back_arm) = match (dead, self.state, holding, ladder) {
+            (true, ..) => (Some(PlayerArmKind::Dead), Some(PlayerArmKind::DeadBack)),
+            (_, _, _, true) => (None, Some(PlayerArmKind::Ladder)),
+            (_, _, true, _) => (Some(PlayerArmKind::Holding), Some(PlayerArmKind::HoldingBack)),
+            (_, State::Jumping, _, _) => (Some(PlayerArmKind::Tilted), Some(PlayerArmKind::Jump)),
+            (_, State::Falling, _, _) => (Some(PlayerArmKind::Tilted), None),
             _ if self.run_time >= self.run_time_max && self.vel.x.abs() >= self.run_speed_end => (Some(PlayerArmKind::Tilted), None),
             _ => (Some(PlayerArmKind::Normal), None),
         };
 
         // Whether or not the 'run' sprite should be shown for the feet
-        let run = self.stepping
+        let mut run = self.stepping
         || self.state == State::Falling
         || self.state == State::Jumping;
+        if dead {
+            run = self.dead_timer.is_some_and(|d| d % 0.1 < 0.05);
+        }
+        if self.dead_stop() {
+            run = true;
+        }
 
         // Drawing individual parts of the player
         // The player sprite should be offset vertically if they're wearing boots
@@ -904,7 +960,7 @@ impl Player {
             draw_player_part(PlayerPart::Arm { kind: back_arm });
         }
         draw_player_part(PlayerPart::Body { ladder });
-        draw_player_part(PlayerPart::Head { powerup: head_powerup, ladder });
+        draw_player_part(PlayerPart::Head { powerup: head_powerup, ladder, dead: self.dead_timer.is_some() });
         if let Some(entity) = &self.holding {
             entity.draw(self, camera_pos, resources);
         }

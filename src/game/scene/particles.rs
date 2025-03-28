@@ -1,8 +1,6 @@
-use std::f32::consts::PI;
+use macroquad::{color::{Color, WHITE}, math::{vec2, Vec2}, rand::gen_range};
 
-use macroquad::{color::{Color, GRAY, WHITE}, math::{vec2, Vec2}, rand::gen_range};
-
-use crate::{game::{entity::powerup::Powerup, level::tile::{LockColor, RAINBOW_LOCK_FRAME_DUR}, player::{FeetPowerup, HeadPowerup, PowerupKind}}, resources::Resources, text_renderer::{render_text, Align, Font}, util::rect};
+use crate::{game::{level::tile::LockColor, player::PowerupKind}, resources::Resources, text_renderer::{render_text, Align, Font}, util::rect};
 
 use super::{camera::Camera, GRAVITY, MAX_FALL_SPEED};
 
@@ -16,6 +14,12 @@ pub enum CrateParticleKind {
 }
 
 #[derive(Clone, Copy, PartialEq)]
+pub enum SmokeKind {
+    Lock(LockColor),
+    Color(Color),
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub enum ParticleKind {
     Crate(CrateParticleKind),
     ExplosionSmoke,
@@ -23,8 +27,8 @@ pub enum ParticleKind {
     Sparkle(Color),
     OneUp,
     Stone(usize),
-    Lock(bool, LockColor, bool, usize),
     Powerup(PowerupKind),
+    Smoke(SmokeKind, f32),
 }
 
 impl Eq for ParticleKind {
@@ -37,7 +41,7 @@ impl Ord for ParticleKind {
             match kind {
                 ParticleKind::Crate(_) => 0,
                 ParticleKind::Stone(_) => 0,
-                ParticleKind::Lock(..) => 0,
+                ParticleKind::Smoke(..) => 0,
                 ParticleKind::ExplosionSmoke => 1,
                 ParticleKind::Sparkle(_) => 2,
                 ParticleKind::Explosion => 2,
@@ -69,8 +73,11 @@ struct Particle {
 
 impl Particle {
     pub fn update(&mut self) {
-        if matches!(self.kind, ParticleKind::Crate(_) | ParticleKind::Stone(_) | ParticleKind::Lock(..)) {
+        if matches!(self.kind, ParticleKind::Crate(_) | ParticleKind::Stone(_)) {
             self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
+        }
+        if matches!(self.kind, ParticleKind::Smoke(..)) {
+            self.vel *= 0.99;
         }
 
         self.pos += self.vel;
@@ -110,13 +117,11 @@ impl Particle {
             ParticleKind::Sparkle(_) => vec2(48.0, 32.0),
             ParticleKind::OneUp => vec2(48.0, 0.0),
             ParticleKind::Stone(i) => vec2(i as f32 * 16.0, 48.0),
-            ParticleKind::Lock(lock, color, _, i) => {
-                let sprite = match color {
-                    LockColor::Rainbow => ((resources.tile_animation_timer() % (RAINBOW_LOCK_FRAME_DUR * 4.0)) / RAINBOW_LOCK_FRAME_DUR).floor() as usize,
-                    c @ _ => c as usize,
-                };
-                vec2(i as f32 * 16.0 + if lock { 64.0 } else { 0.0 }, 80.0 + sprite as f32 * 16.0)
-            },
+            ParticleKind::Smoke(_, l) if self.timer >= l * 4.0 / 5.0 => vec2(64.0, 64.0),
+            ParticleKind::Smoke(_, l) if self.timer >= l * 3.0 / 5.0 => vec2(48.0, 64.0),
+            ParticleKind::Smoke(_, l) if self.timer >= l * 2.0 / 5.0 => vec2(32.0, 64.0),
+            ParticleKind::Smoke(_, l) if self.timer >= l * 1.0 / 5.0 => vec2(16.0, 64.0),
+            ParticleKind::Smoke(_, _) => vec2(0.0, 64.0),
             _ => Vec2::ZERO,
         };
         let size = match self.kind {
@@ -133,7 +138,7 @@ impl Particle {
             ParticleKind::Sparkle(_) => vec2(5.0, 9.0),
             ParticleKind::OneUp => vec2(15.0, 7.0),
             ParticleKind::Stone(_) => vec2(16.0, 16.0),
-            ParticleKind::Lock(..) => vec2(16.0, 16.0),
+            ParticleKind::Smoke(..) => vec2(16.0, 16.0),
             _ => Vec2::ZERO,
         };
 
@@ -141,7 +146,13 @@ impl Particle {
             ParticleKind::ExplosionSmoke => Color::new(1.0, 1.0, 1.0, (1.0 - self.timer * 1.5).clamp(0.0, 1.0)),
             ParticleKind::Sparkle(color) => color,
             ParticleKind::OneUp => Color::new(1.0, 1.0, 1.0, (2.0 - self.timer).clamp(0.0, 1.0)),
-            ParticleKind::Lock(_, _, true, _) => GRAY,
+            ParticleKind::Smoke(kind, l) => {
+                let col = match kind {
+                    SmokeKind::Color(c) => c,
+                    SmokeKind::Lock(lock_color) => lock_color.color(resources),
+                };
+                Color::new(col.r, col.g, col.b, (1.0 - self.timer / l).clamp(0.0, 1.0))
+            },
             _ => WHITE,
         };
 
@@ -152,7 +163,7 @@ impl Particle {
             ),
             ParticleKind::Crate(_) |
             ParticleKind::OneUp    |
-            ParticleKind::Stone(_) | ParticleKind::Lock(..) => (false, false),
+            ParticleKind::Stone(_) => (false, false),
             _ => (self.flip_x, self.flip_y),
         };
 
@@ -171,6 +182,7 @@ impl Particle {
             ParticleKind::Sparkle(_) => self.timer >= 0.4,
             ParticleKind::OneUp      => self.timer >= 2.0,
             ParticleKind::Powerup(_) => self.timer >= 2.0,
+            ParticleKind::Smoke(_, l) => self.timer >= l,
             _ => false,
         }
     }
@@ -211,12 +223,22 @@ impl Particles {
         self.sort();
     }
 
-    pub fn add_lock(&mut self, pos: Vec2, lock: bool, color: LockColor, bg: bool) {
-        self.add_particle(pos, vec2(gen_range(-1.0, -0.8), gen_range(-0.7, -1.0)), ParticleKind::Lock(lock, color, bg, 0));
-        self.add_particle(pos, vec2(gen_range( 1.0,  0.8), gen_range(-0.7, -1.0)), ParticleKind::Lock(lock, color, bg, 1));
-        self.add_particle(pos, vec2(gen_range(-1.0, -0.8), gen_range(-0.4, -0.6)), ParticleKind::Lock(lock, color, bg, 2));
-        self.add_particle(pos, vec2(gen_range( 1.0,  0.8), gen_range(-0.4, -0.6)), ParticleKind::Lock(lock, color, bg, 3));
+    pub fn add_smoke_cloud(&mut self, pos: Vec2, kind: SmokeKind) {
+        let vel = |x: f32, y: f32| -> Vec2 {
+            vec2(x * gen_range(0.2, 0.5), y * gen_range(0.2, 0.5))
+        };
+        let l = || -> f32 {
+            gen_range(0.3, 0.7)
+        };
+        self.add_particle(pos, vel( 1.0,  1.0), ParticleKind::Smoke(kind, l()));
+        self.add_particle(pos, vel(-1.0,  1.0), ParticleKind::Smoke(kind, l()));
+        self.add_particle(pos, vel( 1.0, -1.0), ParticleKind::Smoke(kind, l()));
+        self.add_particle(pos, vel(-1.0, -1.0), ParticleKind::Smoke(kind, l()));
         self.sort();
+    }
+
+    pub fn add_lock(&mut self, pos: Vec2, color: LockColor) {
+        self.add_smoke_cloud(pos, SmokeKind::Lock(color));
     }
 
     pub fn update(&mut self, camera: &Camera) {
