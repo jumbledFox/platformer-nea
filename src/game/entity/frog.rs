@@ -1,14 +1,15 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{collision::{default_collision, spike_check}, level::{tile::TileDir, Level}, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::{default_collision, lava_check, solid_on_off_check, spike_check}, level::{tile::TileDir, Level}, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
-const TOP:   Vec2 = vec2( 9.0,  1.0);
-const BOT_L: Vec2 = vec2( 5.0, 18.0);
-const BOT_R: Vec2 = vec2(13.0, 18.0);
-const LEFT:  Vec2 = vec2( 3.0,  8.0);
-const RIGHT: Vec2 = vec2(15.0,  8.0);
+const TOP:    Vec2 = vec2( 9.0,  1.0);
+const BOT_L:  Vec2 = vec2( 5.0, 18.0);
+const BOT_R:  Vec2 = vec2(13.0, 18.0);
+const LEFT:   Vec2 = vec2( 3.0,  8.0);
+const RIGHT:  Vec2 = vec2(15.0,  8.0);
+const CENTER: Vec2 = vec2( 6.0,  8.0);
 
 const SHAKE_TIME: f32 = 0.5;
 
@@ -103,7 +104,7 @@ impl Entity for Frog {
         self.vel = vel;
     }
     fn should_destroy(&self) -> bool {
-        matches!(self.state, State::Dead(t) if t <= 0.0)
+        matches!(self.state, State::Dead(t) if t >= 3.0)
     }
 
     fn can_hurt(&self) -> bool {
@@ -113,7 +114,7 @@ impl Entity for Frog {
         !matches!(self.state, State::Dead(_))
     }
     fn kill(&mut self) {
-        self.state = State::Dead(3.0);
+        self.state = State::Dead(0.0);
     }
     fn hit(&mut self) {
         if self.can_hurt() {
@@ -151,6 +152,13 @@ impl Entity for Frog {
             }
         }
 
+        if solid_on_off_check(self.pos, &[CENTER], level) && !matches!(self.state, State::Dead(_)) {
+            self.kill();
+        }
+        if lava_check(self.pos, &[CENTER], particles, level) {
+            self.state = State::Dead(999.0);
+        }
+
         match &mut self.state {
             State::Waiting(t) => {
                 *t -= 1.0 / 120.0;
@@ -163,7 +171,7 @@ impl Entity for Frog {
                 }
             },
             State::Dead(t) => {
-                *t -= 1.0 / 120.0;
+                *t += 1.0 / 120.0;
                 return;
             }
             _ => {}

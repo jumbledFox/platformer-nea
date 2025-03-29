@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::{gen_range, rand}};
 
-use crate::{game::{collision::{default_collision, spike_check}, level::{tile::TileDir, Level}, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::approach_target};
+use crate::{game::{collision::{default_collision, lava_check, solid_on_off_check, spike_check}, level::{tile::TileDir, Level}, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::approach_target};
 
 use super::{Entity, EntityKind, Id};
 
@@ -15,6 +15,8 @@ const LEFT_MID:  Vec2 = vec2( 3.0, 18.0);
 const RIGHT_MID: Vec2 = vec2(13.0, 18.0);
 const LEFT_BOT:  Vec2 = vec2( 3.0, 28.0);
 const RIGHT_BOT: Vec2 = vec2(13.0, 28.0);
+const CENTER_TOP: Vec2 = vec2( 8.0, 10.0);
+const CENTER_BOT: Vec2 = vec2( 8.0, 24.0);
 
 pub struct Goat {
     id: Id,
@@ -132,7 +134,7 @@ impl Entity for Goat {
         self.vel = vel;
     }
     fn should_destroy(&self) -> bool {
-        matches!(self.state, State::Dead(t) if t <= 0.0)
+        matches!(self.state, State::Dead(t) if t >= 3.0)
     }
 
     fn can_hurt(&self) -> bool {
@@ -143,7 +145,7 @@ impl Entity for Goat {
     }
     fn kill(&mut self) {
         if self.can_hurt() {
-            self.state = State::Dead(3.0);
+            self.state = State::Dead(0.0);
         }
     }
     fn hit(&mut self) {
@@ -184,6 +186,13 @@ impl Entity for Goat {
     fn physics_update(&mut self, player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
         let dist_to_player = player.pos() - self.pos + vec2(0.0, 16.0); 
         self.vel.y = (self.vel.y + GRAVITY).min(MAX_FALL_SPEED);
+
+        if solid_on_off_check(self.pos, &[CENTER_TOP, CENTER_BOT], level) && !matches!(self.state, State::Dead(_)) {
+            self.kill();
+        }
+        if lava_check(self.pos, &[CENTER_TOP, CENTER_BOT], particles, level) {
+            self.state = State::Dead(999.0);
+        }
 
         if let Some(t) = &mut self.invuln {
             *t -= 1.0 / 120.0;
@@ -253,7 +262,7 @@ impl Entity for Goat {
                 }
             }
             State::Dead(t) => {
-                *t -= 1.0/120.0;
+                *t += 1.0/120.0;
                 self.pos += self.vel;
                 self.arm = Arm::Up;
                 return;

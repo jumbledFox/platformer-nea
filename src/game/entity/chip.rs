@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::{gen_range, rand}};
 
-use crate::{game::{collision::default_collision, player::Player, scene::{camera::Camera, particles::ParticleKind, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::{default_collision, lava_check, solid_on_off_check}, player::Player, scene::{camera::Camera, particles::{ParticleKind, SmokeKind}, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -11,6 +11,7 @@ const SIDE_RT: Vec2 = vec2(16.0,  2.0);
 const SIDE_RB: Vec2 = vec2(16.0,  8.0);
 const BOT_L:   Vec2 = vec2( 4.0, 14.0);
 const BOT_R:   Vec2 = vec2(12.0, 14.0);
+const CENTER:  Vec2 = vec2( 8.0,  7.0);
 
 pub struct Chip {
     id: Id,
@@ -19,11 +20,12 @@ pub struct Chip {
     life: bool,
     particle_timer: f32,
     next_particle_time: f32,
+    destroy: bool,
 }
 
 impl Chip {
     pub fn new(life: bool, pos: Vec2, vel: Option<Vec2>, id: Id) -> Self {
-        Self { pos, vel, life, id, particle_timer: 0.0, next_particle_time: 0.0 }
+        Self { pos, vel, life, id, particle_timer: 0.0, next_particle_time: 0.0, destroy: false }
     }
     pub fn hitbox() -> Rect {
         Rect::new(0.0, 0.0, 16.0, 14.0)
@@ -83,7 +85,7 @@ impl Entity for Chip {
         }
     }
     fn should_destroy(&self) -> bool {
-        false
+        self.destroy
     }
 
     fn physics_update(&mut self, _player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut crate::game::scene::entity_spawner::EntitySpawner, particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, _camera: &mut Camera, resources: &Resources) {
@@ -98,7 +100,13 @@ impl Entity for Chip {
             self.particle_timer = 0.0;
             self.next_particle_time = gen_range(0.4, 0.9);
         }
-        
+
+        // Solid block check
+        if solid_on_off_check(self.pos, &[CENTER], level) {
+            particles.add_smoke_cloud(self.hitbox().center(), SmokeKind::Color(Self::particle_color(self.life)));
+            self.destroy = true;
+        }
+
         let mut vel = match self.vel {
             Some(v) => v,
             None => return,
@@ -113,6 +121,11 @@ impl Entity for Chip {
         let (_, b, _, _, _, _) = default_collision(&mut self.pos, &mut vel, None, None, others, &mut tops, &mut bots, &mut lefts, &mut rights, particles, level, resources);
         if b { vel.x = 0.0; }
         self.vel = Some(vel);
+
+        // Lava
+        if lava_check(self.pos, &[CENTER], particles, level) {
+            self.destroy = true;
+        }
     }
     fn draw(&self, _player: &Player, camera_pos: Vec2, resources: &Resources) {
         let y_offset = match self.vel {

@@ -166,12 +166,12 @@ impl Scene {
         // Update all of the physics in a fixed time-step
         self.physics_update_timer += deltatime;
         while self.physics_update_timer >= PHYSICS_STEP &&!self.completed {
-            self.particles.update(&self.camera);
 
             self.player.physics_update(&mut self.entities, &mut self.entity_spawner, &mut self.particles, &mut self.level, resources);
 
             if self.player.dead() {
                 self.physics_update_timer -= PHYSICS_STEP;
+                self.particles.update(&self.camera);
                 continue;
             }
 
@@ -199,7 +199,7 @@ impl Scene {
             }
             self.entity_spawner.spawn_entities(&mut self.entities);
             
-            self.player.hurt_check(&mut self.entities, &mut self.level, resources);
+            self.player.hurt_check(&mut self.entities, &mut self.particles, &self.level, resources);
 
             // Remove all the entities that need to be destroyed
             // Also collects chips / lives / powerups...
@@ -282,6 +282,7 @@ impl Scene {
             self.entities.sort_by(|e1, e2| e1.kind().cmp(&e2.kind()));
 
             self.camera.update(deltatime, &self.player, &self.level);
+            self.particles.update(&self.camera);
         }
 
         self.level.update_bumped_tiles(deltatime);

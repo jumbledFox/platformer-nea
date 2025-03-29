@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::{gen_range, rand}};
 
-use crate::{game::{collision::default_collision, player::{Player, PowerupKind}, scene::{particles::ParticleKind, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::rect};
+use crate::{game::{collision::{default_collision, lava_check, solid_on_off_check}, player::{Player, PowerupKind}, scene::{particles::{ParticleKind, SmokeKind}, GRAVITY, MAX_FALL_SPEED}}, resources::Resources, util::rect};
 
 use super::{Entity, EntityKind, Id};
 
@@ -11,6 +11,7 @@ const SIDE_RT: Vec2 = vec2(16.0,  2.0);
 const SIDE_RB: Vec2 = vec2(16.0,  8.0);
 const BOT_L:   Vec2 = vec2( 6.0, 16.0);
 const BOT_R:   Vec2 = vec2(12.0, 16.0);
+const CENTER:  Vec2 = vec2( 9.0,  8.0);
 
 pub struct Powerup {
     id: Id,
@@ -20,6 +21,7 @@ pub struct Powerup {
     particle_timer: f32,
     next_particle_time: f32,
     invuln: Option<f32>,
+    destroy: bool,
 }
 
 impl Powerup {
@@ -32,6 +34,7 @@ impl Powerup {
             particle_timer: 0.0,
             next_particle_time: 0.0,
             invuln: if invuln { Some(1.0) } else { None },
+            destroy: false,
         }
     }
     pub fn hitbox() -> Rect {
@@ -84,7 +87,7 @@ impl Entity for Powerup {
         }
     }
     fn should_destroy(&self) -> bool {
-        false
+        self.destroy
     }
 
     fn physics_update(&mut self, _player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut crate::game::scene::entity_spawner::EntitySpawner, particles: &mut crate::game::scene::particles::Particles, level: &mut crate::game::level::Level, _camera: &mut crate::game::scene::camera::Camera, resources: &Resources) {
@@ -93,6 +96,16 @@ impl Entity for Powerup {
             if *t <= 0.0 {
                 self.invuln = None;
             }
+        }
+
+        if solid_on_off_check(self.pos, &[CENTER], level) {
+            particles.add_smoke_cloud(self.pos, SmokeKind::Color(self.kind.particle_color()));
+            self.destroy = true;
+            return;
+        }
+        if lava_check(self.pos, &[CENTER], particles, level) {
+            self.destroy = true;
+            return;
         }
         
         self.particle_timer += 1.0/120.0;

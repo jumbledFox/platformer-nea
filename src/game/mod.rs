@@ -179,7 +179,7 @@ impl GameState for Game {
         
         // If transitioning, don't update the scene
         if !self.transition.can_update() {
-            resources.set_anim_timer_update(false);
+            resources.set_anim_timer_update(matches!(self.transition.kind(), TransitionKind::Death(_) | TransitionKind::GameOver(_)));
             return;
         }
         resources.set_anim_timer_update(true);

@@ -2,7 +2,7 @@
 
 use macroquad::{color::{Color, WHITE}, input::is_key_pressed, math::{vec2, Rect, Vec2}, rand::gen_range};
 
-use crate::{game::{collision::{default_collision, spike_check, EntityHitKind}, level::{tile::{LockColor, TileHitKind}, Level}, player::{HeadPowerup, Player, PowerupKind}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::{default_collision, lava_check, solid_on_off_check, spike_check, EntityHitKind}, level::{tile::{LockColor, TileHitKind}, Level}, player::{HeadPowerup, Player, PowerupKind}, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::{CrateParticleKind, ParticleKind, Particles}, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{chip::Chip, frog::Frog, key::Key, powerup::Powerup, Entity, EntityKind, Id};
 
@@ -13,6 +13,7 @@ const SIDE_RT: Vec2 = vec2(16.0,  2.0);
 const SIDE_RB: Vec2 = vec2(16.0, 14.0);
 const BOT_L:   Vec2 = vec2( 4.0, 16.0);
 const BOT_R:   Vec2 = vec2(12.0, 16.0);
+const CENTER:  Vec2 = vec2( 8.0,  8.0);
 
 const FUSE_FIZZ: f32 = 1.5;
 const FUSE_EXPLODE: f32 = 3.0;
@@ -287,16 +288,11 @@ impl Entity for Crate {
         let mut bots   = [(BOT_L, false), (BOT_R, false)];
         let mut lefts  = [(SIDE_LT, true, false), (SIDE_LB, true, false)];
         let mut rights = [(SIDE_RT, true, false), (SIDE_RB, true, false)];
-        let (tile_hit, entity_hit) = match self.kind {
-            CrateKind::Explosive => (
-                None,
-                Some((EntityHitKind::AllButCratesNoDamage, self.hitbox(), 1.5, true, true)),
-            ),
-            _ => (
-                Some(TileHitKind::Soft),
-                Some((EntityHitKind::AllButCrates, self.hitbox(), 1.5, true, true))
-            ),
+        let tile_hit = match self.kind {
+            CrateKind::Explosive => None,
+            _ => Some(TileHitKind::Soft),
         };
+        let entity_hit = Some((EntityHitKind::AllButCrates, self.hitbox(), 1.5, true, true));
         let (t, b, _, _, hit, hit_entity) = default_collision(&mut self.pos, &mut self.vel, tile_hit, entity_hit, others, &mut tops, &mut bots, &mut lefts, &mut rights, particles, level, resources);
         if b { self.vel.x = 0.0; }
 
@@ -309,7 +305,7 @@ impl Entity for Crate {
             for e in others {
                 if matches!(e.kind(), EntityKind::Cannonball | EntityKind::Fireball) {
                     if e.hitbox().overlaps(&self.hitbox()) {
-                        self.hit = true;
+                        // self.hit = true;
                     }
                 }
             }
@@ -320,6 +316,14 @@ impl Entity for Crate {
             if !self.hit {
                 self.hit_non_tile = true;
             }
+            self.hit = true;
+        }
+        // Lava
+        if lava_check(self.pos, &[CENTER], particles, level) {
+            self.hit = true;
+        }
+        // Solid on/off blocks
+        if solid_on_off_check(self.pos, &[CENTER], level) {
             self.hit = true;
         }
     }

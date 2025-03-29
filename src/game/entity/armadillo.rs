@@ -1,7 +1,7 @@
 
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}, rand::{gen_range, rand}};
 
-use crate::{game::{collision::{default_collision, EntityHitKind}, level::tile::TileHitKind, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::{default_collision, lava_check, solid_on_off_check, EntityHitKind}, level::tile::TileHitKind, player::{Dir, FeetPowerup, Player}, scene::{camera::Camera, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -12,6 +12,7 @@ const SIDE_LT: Vec2 = vec2( 5.0,  4.0);
 const SIDE_LB: Vec2 = vec2( 5.0, 10.0);
 const SIDE_RT: Vec2 = vec2(21.0,  4.0);
 const SIDE_RB: Vec2 = vec2(21.0, 10.0);
+const CENTER: Vec2  = vec2( 8.0,  6.0);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum State {
@@ -179,7 +180,7 @@ impl Entity for Armadillo {
         self.vel = vel;
     }
     fn should_destroy(&self) -> bool {
-        matches!(self.state, State::Dead(t) if t <= 0.0)
+        matches!(self.state, State::Dead(t) if t >= 3.0)
     }
     fn can_hurt(&self) -> bool {
         !(matches!(self.state, State::Dead(_)) || self.invuln.is_some())
@@ -197,8 +198,13 @@ impl Entity for Armadillo {
     }
     fn hit(&mut self) {
         if self.can_hurt() {
+            self.kill();
+        }
+    }
+    fn kill(&mut self) {
+        if !matches!(self.state, State::Dead(_)) {
             self.vel = vec2(0.0, -1.5);
-            self.state = State::Dead(3.0);
+            self.state = State::Dead(0.0);
         }
     }
 
@@ -228,6 +234,13 @@ impl Entity for Armadillo {
             }
         }
 
+        if solid_on_off_check(self.pos, &[CENTER], level) && !matches!(self.state, State::Dead(_)) {
+            self.kill();
+        }
+        if lava_check(self.pos, &[CENTER], particles, level){
+            self.state = State::Dead(999.0);
+        }
+
         if matches!(self.state, State::Walking | State::Jumping | State::Falling) {
             self.speed = 0.25;
         } else if matches!(self.state, State::Spinning(_)) {
@@ -244,7 +257,7 @@ impl Entity for Armadillo {
         self.pos += self.vel;
 
         if let State::Dead(t) = &mut self.state {
-            *t -= 1.0/120.0;
+            *t += 1.0/120.0;
             return;
         }
         if let State::Spinning(spin) = &mut self.state {

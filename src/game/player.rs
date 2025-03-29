@@ -4,7 +4,7 @@ use macroquad::{color::{Color, BLUE, GREEN, RED, WHITE, YELLOW}, input::{is_key_
 
 use crate::{game::collision::spike_check, resources::Resources, util::{approach_target, draw_rect_lines}};
 
-use super::{collision::{collision_bottom, collision_left, collision_right, collision_top}, entity::{Entity, EntityKind, Id}, level::{things::DoorKind, tile::{TileCollision, TileDir, TileHitKind}, Level}, scene::{camera::Camera, entity_spawner::EntitySpawner, fader::Fader, particles::Particles, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED}};
+use super::{collision::{collision_bottom, collision_left, collision_right, collision_top, lava_check, solid_on_off_check}, entity::{Entity, EntityKind, Id}, level::{things::DoorKind, tile::{TileCollision, TileDir, TileHitKind}, Level}, scene::{camera::Camera, entity_spawner::EntitySpawner, fader::Fader, particles::Particles, sign_display::SignDisplay, GRAVITY, MAX_FALL_SPEED}};
 
 // Collision points
 const HEAD:    Vec2 = vec2( 8.0,  0.0);
@@ -440,6 +440,11 @@ impl Player {
     }
 
     pub fn update(&mut self, entities: &mut Vec<Box<dyn Entity>>, camera: &mut Camera, fader: &mut Fader, sign_display: &mut SignDisplay, level: &mut Level, resources: &Resources) {
+        if self.dead_timer.is_some_and(|d| d > 0.8) {
+            if let Some(e) = self.holding.take() {
+                entities.push(e);
+            }
+        }
         if self.dead_timer.is_some() {
             return;
         }
@@ -633,6 +638,8 @@ impl Player {
             self.change_state(State::Falling);
         }
 
+        let prev_pos = self.pos;
+        
         // Handling sides
         // We only want to push the top sides, and we only want to do it if the player is moving up
         self.nudging_l  = collision_left(&mut self.pos,  SIDE_LT, true, &level, resources);
@@ -679,6 +686,13 @@ impl Player {
                     self.coyote_time += 1.0 / 120.0;
                 }
             }
+        }
+
+        // Solid on/off blocks
+        if solid_on_off_check(prev_pos, &[CENTER], level) {
+            self.pos = prev_pos;
+            self.kill();
+            return;
         }
 
         // If the player is stepping
@@ -757,7 +771,7 @@ impl Player {
         self.feet_powerup = None;
     }
     
-    pub fn hurt_check(&mut self, entities: &mut Vec<Box<dyn Entity>>, level: &Level, _resources: &Resources) {
+    pub fn hurt_check(&mut self, entities: &mut Vec<Box<dyn Entity>>, particles: &mut Particles, level: &Level, _resources: &Resources) {
         if self.dead_timer.is_some() {
             return;
         }
@@ -776,7 +790,12 @@ impl Player {
         }
 
         // Falling off the map
-        if self.pos.y >= level.height() as f32 * 16.0 + 4.0 {
+        if self.pos.y >= level.height() as f32 * 16.0 + 6.0 {
+            self.kill();
+        }
+
+        if lava_check(self.pos, &[CENTER], particles, level) {
+        // Lava
             self.kill();
         }
 
@@ -917,10 +936,7 @@ impl Player {
         || self.state == State::Falling
         || self.state == State::Jumping;
         if dead {
-            run = self.dead_timer.is_some_and(|d| d % 0.1 < 0.05);
-        }
-        if self.dead_stop() {
-            run = true;
+            run = resources.tile_animation_timer() % 0.1 < 0.05;
         }
 
         // Drawing individual parts of the player

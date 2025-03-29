@@ -1,8 +1,8 @@
-use macroquad::math::{Rect, Vec2};
+use macroquad::{color::DARKGRAY, math::{Rect, Vec2}};
 
 use crate::resources::Resources;
 
-use super::{entity::{Entity, EntityKind}, level::{tile::{Tile, TileCollision, TileDir, TileHitKind}, Level}, scene::particles::Particles};
+use super::{entity::{Entity, EntityKind}, level::{tile::{Tile, TileCollision, TileDir, TileHitKind}, Level}, scene::particles::{Particles, SmokeKind}};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Side {
@@ -70,7 +70,6 @@ pub fn collision_top(pos: &mut Vec2, point: Vec2, level: &Level, resources: &Res
 pub enum EntityHitKind {
     All,
     AllButCrates,
-    AllButCratesNoDamage,
 }
 
 // Some nice default collision
@@ -166,11 +165,7 @@ pub fn default_collision(
                 if e.hitbox().overlaps(&hitbox)
                 && ((entity_hit_kind == EntityHitKind::All) || (entity_hit_kind != EntityHitKind::All && !matches!(e.kind(), EntityKind::Crate(_))))
                 {
-                    if entity_hit_kind == EntityHitKind::AllButCratesNoDamage {
-                        hit_entity = true;
-                    } else {
-                        hit_entity |= e.hit_with_throwable(prev_vel);
-                    }
+                    hit_entity |= e.hit_with_throwable(prev_vel);
                 }
             }
             if hit_entity {
@@ -206,3 +201,29 @@ pub fn spike_check(
     None
 }
 
+// If the points are inside lava
+pub fn lava_check(pos: Vec2, points: &[Vec2], particles: &mut Particles, level: &Level) -> bool {
+    let mut lava = false; 
+    for p in points {
+        if level.tile_at_pos(pos + *p) == Tile::Lava {
+            lava = true;
+            break;
+        }
+    }
+    if lava {
+        for p in points {
+            particles.add_smoke_cloud(pos + *p, SmokeKind::Color(DARKGRAY));
+        }
+    }
+    lava
+}
+
+// If the points are inside a solid on/off block
+pub fn solid_on_off_check(pos: Vec2, points: &[Vec2], level: &Level) -> bool {
+    for p in points {
+        if matches!(level.tile_at_pos(pos + *p), Tile::SwitchBlockOn(true) | Tile::SwitchBlockOff(true)) {
+            return true;
+        }
+    }
+    false
+}

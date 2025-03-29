@@ -1,6 +1,6 @@
 use macroquad::{color::{Color, WHITE}, math::{vec2, Rect, Vec2}};
 
-use crate::{game::{collision::{default_collision, EntityHitKind}, level::{tile::{LockColor, Tile, TileHitKind, RAINBOW_LOCK_FRAME_DUR}, Level}, player::Player, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
+use crate::{game::{collision::{default_collision, lava_check, solid_on_off_check, EntityHitKind}, level::{tile::{LockColor, Tile, TileHitKind, RAINBOW_LOCK_FRAME_DUR}, Level}, player::Player, scene::{camera::Camera, entity_spawner::EntitySpawner, particles::Particles, GRAVITY, MAX_FALL_SPEED}}, resources::Resources};
 
 use super::{Entity, EntityKind, Id};
 
@@ -12,6 +12,7 @@ const SIDE_RB: Vec2 = vec2(16.0, 12.0);
 const BOT_L:   Vec2 = vec2( 5.0, 14.0);
 const BOT_M:   Vec2 = vec2( 8.0, 14.0);
 const BOT_R:   Vec2 = vec2(11.0, 14.0);
+const CENTER:  Vec2 = vec2( 8.0,  7.0);
 
 pub struct Key {
     id: Id,
@@ -77,7 +78,9 @@ impl Entity for Key {
     }
 
     fn physics_update(&mut self, _player: &mut Player, others: &mut Vec<&mut Box<dyn Entity>>, _entity_spawner: &mut EntitySpawner, particles: &mut Particles, level: &mut Level, _camera: &mut Camera, resources: &Resources) {
-        if level.lock_destroyed(self.color) {
+        if level.lock_destroyed(self.color)
+        || solid_on_off_check(self.pos, &[CENTER], level)
+        || lava_check(self.pos, &[CENTER], particles, level) {
             self.remove = true;
             return;
         }
