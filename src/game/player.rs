@@ -775,6 +775,17 @@ impl Player {
         if self.dead_timer.is_some() {
             return;
         }
+
+        // These things should kill you even if you're invulnerable!
+        // Falling off the map
+        if self.pos.y >= level.height() as f32 * 16.0 + 6.0 {
+            self.kill();
+        }
+        // Lava
+        if lava_check(self.pos, &[CENTER], particles, level) {
+            self.kill();
+        }
+
         // Update the timer
         match &mut self.invuln {
             Invuln::Damage(t) | Invuln::Powerup(_, t) => {
@@ -787,16 +798,6 @@ impl Player {
         }
         if matches!(self.invuln, Invuln::Damage(_)) {
             return;
-        }
-
-        // Falling off the map
-        if self.pos.y >= level.height() as f32 * 16.0 + 6.0 {
-            self.kill();
-        }
-
-        if lava_check(self.pos, &[CENTER], particles, level) {
-        // Lava
-            self.kill();
         }
 
         // Entities

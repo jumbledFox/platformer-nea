@@ -112,9 +112,6 @@ impl Level {
     pub fn entity_spawns(&self) -> &HashMap<LevelPosition, EntityKind> {
         &self.entity_spawns
     }
-    pub fn remove_entity_spawn(&mut self, pos: LevelPosition) {
-        self.entity_spawns.remove(&pos);
-    }
 
     pub fn spawn(&self) -> Vec2 {
         self.spawn

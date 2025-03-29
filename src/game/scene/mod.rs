@@ -111,6 +111,10 @@ impl Scene {
         // my bad... i've got less than a week left and i've not done much writing,
         // My head is filled with caffeine, confusion, and an inexplicable sense of impending doom.
 
+        // UPDATE:
+        // The player uses the ids to stop them from grabbing the same thing too quickly!!
+        // it's not useless! and just as i was about to remove them
+
         for (&spawn_pos, &k) in self.level.entity_spawns().iter() {
             self.entity_spawner.add_entity(level_pos_to_pos(spawn_pos) + k.tile_offset(), Vec2::ZERO, k, Some(spawn_pos));
         }
@@ -203,17 +207,11 @@ impl Scene {
 
             // Remove all the entities that need to be destroyed
             // Also collects chips / lives / powerups...
-            let mut disable_respawn = |id: Id| {
-                if let Id::Level(spawn_pos) = id {
-                    self.level.remove_entity_spawn(spawn_pos);
-                }
-            };
             let mut collected_powerup = false;
             for i in (0..self.entities.len()).rev() {
                 if self.entities[i].should_destroy()
                 || (self.entities[i].destroy_offscreen() && !self.camera.on_screen_far(self.entities[i].pos()))
                 {
-                    disable_respawn(self.entities[i].id());
                     self.entities[i].destroy(&mut self.entity_spawner, &mut self.particles);
                     self.entities.remove(i);
                     continue;
@@ -225,7 +223,6 @@ impl Scene {
                     if self.entities[i].hitbox().overlaps(&self.player.chip_hitbox()) {
                         particle_col = Some((self.entities[i].hitbox().center(), Chip::particle_color(false)));
                         self.player.give_chip();
-                        disable_respawn(self.entities[i].id());
                         self.entities.remove(i);
                     }
                 }
@@ -234,7 +231,6 @@ impl Scene {
                     if self.entities[i].hitbox().overlaps(&self.player.chip_hitbox()) {
                         particle_col = Some((self.entities[i].hitbox().center(), Chip::particle_color(true)));
                         self.particles.add_particle(self.entities[i].hitbox().center(), vec2(0.0, -0.5), ParticleKind::OneUp);
-                        disable_respawn(self.entities[i].id());
                         self.entities.remove(i);
                         *lives += 1;
                     }
@@ -256,7 +252,6 @@ impl Scene {
                         particle_col = Some((center, kind.particle_color()));
                         collected_powerup = true;
                         self.player.collect_powerup(kind, center, &mut self.particles, &mut self.entity_spawner);
-                        disable_respawn(self.entities[i].id());
                         self.entities.remove(i);
                     }
                 }

@@ -57,9 +57,11 @@ impl Default for EditorLevel {
         let mut tiles = vec![Tile::Empty; width * height];
         let tiles_bg  = vec![Tile::Empty; width * height];
 
-        // Put some platforms down for the default spawn and finish points
-        for x in [2, 3, 4, 9, 10, 11, 12, 17, 18, 19] {
-            tiles[width*8+x] = Tile::Grass;
+        // Make a little default ground
+        for y in height-4..height {
+            for x in 0..width {
+                tiles[width*y+x] = Tile::Grass;
+            }
         }
 
         Self {
@@ -75,8 +77,8 @@ impl Default for EditorLevel {
             signs: vec![],
             door_start: None,
             doors: vec![],
-            spawn:  Vec2::new( 3.0, 7.0) * 16.0,
-            finish: Vec2::new(18.0, 7.0) * 16.0,
+            spawn:  Vec2::new( 3.0, 9.0) * 16.0,
+            finish: Vec2::new(18.0, 9.0) * 16.0,
             checkpoints: vec![],
             entities: vec![],
 
