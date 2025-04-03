@@ -220,8 +220,8 @@ impl Entity for Goat {
                 // Stop walking if there's no tile below, a wall in front, or the timer's stopped
                 let below_check_pos = self.pos + vec2(7.0 +  7.0 * if self.facing == Dir::Right { 1.0 } else { -1.0 }, 40.0);
                 let front_check_pos = self.pos + vec2(8.0 + 8.0 * if self.facing == Dir::Right { 1.0 } else { -1.0 }, 24.0);
-                let can_walk = resources.tile_data(level.tile_at_pos(below_check_pos)).collision().is_solid()
-                &&            !resources.tile_data(level.tile_at_pos(front_check_pos)).collision().is_solid();
+                let can_walk = resources.tile_data(level.tile_at_pos(below_check_pos)).collision().is_solid_or_platform()
+                &&            !resources.tile_data(level.tile_at_pos(front_check_pos)).collision().is_solid_or_platform();
 
                 if !can_walk || *t <= 0.0 {
                     self.state = State::Idle(gen_range(0.5, 1.0));

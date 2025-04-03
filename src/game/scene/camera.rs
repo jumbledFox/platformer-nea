@@ -108,6 +108,11 @@ impl Camera {
             player::State::Climbing => 2.0,
             _ => 1.5,
         };
+
+        let right_edge = player.pos().x.floor() - (X_RIGHT - 8.0) + VIEW_SIZE.x / 2.0;
+        let left_edge  = player.pos().x.floor() - (X_LEFT  - 8.0) + VIEW_SIZE.x / 2.0;
+        self.center.x = self.center.x.clamp(right_edge, left_edge);
+
         approach_target(&mut self.center.x, player.vel().x.abs() * approach, player.pos().x.floor() - self.target_offset.x + VIEW_SIZE.x / 2.0);
 
         // Vertical clamping

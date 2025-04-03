@@ -234,7 +234,7 @@ impl Player {
     }
 
     pub fn chip_hitbox(&self) -> Rect {
-        Rect::new(4.0, 1.0, 12.0, 14.0).offset(self.pos)
+        Rect::new(4.0, -1.0, 12.0, 16.0).offset(self.pos)
     }
 
     // Changing the state

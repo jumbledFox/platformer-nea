@@ -321,6 +321,12 @@ impl LevelView {
                         else if is_mouse_button_down(MouseButton::Right) && self.began_drawing_in_area {
                             editor_level.set_tile_at_pos(Tile::Empty, cursor_pos, self.layer_bg);
                         }
+                        // Picking
+                        else if is_key_pressed(KeyCode::Q) {
+                            if let Some(t) = editor_level.get_tile_at_pos(cursor_pos, self.layer_bg) {
+                                self.selected_object = Object::Tile(t);
+                            }
+                        }
                     }
                     // If the object is an entity
                     else if let Object::Entity(kind) = self.selected_object {

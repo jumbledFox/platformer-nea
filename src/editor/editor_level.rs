@@ -265,6 +265,17 @@ impl EditorLevel {
             self.should_update_render_data = true;
         }
     }
+    pub fn get_tile_at_pos(&self, pos: Vec2, bg: bool) -> Option<Tile> {
+        let index = (pos.x / 16.0).floor() as usize + (pos.y / 16.0).floor() as usize * self.width();
+        let tiles = match bg {
+            false => &self.tiles,
+            true  => &self.tiles_bg,
+        };
+        match tiles[index] {
+            Tile::Empty => None,
+            t @ _ => Some(t),
+        }
+    }
 
     // These functions are for moving the borders of the level, increasing/decreasing the level's size.
     pub fn can_change_width(&self, increase: bool) -> bool {

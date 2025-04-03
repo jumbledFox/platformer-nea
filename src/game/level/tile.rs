@@ -509,7 +509,10 @@ impl TileCollision {
         matches!(self, Self::Solid { .. })
     }
     pub fn is_platform(&self) -> bool {
-        matches!(self, Self::Platform { .. })
+        matches!(self, Self::Platform)
+    }
+    pub fn is_solid_or_platform(&self) -> bool {
+        matches!(self, Self::Solid { .. } | Self::Platform)
     }
     pub fn is_ladder(&self) -> bool {
         matches!(self, Self::Ladder)

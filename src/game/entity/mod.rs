@@ -26,6 +26,7 @@ pub mod launcher;
 pub mod cannonball;
 pub mod fireball;
 pub mod flame_jet;
+// TODO: Tumbleweed maybe? for desert levels
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Id {
