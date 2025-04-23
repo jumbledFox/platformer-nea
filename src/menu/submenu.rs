@@ -46,8 +46,16 @@ impl Submenu {
         let (title, lines): (&str, &[&str]) = match self.state {
             SubmenuState::None => return,
             SubmenuState::Credits => ("Credits", &[
-                "Credits...",
-                "blah :3",
+                "FOX GAME",
+                "Programming and art by jumbledFox",
+                "The Macroquad library, by xxxx",
+                "is an integral part of this",
+                "program, and without it, it'd",
+                "be impossible! Thank you very much",
+                "to xxxxxxxxx and everyone on the",
+                "macroquad discord who were a",
+                "great help with some of the issues",
+                "i faced. <3"
             ]),
             SubmenuState::Help =>("How to play", &[
                 "Help! (beatles reference)",
