@@ -78,7 +78,6 @@ impl Transition {
         self.kind = TransitionKind::Intro(pack_name, author, name, world, world_num, head, feet, lives);
         self.timer = 0.0;
     }
-    // on a ship.. after the war
     pub fn begin_finish(&mut self, center: Vec2) {
         self.kind = TransitionKind::Finish(center);
         self.timer = 0.0;
@@ -218,73 +217,5 @@ impl Transition {
             }
             render_text("GAME OVER!", Color::new(1.0, 0.0, 0.0, fade_alpha(2.0, 5.0)), VIEW_SIZE/2.0, vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         }
-
-        // else if let TransitionKind::Intro(level_name, world, head_powerup, feet_powerup, lives) = &self.kind {
-        //     // Draw the background
-        //     let bg_alpha = (3.0 - self.timer).clamp(0.0, 1.0);
-        //     draw_rect(rect(Vec2::ZERO, VIEW_SIZE), Color::new(0.0, 0.0, 0.0, bg_alpha));
-        // }
     }
-    // pub fn is_none(&self) -> bool {
-    //     matches!(self.kind, TransitionKind::None)
-    // }
-    // pub fn is_intro(&self) -> bool {
-    //     matches!(self.kind, TransitionKind::Intro(..))
-    // }
-    // pub fn is_zoom(&self) -> bool {
-    //     matches!(self.kind, TransitionKind::Zoom(..))
-    // }
-    // pub fn is_game_over(&self) -> bool {
-    //     matches!(self.kind, TransitionKind::GameOver)
-    // }
-
-    // pub fn time_up(&self) -> bool {
-    //     match self.kind {
-    //         TransitionKind::Intro(..) if self.timer >= INTRO_TIME     => true,
-    //         TransitionKind::Zoom(..)  if self.timer >= FINISH_TIME    => true,
-    //         TransitionKind::GameOver  if self.timer >= GAME_OVER_TIME => true,
-    //         _ => false,
-    //     }
-    // }
-
-    // pub fn set_none(&mut self) {
-    //     self.kind = TransitionKind::None;
-    // }
-    // pub fn begin_intro(&mut self, level_name: String, world: String, head_powerup: Option<HeadPowerup>, feet_powerup: Option<FeetPowerup>, lives: usize) {
-    //     self.kind = TransitionKind::Intro(level_name, world, head_powerup, feet_powerup, lives);
-    //     self.timer = 0.0;
-    // }
-    // pub fn begin_zoom(&mut self, center: Vec2, finish: bool) {
-    //     self.kind = TransitionKind::Zoom(center, finish);
-    //     self.timer = 0.0;
-    // }
-    // pub fn begin_game_over(&mut self) {
-    //     self.kind = TransitionKind::GameOver;
-    //     self.timer = 0.0;
-    // }
-
-    // // Used to tell the game to load the scene when the intro starts fading
-    // pub fn load_scene(&self) -> bool {
-    //     matches!(self.kind, TransitionKind::Intro(..)) && self.timer >= 3.0
-    // }
-    
-    // pub fn update(&mut self, deltatime: f32) {
-    //     self.timer = match self.kind {
-    //         TransitionKind::None => 0.0,
-    //         _ => self.timer + deltatime,
-    //     };
-    // }
-
-    // pub fn draw(&self, resources: &Resources) {
-    //     // Don't draw anything if there's no transition!
-    //     if matches!(self.kind, TransitionKind::None) {
-    //         return;
-    //     }
-    //     // If the 
-    //     else if let TransitionKind::Intro(level_name, world, head_powerup, feet_powerup, lives) = &self.kind {
-    //         // Draw the background
-    //         let bg_alpha = (3.0 - self.timer).clamp(0.0, 1.0);
-    //         draw_rect(rect(Vec2::ZERO, VIEW_SIZE), Color::new(0.0, 0.0, 0.0, bg_alpha));
-    //     }
-    // }
 }

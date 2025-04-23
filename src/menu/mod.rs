@@ -199,15 +199,20 @@ impl GameState for Menu {
         self.button_credits.draw(resources);
         self.button_exit.draw(resources);
 
-        // Draw a cool and fancy logo
-        let colors = [WHITE, RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE];
-        for (i, c) in colors.iter().enumerate().rev() {
-            let a = 1.0 - i as f32 / colors.len() as f32;
-            let t = self.logo_timer - i as f32 / 9.0;
-            let logo_pos = vec2(VIEW_SIZE.x / 2.0, 38.0) + vec2((t * 2.0).sin() * 20.0, (t * 4.0).sin() * 10.0);
-            render_text("FOX GAME", Color::new(c.r, c.g, c.b, a), logo_pos.round(), vec2(2.0, 2.0), Align::Mid, Font::Large, resources);
-        }
+        fancy_cute_rainbow_text("Fox Game", vec2(VIEW_SIZE.x / 2.0, 38.0), self.logo_timer, resources);
         
         self.toast_manager.draw(resources);   
+    }
+}
+
+// i looooove the cute rainbow text :3
+pub fn fancy_cute_rainbow_text(text: &str, center: Vec2, timer: f32, resources: &Resources) {
+    // Draw a cool and fancy logo
+    const COLORS: [Color; 7] = [WHITE, RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE];
+    for (i, c) in COLORS.iter().enumerate().rev() {
+        let a = 1.0 - i as f32 / COLORS.len() as f32;
+        let t = timer - i as f32 / 9.0;
+        let logo_pos = center + vec2((t * 2.0).sin() * 20.0, (t * 4.0).sin() * 10.0);
+        render_text(text, Color::new(c.r, c.g, c.b, a), logo_pos.round(), vec2(2.0, 2.0), Align::Mid, Font::Large, resources);
     }
 }

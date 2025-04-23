@@ -117,7 +117,6 @@ pub struct Player {
     state: State,
     pos: Vec2,
     vel: Vec2,
-    chips: usize,
 
     // The direction the player is facing
     dir: Dir,
@@ -159,7 +158,6 @@ impl Player {
             state: State::Standing,
             pos,
             vel: Vec2::ZERO,
-            chips: 0,
             dir: Dir::Right,
             move_dir: None,
             last_dir_pressed: Some(Dir::Right),
@@ -203,12 +201,6 @@ impl Player {
     }
     pub fn move_dir(&self) -> Option<Dir> {
         self.move_dir
-    }
-    pub fn chips(&self) -> usize {
-        self.chips
-    }
-    pub fn give_chip(&mut self) {
-        self.chips += 1;
     }
     pub fn head_powerup(&self) -> Option<HeadPowerup> {
         self.head_powerup

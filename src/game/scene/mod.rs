@@ -140,11 +140,8 @@ impl Scene {
     pub fn feet_powerup(&self) -> Option<FeetPowerup> {
         self.player.feet_powerup()
     }
-    pub fn chips(&self) -> usize {
-        self.player.chips()
-    }
 
-    pub fn update(&mut self, lives: &mut usize, deltatime: f32, resources: &mut Resources) {
+    pub fn update(&mut self, chips: &mut usize, lives: &mut usize, deltatime: f32, resources: &mut Resources) {
         self.fader.update(deltatime);
         self.sign_display.update();
 
@@ -222,7 +219,7 @@ impl Scene {
                 if matches!(self.entities[i].kind(), EntityKind::Chip(_)) {
                     if self.entities[i].hitbox().overlaps(&self.player.chip_hitbox()) {
                         particle_col = Some((self.entities[i].hitbox().center(), Chip::particle_color(false)));
-                        self.player.give_chip();
+                        *chips += 1;
                         self.entities.remove(i);
                     }
                 }
@@ -333,7 +330,7 @@ impl Scene {
             render_text(&format!("{:>2} - {:<2}", world, level), WHITE, vec2(303.0, 8.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
         }
         resources.draw_rect(vec2(305.0 - 16.0 - 5.0, 16.0), Rect::new(174.0, 16.0, 18.0, 16.0), false, false, WHITE, resources.entity_atlas());
-        render_text(&format!("{:?}", self.player.chips() + chips), GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, Font::Large, resources);
+        render_text(&format!("{:?}", chips), GREEN,  vec2(305.0, 19.0), vec2(1.0, 1.0), Align::End, Font::Large, resources);
 
         if debug {
             render_text(&format!("pos: [{:8.3}, {:8.3}]", self.player.pos().x, self.player.pos().y), RED, vec2(10.0, 50.0), Vec2::ONE, Align::End, Font::Small, resources);

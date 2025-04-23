@@ -24,7 +24,7 @@ pub const VIEW_SIZE: Vec2 = vec2((VIEW_WIDTH * 16) as f32, (VIEW_HEIGHT * 16) as
 fn window_conf()-> Conf {
     let scale_factor = 4;
     Conf { 
-        window_title: String::from("Fox :3"),
+        window_title: String::from("Fox Game !! :3"),
         window_width:  VIEW_WIDTH  as i32 * 16 * scale_factor,
         window_height: VIEW_HEIGHT as i32 * 16 * scale_factor,
         ..Default::default()

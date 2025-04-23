@@ -1,3 +1,6 @@
+// A bunch of util functions that make my life a whole lot easier !!!! :D
+// I'm honestly rather surprised some of these aren't in macroquad by default... but alas!
+
 use macroquad::{color::Color, math::{Rect, Vec2}, shapes::{draw_rectangle, draw_rectangle_lines}};
 
 pub fn approach_target(val: &mut f32, step: f32, target: f32) {

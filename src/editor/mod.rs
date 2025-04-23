@@ -19,7 +19,8 @@ pub struct Editor {
     level_view: LevelView,
     toast_manager: ToastManager,
     
-    // I only need this so lives update when running the scene.............
+    // I only need this so chips/lives update when running the scene.............
+    chips: usize,
     lives: usize,
     instarun: bool,
 }
@@ -40,6 +41,7 @@ impl Editor {
             level_view: LevelView::new(resources),
             toast_manager: ToastManager::default(),
 
+            chips: 0,
             lives: 0,
             instarun: false,
         }
@@ -56,7 +58,8 @@ impl GameState for Editor {
         if self.instarun {
             self.instarun = false;
             self.scene = Some(Scene::from_editor_level(&self.editor_level_pack.editor_level(), None));
-            self.lives = 1;
+            self.chips = 0;
+            self.lives = 0;
             resources.reset_tile_animation_timer();
         }
 
@@ -75,7 +78,7 @@ impl GameState for Editor {
             self.scene = None;
         }
         if let Some(scene) = &mut self.scene {
-            scene.update(&mut self.lives, deltatime, resources);
+            scene.update(&mut self.chips, &mut self.lives, deltatime, resources);
             // If we're in the scene and tab or esc is pressed, exit on the next frame
             // We do this so scene isn't None when drawing it this frame
             if is_key_pressed(KeyCode::Tab) || is_key_pressed(KeyCode::Escape) {
