@@ -1,6 +1,7 @@
 use std::{f32::consts::PI, fs};
 
-use macroquad::{color::{Color, BLUE, GREEN, LIGHTGRAY, ORANGE, PURPLE, RED, WHITE, YELLOW}, color_u8, math::{vec2, Rect, Vec2}, miniquad::window::order_quit};
+use macroquad::{color::{Color, BLUE, GREEN, LIGHTGRAY, ORANGE, PURPLE, RED, WHITE, YELLOW}, color_u8, input::{is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, miniquad::window::order_quit, prelude::rand};
+use submenu::{Submenu, SubmenuState};
 
 use crate::{editor::{editor_level::BG_SKY, Editor}, game::Game, level_pack_data::LevelPackData, resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::Button, toast::{ToastKind, ToastManager}, Ui}, util::draw_rect, GameState, VIEW_SIZE};
 
@@ -11,9 +12,12 @@ const BUTTONS_WIDTH: f32 = 150.0;
 const BUTTONS_GAP: f32 = 16.0 + 2.0;
 const BUTTONS_BEGIN: Vec2 = vec2((VIEW_SIZE.x - BUTTONS_WIDTH) / 2.0, PACK_SELECTOR_BEGIN.y + 26.0);
 
+pub mod submenu;
+
 pub struct Menu {
     logo_timer: f32,
     toast_manager: ToastManager,
+    submenu: Submenu,
 
     pack: usize,
     pack_list: Vec<String>,
@@ -38,8 +42,9 @@ impl Menu {
 
         Self {
             logo_timer: 0.0,
-            
             toast_manager,
+            submenu: Submenu::default(),
+            
             pack, 
             pack_list,
 
@@ -123,6 +128,16 @@ impl Menu {
 impl GameState for Menu {
     fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources, next_state: &mut Option<Box<dyn GameState>>) {
         self.logo_timer = (self.logo_timer + deltatime).rem_euclid(PI);
+        
+        if self.submenu.is_some() {
+            if is_key_pressed(KeyCode::Escape) {
+                self.submenu.set_submenu_state(SubmenuState::None);
+            } else {
+                self.submenu.update(ui);
+                return;
+            }
+        }
+
         self.toast_manager.update(deltatime);
 
         self.button_pack_refresh.update(ui);
@@ -166,7 +181,12 @@ impl GameState for Menu {
                 }
             }
         }
-
+        if self.button_help.released() {
+            self.submenu.set_submenu_state(SubmenuState::Help);
+        }
+        if self.button_credits.released() {
+            self.submenu.set_submenu_state(SubmenuState::Credits);
+        }
         if self.button_editor.released() {
             *next_state = Some(Box::new(Editor::new(None, resources)));
         }
@@ -177,6 +197,11 @@ impl GameState for Menu {
 
     fn draw(&self, _ui: &Ui, resources: &Resources, _debug: bool) {
         draw_rect(Rect::new(0.0, 0.0, VIEW_SIZE.x, VIEW_SIZE.y), BG_COL);
+
+        if self.submenu.is_some() {
+            self.submenu.draw(self.logo_timer, resources);
+            return;
+        }
         
         render_text("Load pack:", WHITE, vec2(PACK_SELECTOR_BEGIN.x, PACK_SELECTOR_BEGIN.y + 2.0), Vec2::ONE, Align::End, Font::Small, resources);
 

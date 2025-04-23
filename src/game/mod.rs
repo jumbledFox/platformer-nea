@@ -213,7 +213,7 @@ impl GameState for Game {
         }
     }
 
-    fn draw(&self, ui: &Ui, resources: &Resources, debug: bool) {
+    fn draw(&self, _ui: &Ui, resources: &Resources, debug: bool) {
         clear_background(BLACK);
 
         if let Some(scene) = &self.scene {
@@ -222,7 +222,7 @@ impl GameState for Game {
         self.transition.draw(resources, debug);
 
         if self.pause_menu.active() {
-            self.pause_menu.draw(ui, resources);
+            self.pause_menu.draw(resources);
         }
     }
 }
