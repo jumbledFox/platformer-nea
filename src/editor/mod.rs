@@ -67,7 +67,8 @@ impl GameState for Editor {
         if let Some((pos, place)) = self.level_view.test_spawn_point() {
             if place {
                 self.scene = Some(Scene::from_editor_level(&self.editor_level_pack.editor_level(), Some(pos)));
-                self.lives = 1;
+                self.lives = 0;
+                self.chips = 0;
                 resources.reset_tile_animation_timer();
                 self.level_view.clear_test_spawn_point();
             }
@@ -112,7 +113,7 @@ impl GameState for Editor {
 
     fn draw(&self, _ui: &Ui, resources: &Resources, debug: bool) {
         if let Some(scene) = &self.scene {
-            scene.draw(None, 0, self.lives, resources, debug);
+            scene.draw(None, self.chips, self.lives, resources, debug);
             Editor::draw_editor_logo(resources);
             return;
         }

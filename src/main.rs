@@ -1,6 +1,5 @@
-use std::{thread::sleep, time::Duration};
 
-use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::{is_key_down, is_key_pressed, KeyCode}, math::{vec2, Rect, Vec2}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, Conf}};
+use macroquad::{camera::{set_camera, set_default_camera, Camera2D}, color::{BLACK, WHITE}, input::is_key_pressed, math::{vec2, Rect, Vec2}, texture::{draw_texture_ex, render_target, set_default_filter_mode, DrawTextureParams, FilterMode}, time::get_frame_time, window::{clear_background, next_frame, Conf}};
 use menu::Menu;
 use resources::Resources;
 use ui::Ui;
@@ -60,7 +59,6 @@ async fn main() {
     world_cam.render_target = Some(render_target.clone());
 
     let mut debug = false;
-    // let mut game_state: Box<dyn GameState> = Box::new(Editor::new(&resources));
     let mut game_state: Box<dyn GameState> = Box::new(Menu::new(None));
     let mut next_state: Option<Box<dyn GameState>> = None;
 
@@ -68,9 +66,11 @@ async fn main() {
         ui.begin_frame();
 
         // Toggling debug mode
-        if is_key_pressed(macroquad::input::KeyCode::Key0) {
+        if is_key_pressed(macroquad::input::KeyCode::F1) {
             debug = !debug;
         }
+        // I was gonna add taking screenshots but that'd require making a toastmanager global and tbh... im kinda done with the coding.
+        // screenshots would be kinda simple too but like.. at what point does it straight up not matter?
 
         // Update the game state
         let deltatime = get_frame_time();
@@ -97,14 +97,6 @@ async fn main() {
             ..Default::default()
         });
 
-        // Wait for the next frame
-        // We sleep here to stop macroquad from going over ~60 fps, which would be pointless and hog the CPU
-        // TODO:... remove this
-        if !is_key_down(KeyCode::F) {
-            // sleep(Duration::from_millis(6));
-        } else {
-            sleep(Duration::from_millis(100));
-        }
         next_frame().await
     }
 }

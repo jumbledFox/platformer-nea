@@ -1,4 +1,3 @@
-
 use macroquad::{color::{Color, BLACK, RED, WHITE}, math::{vec2, Rect, Vec2}, shapes::draw_rectangle, texture::{draw_texture_ex, DrawTextureParams}};
 
 use crate::{level_pack_data::LevelPackData, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, rect}, VIEW_SIZE};
@@ -11,7 +10,7 @@ pub enum TransitionKind {
     None,
     // Pack
     PackStart(String, String), // name, author
-    PackFinish(String, String, Option<HeadPowerup>, Option<FeetPowerup>, usize, usize, usize, usize), // name, author, powerups, chips, deaths, gameovers, levels
+    PackFinish(String, String, Option<HeadPowerup>, Option<FeetPowerup>, usize, usize, usize, String), // name, author, powerups, chips, deaths, gameovers, levels
     
     // Level transitions
     Intro(String, String, String, String, u8, Option<HeadPowerup>, Option<FeetPowerup>, usize), // pack name, author, name, world, powerups, lives
@@ -70,8 +69,8 @@ impl Transition {
         self.kind = TransitionKind::None;
         self.timer = 0.0;
     }
-    pub fn begin_pack_finish(&mut self, name: String, author: String, head: Option<HeadPowerup>, feet: Option<FeetPowerup>, chips: usize, deaths: usize, gameovers: usize, levels: usize) {
-        self.kind = TransitionKind::PackFinish(name, author, head, feet, chips, deaths, gameovers, levels);
+    pub fn begin_pack_finish(&mut self, name: String, author: String, head: Option<HeadPowerup>, feet: Option<FeetPowerup>, chips: usize, deaths: usize, gameovers: usize, timer: String) {
+        self.kind = TransitionKind::PackFinish(name, author, head, feet, chips, deaths, gameovers, timer);
         self.timer = 0.0;
     }
     pub fn begin_intro(&mut self, pack_name: String, author: String, name: String, world: String, world_num: u8, head: Option<HeadPowerup>, feet: Option<FeetPowerup>, lives: usize) {
@@ -135,21 +134,32 @@ impl Transition {
         if let TransitionKind::PackStart(name, author) = &self.kind {
             let fg_col = Color::new(1.0, 1.0, 1.0, fade_alpha(-1.0, 5.0));
 
-            render_text(&name,   fg_col, vec2(VIEW_SIZE.x / 2.0, 80.0), vec2(2.0, 2.0), Align::Mid, Font::Small, resources);
-            render_text(&author, fg_col, vec2(VIEW_SIZE.x / 2.0, 130.0), vec2(2.0, 2.0), Align::Mid, Font::Small, resources);
+            render_text(name,   fg_col, vec2(VIEW_SIZE.x / 2.0, 80.0), vec2(2.0, 2.0), Align::Mid, Font::Small, resources);
+            render_text(author, fg_col, vec2(VIEW_SIZE.x / 2.0, 130.0), vec2(2.0, 2.0), Align::Mid, Font::Small, resources);
             render_text("by", Color::new(0.5, 0.5, 0.5, fg_col.a), vec2(VIEW_SIZE.x / 2.0, 105.0), Vec2::ONE, Align::Mid, Font::Small, resources);
         }
-        else if let TransitionKind::PackFinish(name, author, head, feet, chips, deaths, gameovers, levels) = &self.kind {
+        else if let TransitionKind::PackFinish(name, author, head, feet, chips, deaths, gameovers, timer) = &self.kind {
             draw_rect(screen_rect, BLACK);
             // Pack info
-            render_text(&format!("{name}"),   Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 202.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
-            render_text(&format!("{author}"), Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 216.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
-
-            // Chips
-            resources.draw_rect(vec2(VIEW_SIZE.x / 2.0 - 27.0, 172.0), Rect::new(192.0, 16.0, 16.0, 15.0), false, false, WHITE, resources.entity_atlas());
-            render_text("*",                 WHITE,  vec2(VIEW_SIZE.x / 2.0, 180.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
-            render_text(&format!("{chips}"), WHITE,  vec2(VIEW_SIZE.x / 2.0 + 20.0, 180.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+            render_text("YOU WIN!", WHITE, vec2(VIEW_SIZE.x / 2.0, 16.0), vec2(2.0, 2.0), Align::Mid, Font::Small, resources);
+            render_text(name,       WHITE, vec2(VIEW_SIZE.x / 2.0, 34.0), vec2(2.0, 2.0), Align::Mid, Font::Small, resources);
+            render_text("A level pack by", Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 202.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
+            render_text(author, WHITE, vec2(VIEW_SIZE.x / 2.0, 216.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
             
+            // Stats
+            // (i could do more but im LAAAZY)
+            for (x, y, col, value, rect) in [
+                (VIEW_SIZE.x / 8.0 * 3.0, 45.0, WHITE, deaths,    Rect::new(192.0, 32.0, 16.0, 15.0)),
+                (VIEW_SIZE.x / 8.0 * 3.0, 61.0, RED,   gameovers, Rect::new(192.0, 48.0, 16.0, 15.0)),
+                (VIEW_SIZE.x / 2.0, 172.0, WHITE, chips, Rect::new(174.0, 16.0, 18.0, 16.0)),
+            ] {
+                resources.draw_rect(vec2(x - 27.0, y), rect, false, false, WHITE, resources.entity_atlas());
+                render_text("*",                 col,  vec2(x, y + 8.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+                render_text(&format!("{value}"), col,  vec2(x + 20.0, y + 8.0), vec2(1.0, 1.0), Align::Mid, Font::Large, resources);
+            }
+            // Timer
+            render_text(timer, WHITE, vec2(VIEW_SIZE.x / 8.0 * 5.0, 64.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
+
             let player_size = 3.0;
             let player_pos = vec2((VIEW_SIZE.x - player_size * 16.0) / 2.0, 110.0);
             // Shadow
@@ -170,8 +180,8 @@ impl Transition {
             
             if t < 4.0 {
                 // Pack info
-                render_text(&format!("{pack_name}"), Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 202.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
-                render_text(&format!("{author}"),    Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 216.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
+                render_text(pack_name, Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 202.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
+                render_text(author,    Color::from_hex(0x888888), vec2(VIEW_SIZE.x / 2.0, 216.0), vec2(1.0, 1.0), Align::Mid, Font::Small, resources);
 
                 // Level/world
                 if *world_num > 0 {

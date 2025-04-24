@@ -406,6 +406,7 @@ impl EditorMenu {
                 " - Change the level you're currently",
                 "   editing.",
                 " - Access this help menu.",
+                " - Test the level with 'tab'",
             ]),
             p if p == HelpKind::Level as u8 => ("Level", &[
                 //-----------------------------------//
@@ -446,15 +447,37 @@ impl EditorMenu {
             ]),
             p if p == HelpKind::Tiles as u8 => ("Tiles", &[
                 //-----------------------------------//
-                
+                "Each level is made up of tiles.",
+                "",
+                "Left click (and hold) to draw with the",
+                "current tile.",
+                "You can use right click (and hold it)",
+                "to erase tiles.",
+                "",
+                "Tiles like the cannon do *NOTHING*",
+                "you gotta place the entity there too!"
             ]),
             p if p == HelpKind::BackgroundTiles as u8 => ("Background tiles", &[
                 //-----------------------------------//
-                
+                "Each level also has background tiles.",
+                "",
+                "These tiles are only for decoration",
+                "and can't be interacted with.",
+                "",
+                "Switch to the background by pressing",
+                "the FG/BG button when editing.",
+                "You can also use the hotkey 'f'."
             ]),
             p if p == HelpKind::Entities as u8 => ("Entities", &[
                 //-----------------------------------//
-
+                "Entities can be placed with left",
+                "click and removed with right click.",
+                "",
+                "Only one entity can exist on a tile!",
+                "",
+                "Some entities are used for spawning",
+                "cannon balls or flame jets, some for",
+                "enemies, and some for pickups!",
             ]),
             p if p == HelpKind::Signs as u8 => ("Signs", &[
                 //-----------------------------------//
@@ -509,7 +532,13 @@ impl EditorMenu {
             ]),
             p if p == HelpKind::Checkpoints as u8 => ("Checkpoints", &[
                 //-----------------------------------//
-                
+                "Checkpoints can be placed/removed with",
+                "left/right click.",
+                "", "",
+                "*take care when placing them!*",
+                "nothing is remembered when a player",
+                "respawns at one, so you could possibly",
+                "softlock them with lock blocks etc..!!"
             ]),
 
             _ => ("help screen", &["page error!! ???"])
@@ -529,7 +558,7 @@ impl EditorMenu {
             draw_rect(rect, GRAY);
             draw_rect_lines(rect, BLACK);
             render_text("Save level pack", WHITE, rect.point() + vec2(4.0, 3.0), Vec2::ONE, Align::End, Font::Small, resources);
-            self.pack_popup_file_name_input.draw(editor_level_pack.file_name(),  "File name (without .fox)", resources);
+            self.pack_popup_file_name_input.draw(editor_level_pack.file_name(),  "File name", resources);
             self.pack_popup_name_input.draw(editor_level_pack.name(), "Pack name", resources);
             self.pack_popup_author_input.draw(editor_level_pack.author(), "Pack author", resources);
             self.pack_popup_save.draw(resources);

@@ -13,7 +13,7 @@ use sign_display::SignDisplay;
 
 use crate::{editor::editor_level::EditorLevel, game::level::Level, level_pack_data::{level_pos_to_pos, LevelData}, resources::Resources, text_renderer::{render_text, Align, Font}, util::{draw_rect, rect}, VIEW_SIZE};
 
-use super::{entity::{chip::Chip, Entity, EntityKind, Id}, player::{FeetPowerup, HeadPowerup, Invuln, Player, PowerupKind}};
+use super::{entity::{chip::Chip, Entity, EntityKind}, player::{FeetPowerup, HeadPowerup, Invuln, Player, PowerupKind}};
 
 pub mod camera;
 pub mod entity_spawner;

@@ -1,6 +1,8 @@
 // A bunch of levels to be played, the global chip counter, etc.
 // Loaded from a level pack
 
+use std::time::Instant;
+
 use macroquad::{color::BLACK, input::{is_key_pressed, KeyCode}, math::Vec2, window::clear_background};
 use pause_menu::PauseMenu;
 use player::{FeetPowerup, HeadPowerup};
@@ -42,6 +44,9 @@ pub struct Game {
     scene: Option<Scene>,
     lives: usize,
     chips: usize,
+    deaths: usize,
+    gameovers: usize,
+    begin: Instant,
 }
 
 impl Game {
@@ -65,18 +70,21 @@ impl Game {
             scene: None,
             lives: 3,
             chips: 0,
+            deaths: 0,
+            gameovers: 0,
+            begin: Instant::now(),
         }
     }
 }
 
 impl GameState for Game {
     fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &mut Resources, next_state: &mut Option<Box<dyn GameState>>) {
-        if is_key_pressed(KeyCode::Escape) {
+        if is_key_pressed(KeyCode::Escape) && !self.pause_menu.on_submenu() {
             self.pause_menu.set_active(!self.pause_menu.active());
         }
         resources.set_anim_timer_update(!self.pause_menu.active());
         if self.pause_menu.active() {
-            let exit = self.pause_menu.update(deltatime, ui, resources);
+            let exit = self.pause_menu.update(deltatime, ui);
             if exit {
                 *next_state = Some(Box::new(Menu::new(Some(self.level_pack.file_name().clone()))));
             }
@@ -94,6 +102,7 @@ impl GameState for Game {
                 _ => self.transition_action = None,
             };
             if matches!(self.transition.kind(), TransitionKind::Death(_)) {
+                self.deaths += 1;
                 self.lives -= 1;
             }
             if matches!(self.transition.kind(), TransitionKind::GameOver(_)) {
@@ -105,6 +114,8 @@ impl GameState for Game {
                         .position(|l| l.world() == world)
                         .unwrap_or_default();
                 }
+                self.deaths += 1;
+                self.gameovers += 1;
                 self.lives = 3;
                 self.chips = 0;
             }
@@ -150,7 +161,17 @@ impl GameState for Game {
                     else {
                         self.scene = None;
                         let (head, feet) = self.next_powerups;
-                        self.transition.begin_pack_finish(self.level_pack.name().clone(), self.level_pack.author().clone(), head, feet, self.chips, 0, 0, self.level_pack.levels().len());
+                        
+                        // Do the timer :3
+                        let total_millis = self.begin.elapsed().as_millis();
+                        let hours = total_millis / 3_600_000;
+                        let minutes = (total_millis % 3_600_000) / 60_000;
+                        let seconds = (total_millis % 60_000) / 1000;
+                        let centis = (total_millis % 1000) / 10;
+                    
+                        let timer = format!("{:02}:{:02}:{:02}.{:02}", hours, minutes, seconds, centis);
+
+                        self.transition.begin_pack_finish(self.level_pack.name().clone(), self.level_pack.author().clone(), head, feet, self.chips, self.deaths, self.gameovers, timer);
                     }
                 }
                 TransitionAction::Finish => {

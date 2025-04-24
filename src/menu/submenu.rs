@@ -1,4 +1,4 @@
-use macroquad::{color::{Color, WHITE}, math::{vec2, Vec2}};
+use macroquad::{color::WHITE, math::{vec2, Vec2}};
 
 use crate::{resources::Resources, text_renderer::{render_text, Align, Font}, ui::{button::Button, Ui}, util::rect, VIEW_SIZE};
 
@@ -46,20 +46,33 @@ impl Submenu {
         let (title, lines): (&str, &[&str]) = match self.state {
             SubmenuState::None => return,
             SubmenuState::Credits => ("Credits", &[
-                "FOX GAME",
-                "Programming and art by jumbledFox",
-                "The Macroquad library, by xxxx",
-                "is an integral part of this",
-                "program, and without it, it'd",
-                "be impossible! Thank you very much",
-                "to xxxxxxxxx and everyone on the",
-                "macroquad discord who were a",
-                "great help with some of the issues",
-                "i faced. <3"
+                //-----------------------------------//
+                "             = FOX GAME =            ",
+                "Programming                jumbledFox",
+                "Art                        jumbledFox",
+                "Writing the credits        jumbledFox",
+                "Honourable mentions        jumbledFox",
+                "",
+                "All kidding aside, I could NOT have",
+                "done this without the wondeful",
+                "library *macroquad*, made by Fedor",
+                "(notfl3), as well as the fine folks",
+                "on the macroquad discord!",
+                "Find them both at https://macroquad.rs",
             ]),
             SubmenuState::Help =>("How to play", &[
-                "Help! (beatles reference)",
-                "hey hey we're the beatles",
+                "Movement:",
+                " - Move left/right with 'A' and 'D'",
+                " - Run / pick objects up by holding",
+                "   'left shift', (release to throw!)",
+                " - Jump with 'Space'",
+                " - Read signs, enter doors, and climb",
+                "   ladders/vines with 'W'",
+                "",
+                "General:",
+                " - Avoid enemies and collect powerups",
+                " - Reach the flag to finish a level",
+                " - HAVE FUN!",
             ]),
         };
 

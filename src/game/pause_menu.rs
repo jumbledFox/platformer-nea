@@ -40,10 +40,14 @@ impl PauseMenu {
     }
     pub fn set_active(&mut self, active: bool) {
         self.active = active;
-    } 
+    }
+
+    pub fn on_submenu(&self) -> bool {
+        self.submenu.is_some()
+    }
 
     // Returns true if we should exit back to the menu
-    pub fn update(&mut self, deltatime: f32, ui: &mut Ui, resources: &Resources) -> bool {
+    pub fn update(&mut self, deltatime: f32, ui: &mut Ui) -> bool {
         self.logo_timer = (self.logo_timer + deltatime).rem_euclid(PI);
 
         if self.submenu.is_some() {
